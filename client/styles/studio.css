@@ -1,0 +1,87 @@
+/* ── Creator Studio Hero ── */
+.studio-hero {
+  /* Rich, vibrant gradient from deep accent to card background */
+  background: linear-gradient(135deg, rgba(153, 172, 255, 0.15) 0%, var(--color-bg-card) 50%, rgba(51, 255, 51, 0.05) 100%);
+  border: 1px solid var(--color-border-accent);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-3xl);
+  margin-bottom: var(--spacing-2xl);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  box-shadow: var(--shadow-md);
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.2s var(--ease-spring), box-shadow 0.2s var(--ease-out);
+}
+
+.studio-hero:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Subtle glow behind the hero */
+.studio-hero::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 150%;
+  height: 200%;
+  background: radial-gradient(circle, var(--color-brand-subtle) 0%, transparent 60%);
+  z-index: 0;
+  pointer-events: none;
+}
+
+.studio-hero > * {
+  z-index: 1;
+}
+
+.studio-hero__title {
+  font-size: var(--text-3xl);
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin: 0 0 var(--spacing-sm);
+  letter-spacing: -0.02em;
+}
+
+.studio-hero__subtitle {
+  font-size: var(--text-lg);
+  color: var(--color-text-secondary);
+  margin: 0 0 var(--spacing-xl);
+  max-width: 500px;
+}
+
+.studio-hero__cta {
+  font-size: var(--text-lg);
+  padding: var(--spacing-md) var(--spacing-2xl);
+  border-radius: 9999px;
+  box-shadow: 0 4px 15px var(--color-brand-glow, rgba(230, 81, 0, 0.4));
+  transition: transform 0.2s var(--ease-spring), box-shadow 0.2s var(--ease-out);
+}
+
+.studio-hero__cta:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 6px 20px var(--color-brand-glow, rgba(230, 81, 0, 0.6));
+}
+
+@media (max-width: 768px) {
+  .studio-hero {
+    padding: var(--spacing-xl) var(--spacing-lg);
+  }
+  .studio-hero__title {
+    font-size: var(--text-2xl);
+  }
+  .studio-hero__subtitle {
+    font-size: var(--text-base);
+  }
+}
+
+/* ── Overrides for Studio Page ── */
+/* Creators do not need to see progress bars for their own projects */
+.card-row .gc-progress {
+  display: none !important;
+}

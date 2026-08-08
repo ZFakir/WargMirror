@@ -122,7 +122,10 @@ var GameCard = (function () {
    * create(game) → HTMLElement
    * Accepts a game data object and returns a ready-to-append article element.
    */
-  function create(game) {
+  function create(game, options) {
+    options = options || {};
+    var hideProgress = options.hideProgress || false;
+
     var mode    = MODE[game.mode] || MODE.solo;
     var article = document.createElement('article');
 
@@ -155,9 +158,11 @@ var GameCard = (function () {
         '<p class="gc-caption">' + game.caption + '</p>',
 
         /* Progress */
-        '<div class="gc-progress">',
-          buildProgressHTML(game),
-        '</div>',
+        (hideProgress ? '' : (
+          '<div class="gc-progress">' +
+            buildProgressHTML(game) +
+          '</div>'
+        )),
 
         /* Author */
         '<div class="gc-author">',
@@ -258,8 +263,9 @@ var GameCard = (function () {
    *
    * @param {string}   containerId  — id attribute of the .card-row element
    * @param {object[]} games        — array of game data objects
+   * @param {object}   options      — configuration options (e.g. hideProgress)
    */
-  function renderRow(containerId, games) {
+  function renderRow(containerId, games, options) {
     var container = document.getElementById(containerId);
     if (!container) {
       console.warn('[GameCard] Container not found:', containerId);
@@ -267,7 +273,7 @@ var GameCard = (function () {
     }
     /* DocumentFragment batches DOM insertions for one reflow */
     var frag = document.createDocumentFragment();
-    games.forEach(function (game) { frag.appendChild(create(game)); });
+    games.forEach(function (game) { frag.appendChild(create(game, options)); });
     container.innerHTML = '';
     container.appendChild(frag);
   }
