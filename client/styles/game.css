@@ -1,0 +1,384 @@
+/**
+ * WARG Platform — Game Page Styles
+ * Styling for the active game view: map placeholder and progress timeline.
+ */
+
+.game-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: var(--spacing-xl);
+  padding: 0 0 var(--spacing-2xl) 0;
+}
+
+/* ── Map Placeholder ── */
+.game-map-wrapper {
+  position: relative;
+  width: 100%;
+  height: 400px;
+  background-color: var(--color-surface);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 1px solid var(--color-border);
+}
+
+.game-map__placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  color: var(--color-text-muted);
+  background: repeating-linear-gradient(
+    45deg,
+    var(--color-surface),
+    var(--color-surface) 10px,
+    var(--color-bg) 10px,
+    var(--color-bg) 20px
+  );
+}
+
+.game-map__placeholder p {
+  font-size: var(--text-base);
+  font-weight: 500;
+}
+
+/* ── Progress Tracker Area ── */
+.game-progress-wrapper {
+  position: relative;
+  background-color: var(--color-surface);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-xl);
+  border: 1px solid var(--color-border);
+}
+
+.game-progress__title {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  margin-bottom: var(--spacing-2xl);
+  color: var(--color-text);
+}
+
+/* ── Timeline ── */
+.progress-timeline {
+  display: flex;
+  align-items: center;
+  position: relative;
+  width: 100%;
+  justify-content: space-between;
+  padding: 0 var(--spacing-md);
+}
+
+/* Base line across the whole timeline */
+.progress-timeline::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: var(--spacing-md);
+  right: var(--spacing-md);
+  height: 4px;
+  background-color: var(--color-border);
+  transform: translateY(-50%);
+  z-index: 1;
+}
+
+/* Timeline Node */
+.timeline-node {
+  position: relative;
+  z-index: 2;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-color: var(--color-surface);
+  border: 4px solid var(--color-border);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+/* Edges (Lines between nodes) */
+.timeline-edge {
+  position: absolute;
+  top: 50%;
+  height: 4px;
+  background-color: var(--color-secondary); /* P1 Phosphor / Green */
+  transform: translateY(-50%);
+  z-index: 1;
+  transform-origin: left center;
+  transition: width 0.4s ease;
+}
+
+/* State: Completed Node */
+.timeline-node.is-completed {
+  background-color: var(--color-secondary);
+  border-color: var(--color-secondary);
+  box-shadow: 0 0 10px rgba(51, 255, 51, 0.4);
+}
+
+/* State: Leading/Current Incomplete Node */
+.timeline-node.is-current {
+  border-color: var(--color-brand); /* Computational Beige */
+  background-color: transparent; /* Hollow */
+  box-shadow: 0 0 10px rgba(192, 184, 155, 0.4);
+}
+
+.timeline-node:hover,
+.timeline-node:focus-visible {
+  transform: scale(1.2);
+  outline: none;
+}
+
+/* ── Popover ── */
+.timeline-popover {
+  position: absolute;
+  background-color: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  width: 240px;
+  z-index: 10;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(10px) translateX(-50%);
+  transition: all 0.2s ease;
+  pointer-events: none;
+}
+
+.timeline-popover.is-visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0) translateX(-50%);
+}
+
+/* Triangle arrow for popover */
+.timeline-popover::after {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%) rotate(45deg);
+  width: 10px;
+  height: 10px;
+  background-color: var(--color-bg);
+  border-right: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.timeline-popover__title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  margin-bottom: var(--spacing-xs);
+  color: var(--color-brand-primary);
+}
+
+.timeline-popover__summary {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}
+
+/* ── Mobile Layout Adjustments ── */
+@media (max-width: 768px) {
+  .game-map-wrapper {
+    height: 300px;
+  }
+}
+
+/* ── Current Node Brief ── */
+.current-node-brief {
+  margin-top: var(--spacing-2xl);
+  padding: var(--spacing-xl);
+  background-color: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xl);
+}
+
+.current-node-brief__content {
+  width: 100%;
+}
+
+.current-node-brief__title {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--color-brand);
+  margin-bottom: var(--spacing-sm);
+}
+
+.current-node-brief__summary {
+  font-size: var(--text-base);
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+}
+
+.current-node-brief__play {
+  width: 75%;
+  align-self: center;
+  padding: 1.25rem 2rem; /* Thicker padding */
+  background-color: var(--color-accent);
+  color: var(--color-text-on-accent);
+  border: none;
+  border-radius: var(--radius-btn);
+  font-weight: 700;
+  font-size: var(--text-lg);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.current-node-brief__play:hover {
+  background-color: var(--color-brand);
+  box-shadow: 0 0 15px var(--color-accent-glow);
+  transform: translateY(-2px);
+}
+
+/* ── Play Menu Modal ── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: var(--color-bg-overlay, rgba(18, 16, 14, 0.85));
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s var(--ease-out), visibility 0.3s var(--ease-out);
+}
+
+.modal-overlay[aria-hidden="false"] {
+  opacity: 1;
+  visibility: visible;
+}
+
+.play-modal {
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-lg);
+  transform: translateY(20px);
+  transition: transform 0.3s var(--ease-spring);
+  overflow: hidden;
+}
+
+.modal-overlay[aria-hidden="false"] .play-modal {
+  transform: translateY(0);
+}
+
+.play-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  background-color: var(--color-bg-card);
+}
+
+.play-modal__title {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.play-modal__close-btn {
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  width: var(--touch-target, 44px);
+  height: var(--touch-target, 44px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  transition: all 0.2s ease;
+}
+
+.play-modal__close-btn:hover {
+  background-color: var(--color-brand-subtle);
+  color: var(--color-brand);
+}
+
+.play-modal__close-btn svg {
+  width: 24px;
+  height: 24px;
+}
+
+.play-modal__body {
+  padding: var(--space-4);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.play-modal__description {
+  font-size: var(--text-base);
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin: 0;
+  transition: all 0.3s ease;
+}
+
+.play-modal__description.is-expanded {
+  -webkit-line-clamp: unset;
+}
+
+.play-modal__read-more {
+  background: none;
+  border: none;
+  color: var(--color-accent);
+  font-weight: 600;
+  font-size: var(--text-sm);
+  cursor: pointer;
+  padding: var(--space-1) 0;
+  margin-top: var(--space-2);
+}
+
+.play-modal__read-more:hover {
+  text-decoration: underline;
+}
+
+.play-modal__canvas-wrapper {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background-color: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#play-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.play-modal__controls {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+}

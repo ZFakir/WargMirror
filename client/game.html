@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="description" content="WARG – Discover and play location-based Alternate Reality Games and scavenger hunts across the Wits University campus." />
+  <title>WARG – Discover Games</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="styles/tokens.css" />
+  <link rel="stylesheet" href="styles/home.css" />
+  <link rel="stylesheet" href="styles/game.css" />
+</head>
+<body>
+
+<!-- Overlay backdrop for mobile drawers -->
+<div class="drawer-overlay" id="drawer-overlay" aria-hidden="true"></div>
+
+<div class="app-shell" id="app-shell">
+
+  <!-- ════════════════════════════════════════════════════
+       LEFT SIDEBAR — Navigation
+  ════════════════════════════════════════════════════ -->
+  <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+
+    <div class="sidebar__header">
+      <button class="sidebar__close-btn" id="btn-sidebar-close" aria-label="Close navigation" title="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+
+    <nav class="sidebar__nav" aria-label="Primary">
+      <a href="#discover" id="nav-discover" class="nav-item active" aria-current="page">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="10"/>
+          <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>
+        </svg>
+        <span class="nav-item__label">Discover</span>
+      </a>
+
+      <a href="#library" id="nav-library" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+        </svg>
+        <span class="nav-item__label">My Library</span>
+        <span class="nav-item__badge">3</span>
+      </a>
+
+      <a href="#account" id="nav-account" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+        </svg>
+        <span class="nav-item__label">Account</span>
+      </a>
+    </nav>
+
+    <div class="sidebar__footer">
+      <div class="sidebar__divider" role="separator"></div>
+      <a href="#settings" id="nav-settings" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+        <span class="nav-item__label">Settings</span>
+      </a>
+    </div>
+  </aside>
+
+  <!-- ════════════════════════════════════════════════════
+       TOPBAR — Branding, Search, Notifications
+  ════════════════════════════════════════════════════ -->
+  <header class="topbar" role="banner">
+
+    <!-- Hamburger: opens left sidebar -->
+    <button class="icon-btn topbar__hamburger" id="btn-sidebar-toggle" aria-label="Open navigation menu" aria-expanded="false" aria-controls="sidebar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <line x1="3" y1="6" x2="21" y2="6"/>
+        <line x1="3" y1="12" x2="21" y2="12"/>
+        <line x1="3" y1="18" x2="21" y2="18"/>
+      </svg>
+    </button>
+
+    <div class="topbar__brand">
+      <div class="topbar__logo" aria-hidden="true">W</div>
+      <span class="topbar__wordmark">WARG</span>
+    </div>
+
+    <div class="topbar__search" role="search">
+      <svg class="topbar__search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <input
+        type="search"
+        id="search-input"
+        placeholder="Search games, creators, locations…"
+        aria-label="Search games"
+        autocomplete="off"
+        spellcheck="false"
+      />
+    </div>
+
+    <div class="topbar__actions">
+      <button class="icon-btn" id="btn-filter" aria-label="Filter games" title="Filter">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/>
+        </svg>
+      </button>
+
+      <button class="icon-btn icon-btn--notification" id="btn-notifications" data-count="4" aria-label="4 new notifications" title="Notifications">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+          <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+        </svg>
+      </button>
+
+      <!-- Friends panel toggle -->
+      <button class="icon-btn" id="btn-right-panel-toggle" aria-label="Toggle friends panel" aria-expanded="true" aria-controls="right-panel" title="Friends">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+      </button>
+
+      <button class="avatar-btn" id="btn-profile" aria-label="Open profile menu" title="My Profile">
+        <img src="https://api.dicebear.com/9.x/identicon/svg?seed=WARGPlayer&backgroundColor=1a1816" alt="Player avatar" />
+      </button>
+    </div>
+  </header>
+
+  <!-- ════════════════════════════════════════════════════
+       MAIN CONTENT — Map and Progress Tracker
+  ════════════════════════════════════════════════════ -->
+  <main class="main-content" id="main-content" aria-label="Active Game">
+    <div class="game-container">
+      
+      <!-- Map Area -->
+      <div class="game-map-wrapper">
+        <div id="game-map" class="game-map" aria-label="Interactive game map" role="application">
+          <div class="game-map__placeholder" aria-hidden="true">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+            </svg>
+            <p>Map initializing...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Progress Tracker Area -->
+      <div class="game-progress-wrapper">
+        <h2 class="game-progress__title">Mission Timeline</h2>
+        <div class="progress-timeline" id="progress-timeline" role="list" aria-label="Progress timeline">
+          <!-- Timeline nodes and edges populated by game.js -->
+        </div>
+        
+        <!-- Current Node Brief -->
+        <div class="current-node-brief" id="current-node-brief" aria-live="polite">
+          <div class="current-node-brief__content">
+            <h3 class="current-node-brief__title" id="brief-title">Loading...</h3>
+            <p class="current-node-brief__summary" id="brief-summary">...</p>
+          </div>
+          <button class="btn btn--primary current-node-brief__play" id="btn-play-node">Play!</button>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- RIGHT PANEL — Friends -->
+  <aside class="right-panel" id="right-panel" aria-label="Friends and activity">
+
+    <div class="right-panel__header">
+      <button class="sidebar__close-btn" id="btn-right-panel-close" aria-label="Close friends panel" title="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- My Stats -->
+    <div class="activity-card" role="region" aria-label="My activity summary">
+      <div class="activity-card__label">My Progress</div>
+      <div class="activity-card__stats">
+        <div class="stat-block">
+          <span class="stat-block__value stat-block__value--accent">12</span>
+          <span class="stat-block__label">Games Played</span>
+        </div>
+        <div class="stat-block">
+          <span class="stat-block__value stat-block__value--green">840</span>
+          <span class="stat-block__label">Points</span>
+        </div>
+        <div class="stat-block">
+          <span class="stat-block__value">3</span>
+          <span class="stat-block__label">Completed</span>
+        </div>
+        <div class="stat-block">
+          <span class="stat-block__value">7</span>
+          <span class="stat-block__label">Badges</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel-divider" role="separator"></div>
+
+    <!-- Friends search -->
+    <div class="panel-title">
+      Friends
+      <a href="#friends" class="panel-title__action">Manage</a>
+    </div>
+
+    <div class="friends-search">
+      <svg class="friends-search__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <input
+        type="search"
+        id="friends-search-input"
+        placeholder="Find a friend…"
+        aria-label="Search friends"
+        autocomplete="off"
+      />
+    </div>
+
+    <!-- Online friends -->
+    <div class="panel-title" style="font-size:var(--font-size-caption);">
+      <span>Online <span class="text-green">·</span> 3</span>
+    </div>
+
+    <ul class="friends-list" aria-label="Online friends">
+      <li>
+        <div class="friend-item" role="button" tabindex="0" aria-label="Nadia is playing Cipher at the Great Hall">
+          <div class="friend-item__avatar">
+            <div class="friend-item__avatar-img" aria-hidden="true">NA</div>
+            <span class="friend-item__status-dot status--online" aria-label="Online"></span>
+          </div>
+          <div class="friend-item__info">
+            <div class="friend-item__name">Nadia A.</div>
+            <div class="friend-item__activity">Playing: Cipher at Great Hall</div>
+          </div>
+          <button class="friend-item__action" aria-label="Invite Nadia to a game">Invite</button>
+        </div>
+      </li>
+      <li>
+        <div class="friend-item" role="button" tabindex="0" aria-label="Jordan is playing AR Photo-Bombs">
+          <div class="friend-item__avatar">
+            <div class="friend-item__avatar-img" aria-hidden="true">JS</div>
+            <span class="friend-item__status-dot status--online" aria-label="Online"></span>
+          </div>
+          <div class="friend-item__info">
+            <div class="friend-item__name">Jordan S.</div>
+            <div class="friend-item__activity">Playing: AR Photo-Bombs</div>
+          </div>
+          <button class="friend-item__action" aria-label="Invite Jordan to a game">Invite</button>
+        </div>
+      </li>
+      <li>
+        <div class="friend-item" role="button" tabindex="0" aria-label="Thabo is browsing games">
+          <div class="friend-item__avatar">
+            <div class="friend-item__avatar-img" aria-hidden="true">TM</div>
+            <span class="friend-item__status-dot status--online" aria-label="Online"></span>
+          </div>
+          <div class="friend-item__info">
+            <div class="friend-item__name">Thabo M.</div>
+            <div class="friend-item__activity">Browsing games</div>
+          </div>
+          <button class="friend-item__action" aria-label="Invite Thabo to a game">Invite</button>
+        </div>
+      </li>
+    </ul>
+
+    <!-- Away/Offline friends -->
+    <div class="panel-title" style="font-size:var(--font-size-caption);">
+      <span>Away / Offline</span>
+    </div>
+
+    <ul class="friends-list" aria-label="Away and offline friends">
+      <li>
+        <div class="friend-item" role="button" tabindex="0" aria-label="Priya was last seen 2 hours ago">
+          <div class="friend-item__avatar">
+            <div class="friend-item__avatar-img" aria-hidden="true">PR</div>
+            <span class="friend-item__status-dot status--away" aria-label="Away"></span>
+          </div>
+          <div class="friend-item__info">
+            <div class="friend-item__name">Priya R.</div>
+            <div class="friend-item__activity">Last seen 2h ago</div>
+          </div>
+          <button class="friend-item__action" aria-label="Invite Priya to a game">Invite</button>
+        </div>
+      </li>
+      <li>
+        <div class="friend-item" role="button" tabindex="0" aria-label="Marcus was last seen yesterday">
+          <div class="friend-item__avatar">
+            <div class="friend-item__avatar-img" aria-hidden="true">MK</div>
+            <span class="friend-item__status-dot status--offline" aria-label="Offline"></span>
+          </div>
+          <div class="friend-item__info">
+            <div class="friend-item__name">Marcus K.</div>
+            <div class="friend-item__activity">Last seen yesterday</div>
+          </div>
+          <button class="friend-item__action" aria-label="Invite Marcus to a game">Invite</button>
+        </div>
+      </li>
+      <li>
+        <div class="friend-item" role="button" tabindex="0" aria-label="Leila was last seen 3 days ago">
+          <div class="friend-item__avatar">
+            <div class="friend-item__avatar-img" aria-hidden="true">LO</div>
+            <span class="friend-item__status-dot status--offline" aria-label="Offline"></span>
+          </div>
+          <div class="friend-item__info">
+            <div class="friend-item__name">Leila O.</div>
+            <div class="friend-item__activity">Last seen 3 days ago</div>
+          </div>
+          <button class="friend-item__action" aria-label="Invite Leila to a game">Invite</button>
+        </div>
+      </li>
+    </ul>
+
+    <div class="panel-divider" role="separator"></div>
+
+    <!-- Invite Banner -->
+    <div class="invite-banner" role="region" aria-label="Invite friends">
+      <div class="invite-banner__heading">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/>
+          <line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/>
+        </svg>
+        Invite Friends
+      </div>
+      <p class="invite-banner__text">Bring your crew to campus — share a link and start a co-op ARG together.</p>
+      <button class="invite-banner__btn" id="btn-invite-friends">Copy Invite Link</button>
+    </div>
+
+  </aside>
+
+</div><!-- /.app-shell -->
+
+<script src="scripts/data/games.js"></script>
+<script src="scripts/home.js"></script>
+  <!-- Play Menu Modal -->
+  <div class="modal-overlay" id="play-modal-overlay" aria-hidden="true">
+    <div class="play-modal" role="dialog" aria-modal="true" aria-labelledby="play-modal-title">
+      <div class="play-modal__header">
+        <h2 class="play-modal__title" id="play-modal-title">Waypoint Name</h2>
+        <button class="play-modal__close-btn" id="btn-play-modal-close" aria-label="Close Play Menu">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="play-modal__body">
+        <div class="play-modal__description-wrapper">
+          <p class="play-modal__description" id="play-modal-description"></p>
+          <button class="play-modal__read-more" id="btn-read-more" hidden>Read more</button>
+        </div>
+        
+        <div class="play-modal__canvas-wrapper">
+          <canvas id="play-canvas"></canvas>
+        </div>
+        
+        <div class="play-modal__controls" id="play-modal-controls">
+          <!-- Modular controls will be injected here -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="scripts/game.js" type="module"></script>
+</body>
+</html>
