@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="description" content="WARG Creator Studio – Analytics." />
+  <title>WARG – Admin Dashboard</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="styles/tokens.css" />
+  <link rel="stylesheet" href="styles/home.css" />
+  <link rel="stylesheet" href="styles/analytics.css" />
+  <link rel="stylesheet" href="styles/admin.css" />
+</head>
+<body>
+
+<!-- Overlay backdrop for mobile drawers -->
+<div class="drawer-overlay" id="drawer-overlay" aria-hidden="true"></div>
+
+<div class="app-shell" id="app-shell">
+  <!-- LEFT SIDEBAR -->
+  <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+    <div class="sidebar__header">
+      <button class="sidebar__close-btn" id="btn-sidebar-close" aria-label="Close navigation" title="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <nav class="sidebar__nav" aria-label="Primary">
+      <a href="home.html" id="nav-discover" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg><span class="nav-item__label">Discover</span></a>
+      <a href="studio.html" id="nav-studio" class="nav-item active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg><span class="nav-item__label">My Library</span><span class="nav-item__badge">3</span></a>
+      <a href="#account" id="nav-account" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span class="nav-item__label">Account</span></a>
+    </nav>
+    <div class="sidebar__footer">
+      <div class="sidebar__divider" role="separator"></div>
+      <a href="#settings" id="nav-settings" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span class="nav-item__label">Settings</span></a>
+    </div>
+  </aside>
+
+  <!-- TOPBAR -->
+  <header class="topbar" role="banner">
+    <button class="icon-btn topbar__hamburger" id="btn-sidebar-toggle" aria-label="Open navigation menu" aria-expanded="false" aria-controls="sidebar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <div class="topbar__brand"><div class="topbar__logo" aria-hidden="true">W</div><span class="topbar__wordmark">WARG</span></div>
+    <div class="topbar__search" role="search">
+      <svg class="topbar__search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="search" id="search-input" placeholder="Search games, creators, locations…" aria-label="Search games" autocomplete="off" spellcheck="false" />
+    </div>
+    <div class="topbar__actions">
+      <button class="icon-btn" id="btn-filter" aria-label="Filter games" title="Filter"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg></button>
+      <button class="icon-btn icon-btn--notification" id="btn-notifications" data-count="4" aria-label="4 new notifications" title="Notifications"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+      <button class="avatar-btn" id="btn-profile" aria-label="Open profile menu" title="My Profile"><img src="https://api.dicebear.com/9.x/identicon/svg?seed=WARGPlayer&backgroundColor=1a1816" alt="Player avatar" /></button>
+    </div>
+  </header>
+
+  <!-- MAIN CONTENT -->
+  <main class="main-content" id="main-content" aria-label="Admin Dashboard">
+    <div class="main-content__inner">
+      
+      <!-- Admin Header -->
+      <section class="admin-header">
+        <h1 class="admin-header__title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="28" height="28">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+          Admin Dashboard
+        </h1>
+        <p class="admin-header__desc">Monitor platform activity, review flagged content, and manage users.</p>
+      </section>
+
+      <!-- Admin Controls -->
+      <div class="admin-controls">
+        
+        <!-- Player Search Card -->
+        <div class="admin-search-card">
+          <h3>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+            </svg>
+            Player Search
+          </h3>
+          <p style="color: var(--color-text-secondary); font-size: var(--font-size-caption);">Look up players by username or email to view their history and manage bans.</p>
+          <div class="admin-search-input-wrapper">
+            <input type="text" id="input-search-player" placeholder="Enter username..." autocomplete="off" />
+            <button class="btn btn--primary" id="btn-search-player">Search</button>
+          </div>
+        </div>
+
+        <!-- Catalogue Shortcut Card -->
+        <button class="action-card action-card--edit" id="btn-go-catalogue" style="width: 100%; border-radius: var(--radius-lg); margin: 0; padding: var(--space-4);">
+          <div class="action-card__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+          </div>
+          <div class="action-card__content" style="text-align: left;">
+            <h3>Full Catalogue</h3>
+            <p>Browse all active games on the platform.</p>
+          </div>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="action-card__arrow"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </button>
+      </div>
+
+      <!-- Recently Flagged Games -->
+      <section class="admin-section" aria-labelledby="section-flagged-title">
+        <div class="admin-section__header">
+          <h2 class="admin-section__title" id="section-flagged-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="var(--color-danger)" stroke-width="2" width="24" height="24">
+              <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/>
+            </svg>
+            Recently Flagged Games
+          </h2>
+          <a href="#" class="content-section__see-all">See all</a>
+        </div>
+        <div class="card-row" id="row-flagged-games" role="list" aria-label="Flagged games">
+          <!-- Populated by GameCard in admin.js -->
+        </div>
+      </section>
+
+      <!-- Recent Flags List -->
+      <section class="admin-section">
+        <div class="analytics-card flags-card">
+          <div class="analytics-card__header">
+            <h2 class="analytics-card__title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="title-icon"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>
+              Recent Flag Reports
+            </h2>
+            <span class="badge badge--warning">Action Required</span>
+          </div>
+          
+          <div class="flags-list" id="admin-flags-list">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<!-- Flag Details Modal -->
+<div class="modal-overlay" id="flag-modal-overlay" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="flag-modal-title">
+    <div class="modal__header">
+      <h3 id="flag-modal-title" class="modal__title">Flag Details</h3>
+      <button class="icon-btn" id="btn-close-flag-modal" aria-label="Close modal">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+    <div class="modal__body">
+      <p id="flag-modal-desc" class="modal__desc"></p>
+      <div id="flag-modal-meta" class="modal__meta"></div>
+    </div>
+    <div class="modal__footer">
+      <button class="btn btn--outline" id="btn-cancel-flag">Cancel</button>
+      <button class="btn btn--primary" id="btn-resolve-flag">Mark as Resolved</button>
+    </div>
+  </div>
+</div>
+
+<script src="scripts/data/games.js"></script>
+<script src="scripts/components/GameCard.js"></script>
+<script src="scripts/home.js"></script> <!-- Includes navigation drawer logic -->
+<script src="scripts/admin.js"></script>
+</body>
+</html>
