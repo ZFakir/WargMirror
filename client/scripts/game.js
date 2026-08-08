@@ -86,11 +86,25 @@ document.addEventListener('DOMContentLoaded', () => {
         const wrapperRect = document.querySelector('.game-progress-wrapper').getBoundingClientRect();
         
         const top = nodeRect.top - wrapperRect.top - 10; // 10px spacing
-        const left = nodeRect.left - wrapperRect.left + (nodeRect.width / 2);
+        const popoverWidth = 240; // width from css
+        
+        let left = nodeRect.left - wrapperRect.left + (nodeRect.width / 2);
+        let transformX = '-50%';
+        
+        // Prevent clipping on the left
+        if (left < (popoverWidth / 2)) {
+          left = nodeRect.left - wrapperRect.left;
+          transformX = '0%';
+        } 
+        // Prevent clipping on the right
+        else if (left + (popoverWidth / 2) > wrapperRect.width) {
+          left = nodeRect.left - wrapperRect.left + nodeRect.width;
+          transformX = '-100%';
+        }
         
         popover.style.top = `${top}px`;
         popover.style.left = `${left}px`;
-        popover.style.transform = `translate(-50%, -100%)`; // Position above the node
+        popover.style.transform = `translate(${transformX}, -100%)`; // Position above the node
         popover.classList.add('is-visible');
       }
     };
@@ -114,8 +128,15 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Calculate and render the green active edge
-  if (completedCount > 1) {
-    const edgePercentage = ((completedCount - 1) / (GAME_TIMELINE.length - 1)) * 100;
+  let activeSegments = Math.max(0, completedCount - 1);
+  const currentNode = GAME_TIMELINE.find(node => node.status === 'current');
+  
+  if (currentNode && completedCount > 0) {
+    activeSegments += 0.5;
+  }
+  
+  if (activeSegments > 0) {
+    const edgePercentage = (activeSegments / (GAME_TIMELINE.length - 1)) * 100;
     const activeEdge = document.createElement('div');
     activeEdge.className = 'timeline-edge';
     activeEdge.style.width = `${edgePercentage}%`;
@@ -124,7 +145,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Populate Current Node Brief
-  const currentNode = GAME_TIMELINE.find(node => node.status === 'current');
   if (currentNode) {
     const briefTitle = document.getElementById('brief-title');
     const briefSummary = document.getElementById('brief-summary');
