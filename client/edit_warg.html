@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="description" content="WARG Creator Studio – Edit WARG." />
+  <title>WARG – Edit ARG</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="styles/tokens.css" />
+  <link rel="stylesheet" href="styles/home.css" />
+  <link rel="stylesheet" href="styles/game.css" />
+  <link rel="stylesheet" href="styles/edit_warg.css" />
+</head>
+<body>
+
+<!-- Overlay backdrop for mobile drawers -->
+<div class="drawer-overlay" id="drawer-overlay" aria-hidden="true"></div>
+
+<div class="app-shell" id="app-shell">
+  <!-- LEFT SIDEBAR -->
+  <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+    <div class="sidebar__header">
+      <button class="sidebar__close-btn" id="btn-sidebar-close" aria-label="Close navigation" title="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <nav class="sidebar__nav" aria-label="Primary">
+      <a href="home.html" id="nav-discover" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg><span class="nav-item__label">Discover</span></a>
+      <a href="studio.html" id="nav-studio" class="nav-item active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg><span class="nav-item__label">My Library</span><span class="nav-item__badge">3</span></a>
+      <a href="#account" id="nav-account" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span class="nav-item__label">Account</span></a>
+    </nav>
+    <div class="sidebar__footer">
+      <div class="sidebar__divider" role="separator"></div>
+      <a href="#settings" id="nav-settings" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span class="nav-item__label">Settings</span></a>
+    </div>
+  </aside>
+
+  <!-- TOPBAR -->
+  <header class="topbar" role="banner">
+    <button class="icon-btn topbar__hamburger" id="btn-sidebar-toggle" aria-label="Open navigation menu" aria-expanded="false" aria-controls="sidebar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <div class="topbar__brand"><div class="topbar__logo" aria-hidden="true">W</div><span class="topbar__wordmark">WARG</span></div>
+    <div class="topbar__search" role="search">
+      <svg class="topbar__search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="search" id="search-input" placeholder="Search games, creators, locations…" aria-label="Search games" autocomplete="off" spellcheck="false" />
+    </div>
+    <div class="topbar__actions">
+      <button class="icon-btn" id="btn-filter" aria-label="Filter games" title="Filter"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg></button>
+      <button class="icon-btn icon-btn--notification" id="btn-notifications" data-count="4" aria-label="4 new notifications" title="Notifications"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+      <button class="avatar-btn" id="btn-profile" aria-label="Open profile menu" title="My Profile"><img src="https://api.dicebear.com/9.x/identicon/svg?seed=WARGPlayer&backgroundColor=1a1816" alt="Player avatar" /></button>
+    </div>
+  </header>
+
+  <!-- MAIN CONTENT -->
+  <main class="main-content" id="main-content" aria-label="Edit WARG">
+    <div class="main-content__inner builder-inner">
+      
+      <!-- Editor Header -->
+      <section class="builder-header">
+        <div class="builder-header__image">
+          <!-- Placeholder banner image -->
+          <img src="https://picsum.photos/seed/midnight/1200/300" alt="Operation: Midnight Sun Banner" />
+        </div>
+        <div class="builder-header__content">
+          <h1 class="builder-header__title" id="arg-title" contenteditable="true" spellcheck="false">Operation: Midnight Sun</h1>
+          <p class="builder-header__desc" id="arg-desc" contenteditable="true" spellcheck="false">A fast-paced urban scavenger hunt across the downtown district, challenging players to uncover hidden corporate secrets.</p>
+        </div>
+      </section>
+
+      <!-- Map and Waypoints Area -->
+      <section class="builder-map-section">
+        <div class="builder-map-wrapper">
+          <div id="game-map" class="game-map" aria-label="Interactive game map" role="application">
+            <!-- Mock Waypoints will be injected here via JS -->
+            <div class="game-map__placeholder" aria-hidden="true">
+              <p>Interactive Map View</p>
+            </div>
+          </div>
+        </div>
+        
+        <div class="builder-actions" id="builder-actions-container">
+          <button class="btn btn--primary btn--large builder-btn-add" id="btn-add-waypoint">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            Add Waypoint
+          </button>
+        </div>
+      </section>
+
+      <!-- Waypoint Editor Menu -->
+      <section class="waypoint-editor" id="waypoint-editor" hidden>
+        <div class="waypoint-editor__header">
+          <input type="text" class="editor-input editor-input--title" id="editor-title" placeholder="Waypoint Title" spellcheck="false" />
+          <textarea class="editor-input editor-input--desc" id="editor-desc" placeholder="Waypoint Description" spellcheck="false" rows="2"></textarea>
+        </div>
+
+        <div class="relationships-grid">
+          <!-- Predecessors -->
+          <div class="relationship-card">
+            <div class="relationship-card__header">Predecessors</div>
+            <div class="relationship-card__list" id="editor-predecessors-list">
+              <div class="sub-card" role="button" tabindex="0">
+                <span class="sub-card__text">The Great Hall</span>
+                <button class="icon-btn sub-card__action" aria-label="More options">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
+                </button>
+              </div>
+            </div>
+            <button class="add-item-btn" title="Add Predecessor">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            </button>
+          </div>
+
+          <!-- Games -->
+          <div class="relationship-card">
+            <div class="relationship-card__header">Games</div>
+            <div class="relationship-card__list" id="editor-games-list">
+              <div class="sub-card" role="button" tabindex="0">
+                <span class="sub-card__text">Barcode Game</span>
+                <button class="icon-btn sub-card__action" aria-label="More options">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
+                </button>
+              </div>
+            </div>
+            <button class="add-item-btn" title="Add Game">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            </button>
+          </div>
+
+          <!-- Successors -->
+          <div class="relationship-card">
+            <div class="relationship-card__header">Successors</div>
+            <div class="relationship-card__list" id="editor-successors-list">
+              <div class="sub-card" role="button" tabindex="0">
+                <span class="sub-card__text">Library Archway</span>
+                <button class="icon-btn sub-card__action" aria-label="More options">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
+                </button>
+              </div>
+            </div>
+            <button class="add-item-btn" title="Add Successor">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="waypoint-editor__actions">
+          <button class="btn btn--outline" id="btn-cancel-editor">Cancel</button>
+          <button class="btn btn--primary" id="btn-save-editor">Save Waypoint</button>
+        </div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<!-- Waypoint Details Modal -->
+<div class="modal-overlay" id="waypoint-modal-overlay" aria-hidden="true">
+  <div class="builder-modal-container" role="dialog" aria-modal="true" aria-labelledby="waypoint-modal-title">
+    
+    <div class="builder-modal__main-card">
+      <div class="modal__header">
+        <h3 id="waypoint-modal-title" class="modal__title">Waypoint Name</h3>
+        <button class="icon-btn" id="btn-close-waypoint-modal" aria-label="Close modal">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      
+      <div class="modal__body">
+        <p id="waypoint-modal-desc" class="modal__desc">Waypoint description goes here.</p>
+        
+        <!-- Gamemode internal descriptive card -->
+        <div class="gamemode-card">
+          <div class="gamemode-card__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="var(--color-accent)" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line></svg>
+          </div>
+          <div class="gamemode-card__content">
+            <div class="gamemode-card__label">GAMEMODE</div>
+            <div class="gamemode-card__title" id="waypoint-gamemode">Barcode Game</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="builder-modal__actions-card">
+      <button class="btn btn--outline btn--danger" id="btn-remove-waypoint">Remove Waypoint</button>
+      <button class="btn btn--primary" id="btn-edit-waypoint">Edit Waypoint</button>
+    </div>
+    
+  </div>
+</div>
+
+<!-- Transition Triggers Modal -->
+<div class="modal-overlay" id="transition-modal-overlay" aria-hidden="true">
+  <div class="builder-modal-container" role="dialog" aria-modal="true" aria-labelledby="transition-modal-title">
+    <div class="builder-modal__main-card">
+      <div class="modal__header">
+        <h3 id="transition-modal-title" class="modal__title">Configure Transition Triggers</h3>
+        <button class="icon-btn" id="btn-close-transition-modal" aria-label="Close modal">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <div class="modal__body">
+        <p class="modal__desc">Select pass or fail conditions for the games.</p>
+        <div class="transition-games-list" id="transition-games-list">
+          <!-- Game transition cards will be injected here via JS -->
+        </div>
+      </div>
+    </div>
+    <div class="builder-modal__actions-card">
+      <button class="btn btn--outline" id="btn-cancel-transition">Cancel</button>
+      <button class="btn btn--primary" id="btn-save-transition">Save</button>
+    </div>
+  </div>
+</div>
+
+<script src="scripts/home.js"></script> <!-- Includes navigation drawer logic -->
+<script src="scripts/edit_warg.js"></script>
+</body>
+</html>

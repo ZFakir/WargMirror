@@ -1,0 +1,558 @@
+/* ==========================================================================
+   Edit WARG (Builder) Styles
+   ========================================================================== */
+
+/* ── Builder Header ── */
+.builder-header {
+  margin-bottom: var(--space-4);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.2s var(--ease-spring), box-shadow 0.2s var(--ease-out);
+}
+
+.builder-header:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.builder-header__image {
+  width: 100%;
+  height: 200px;
+  overflow: hidden;
+  position: relative;
+}
+
+.builder-header__image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.builder-header__image::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 50%;
+  background: linear-gradient(to top, var(--color-bg-card), transparent);
+}
+
+.builder-header__content {
+  padding: var(--space-4);
+  position: relative;
+  z-index: 2;
+  margin-top: -30px;
+}
+
+.builder-header__title {
+  font-size: var(--font-size-display);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  margin: 0 0 var(--space-2) 0;
+  letter-spacing: -0.02em;
+  outline: none;
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  transition: background 0.2s;
+}
+
+.builder-header__title:hover,
+.builder-header__title:focus {
+  background: rgba(192, 184, 155, 0.05);
+}
+
+.builder-header__desc {
+  font-size: var(--font-size-body-lg);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-body-lg);
+  margin: 0;
+  outline: none;
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  transition: background 0.2s;
+}
+
+.builder-header__desc:hover,
+.builder-header__desc:focus {
+  background: rgba(192, 184, 155, 0.05);
+}
+
+/* ── Map Section ── */
+.builder-map-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+.builder-map-wrapper {
+  position: relative;
+  height: 500px;
+  background: #151515; /* Dark map background */
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--color-border);
+  overflow: hidden;
+  box-shadow: inset 0 0 40px rgba(0,0,0,0.5);
+  background-image: 
+    radial-gradient(rgba(153, 172, 255, 0.1) 1px, transparent 1px);
+  background-size: 30px 30px; /* Grid effect */
+}
+
+/* Base styles for the map placeholder text */
+.game-map__placeholder {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-body-lg);
+  pointer-events: none;
+}
+
+/* ── Mock Waypoint Pins ── */
+.mock-waypoint {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  background: var(--color-accent);
+  border-radius: var(--radius-full);
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+  box-shadow: 0 0 0 4px rgba(153, 172, 255, 0.2), 0 4px 10px rgba(0,0,0,0.5);
+  transition: transform 0.2s var(--ease-spring), box-shadow 0.2s ease;
+  z-index: 10;
+}
+
+.mock-waypoint::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 8px;
+  height: 8px;
+  background: #fff;
+  border-radius: var(--radius-full);
+}
+
+.mock-waypoint:hover {
+  transform: translate(-50%, -50%) scale(1.3);
+  box-shadow: 0 0 0 6px rgba(153, 172, 255, 0.3), 0 6px 15px rgba(0,0,0,0.6);
+}
+
+.mock-waypoint[data-type="ar"] {
+  background: var(--color-secondary);
+  box-shadow: 0 0 0 4px rgba(51, 255, 51, 0.2), 0 4px 10px rgba(0,0,0,0.5);
+}
+.mock-waypoint[data-type="ar"]:hover {
+  box-shadow: 0 0 0 6px rgba(51, 255, 51, 0.3), 0 6px 15px rgba(0,0,0,0.6);
+}
+
+/* Path drawing simulation */
+.mock-path {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  pointer-events: none;
+}
+.mock-path line {
+  stroke: var(--color-border-accent);
+  stroke-width: 3;
+  stroke-dasharray: 6 6;
+}
+
+/* ── Actions ── */
+.builder-actions {
+  display: flex;
+  justify-content: center;
+}
+
+.builder-btn-add {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-6);
+  font-size: var(--font-size-h3);
+  border-radius: var(--radius-full);
+  box-shadow: 0 4px 15px var(--color-accent-glow);
+  transition: transform 0.2s var(--ease-spring), box-shadow 0.2s var(--ease-out);
+}
+
+.builder-btn-add:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(153, 172, 255, 0.4);
+}
+
+/* ── Gamemode Internal Card ── */
+.gamemode-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: rgba(18, 16, 14, 0.6);
+  border: 1px solid rgba(192, 184, 155, 0.1);
+  border-radius: var(--radius-sm);
+  margin-top: var(--space-2);
+}
+
+.gamemode-card__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: rgba(153, 172, 255, 0.1);
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+
+.gamemode-card__icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.gamemode-card__content {
+  display: flex;
+  flex-direction: column;
+}
+
+.gamemode-card__label {
+  font-size: 0.65rem;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: var(--font-weight-bold);
+}
+
+.gamemode-card__title {
+  font-size: var(--font-size-body);
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-medium);
+}
+
+/* Additional Button Styles for Modal */
+.btn--danger {
+  color: var(--color-danger);
+  border-color: rgba(255, 107, 107, 0.3);
+}
+.btn--danger:hover {
+  background: rgba(255, 107, 107, 0.1);
+  border-color: var(--color-danger);
+}
+
+/* ── Builder Modal Cards ── */
+.builder-modal-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: 90%;
+  max-width: 400px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 100;
+}
+
+.builder-modal__main-card {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  padding: var(--space-4);
+  box-shadow: var(--shadow-lg);
+}
+
+.builder-modal__actions-card {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  padding: var(--space-3);
+  display: flex;
+  gap: var(--space-3);
+  justify-content: space-between;
+  box-shadow: var(--shadow-md);
+}
+
+.builder-modal__actions-card .btn {
+  flex: 1;
+  justify-content: center;
+}
+
+.builder-modal__main-card .modal__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--space-3);
+}
+
+.builder-modal__main-card .modal__title {
+  margin: 0;
+  font-size: var(--font-size-h3);
+}
+
+.builder-modal__main-card .modal__desc {
+  color: var(--color-text-secondary);
+  margin-top: 0;
+  margin-bottom: var(--space-4);
+}
+
+/* ── Waypoint Editor Menu ── */
+.waypoint-editor {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  padding: var(--space-4);
+  margin-bottom: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  box-shadow: var(--shadow-lg);
+  animation: slideDown 0.3s var(--ease-spring);
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Header Inputs */
+.waypoint-editor__header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.editor-input {
+  background: transparent;
+  border: none;
+  color: var(--color-text-primary);
+  font-family: inherit;
+  outline: none;
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  transition: background 0.2s;
+  resize: none;
+}
+
+.editor-input:hover,
+.editor-input:focus {
+  background: rgba(192, 184, 155, 0.05);
+}
+
+.editor-input--title {
+  font-size: var(--font-size-h2);
+  font-weight: var(--font-weight-bold);
+  border-bottom: 1px solid transparent;
+}
+.editor-input--title:focus {
+  border-bottom: 1px solid var(--color-accent);
+}
+
+.editor-input--desc {
+  font-size: var(--font-size-body-lg);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-body-lg);
+}
+
+/* Relationships Grid */
+.relationships-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-4);
+}
+
+@media (max-width: 768px) {
+  .relationships-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.relationship-card {
+  background: #111;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.relationship-card__header {
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid rgba(192, 184, 155, 0.1);
+}
+
+.relationship-card__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.sub-card {
+  background: rgba(192, 184, 155, 0.05);
+  border: 1px solid rgba(192, 184, 155, 0.1);
+  color: var(--color-text-primary);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-body);
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sub-card__text {
+  flex: 1;
+  text-align: left;
+}
+
+.sub-card__action {
+  opacity: 0.5;
+  transition: opacity 0.2s, color 0.2s;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 50%;
+}
+
+.sub-card:hover .sub-card__action {
+  opacity: 1;
+}
+
+.sub-card__action:hover {
+  color: var(--color-accent);
+  background: rgba(153, 172, 255, 0.1);
+}
+
+.sub-card:hover {
+  background: rgba(153, 172, 255, 0.1);
+  border-color: var(--color-accent);
+  transform: translateX(4px);
+}
+
+.add-item-btn {
+  background: transparent;
+  border: 1px dashed rgba(192, 184, 155, 0.3);
+  color: var(--color-text-muted);
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.add-item-btn:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  background: rgba(153, 172, 255, 0.05);
+}
+
+.add-item-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Editor Actions */
+.waypoint-editor__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+/* ── Transition Triggers Modal ── */
+.transition-games-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.transition-game-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(18, 16, 14, 0.6);
+  border: 1px solid rgba(192, 184, 155, 0.1);
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+}
+
+.transition-game-card__title {
+  font-size: var(--font-size-body);
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-medium);
+}
+
+.transition-game-card__controls {
+  display: flex;
+  gap: var(--space-4);
+}
+
+.trigger-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-caption);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.trigger-checkbox-label input[type="checkbox"] {
+  appearance: none;
+  background: transparent;
+  margin: 0;
+  font: inherit;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--color-border-accent);
+  border-radius: 3px;
+  display: grid;
+  place-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.trigger-checkbox-label input[type="checkbox"]::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  transform: scale(0);
+  transition: 120ms transform ease-in-out;
+  box-shadow: inset 1em 1em var(--color-accent);
+  transform-origin: center;
+  clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+}
+
+.trigger-checkbox-label input[type="checkbox"]:checked {
+  background: rgba(153, 172, 255, 0.1);
+}
+
+.trigger-checkbox-label input[type="checkbox"]:checked::before {
+  transform: scale(1);
+}
+
+.trigger-checkbox-label input[type="checkbox"].trigger--fail {
+  border-color: rgba(255, 107, 107, 0.5);
+}
+.trigger-checkbox-label input[type="checkbox"].trigger--fail:checked {
+  background: rgba(255, 107, 107, 0.1);
+}
+.trigger-checkbox-label input[type="checkbox"].trigger--fail::before {
+  box-shadow: inset 1em 1em var(--color-danger);
+}
