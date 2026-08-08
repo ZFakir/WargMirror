@@ -88,6 +88,26 @@ var GameCard = (function () {
       '<circle cx="12" cy="10" r="3"/>',
       '</svg>',
     ].join(''),
+
+    publish: [
+      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none"',
+      ' stroke="currentColor" stroke-width="2" stroke-linecap="round"',
+      ' stroke-linejoin="round" aria-hidden="true">',
+      '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>',
+      '<polyline points="17 8 12 3 7 8"/>',
+      '<line x1="12" y1="3" x2="12" y2="15"/>',
+      '</svg>',
+    ].join(''),
+
+    unpublish: [
+      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none"',
+      ' stroke="currentColor" stroke-width="2" stroke-linecap="round"',
+      ' stroke-linejoin="round" aria-hidden="true">',
+      '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>',
+      '<polyline points="7 16 12 21 17 16"/>',
+      '<line x1="12" y1="21" x2="12" y2="9"/>',
+      '</svg>',
+    ].join(''),
   };
 
   /* ── Helpers ────────────────────────────────────────── */
@@ -124,7 +144,9 @@ var GameCard = (function () {
    */
   function create(game, options) {
     options = options || {};
-    var hideProgress = options.hideProgress || false;
+    var hideProgress  = options.hideProgress || false;
+    var showPublish   = options.showPublish || false;
+    var showUnpublish = options.showUnpublish || false;
 
     var mode    = MODE[game.mode] || MODE.solo;
     var article = document.createElement('article');
@@ -173,27 +195,41 @@ var GameCard = (function () {
         /* Actions */
         '<div class="gc-actions">',
 
-          '<button class="gc-action" data-action="like"',
-          ' aria-label="Like" aria-pressed="false">',
-            ICONS.thumbUp,
-            '<span class="gc-action__count">' + formatCount(game.likes) + '</span>',
-          '</button>',
+          (showPublish ? (
+            '<button class="gc-action gc-action--publish" data-action="publish"' +
+            ' aria-label="Publish game" style="width: 100%; justify-content: center; gap: var(--space-2); color: var(--color-success); border-color: rgba(51, 255, 51, 0.2);">' +
+              ICONS.publish +
+              '<span class="gc-action__count">Publish WARG</span>' +
+            '</button>'
+          ) : showUnpublish ? (
+            '<button class="gc-action gc-action--unpublish" data-action="unpublish"' +
+            ' aria-label="Unpublish game" style="width: 100%; justify-content: center; gap: var(--space-2); color: var(--color-warning); border-color: rgba(255, 209, 102, 0.2);">' +
+              ICONS.unpublish +
+              '<span class="gc-action__count">Unpublish WARG</span>' +
+            '</button>'
+          ) : (
+            '<button class="gc-action" data-action="like"' +
+            ' aria-label="Like" aria-pressed="false">' +
+              ICONS.thumbUp +
+              '<span class="gc-action__count">' + formatCount(game.likes) + '</span>' +
+            '</button>' +
 
-          '<button class="gc-action" data-action="dislike"',
-          ' aria-label="Dislike" aria-pressed="false">',
-            ICONS.thumbDown,
-            '<span class="gc-action__count">' + formatCount(game.dislikes) + '</span>',
-          '</button>',
+            '<button class="gc-action" data-action="dislike"' +
+            ' aria-label="Dislike" aria-pressed="false">' +
+              ICONS.thumbDown +
+              '<span class="gc-action__count">' + formatCount(game.dislikes) + '</span>' +
+            '</button>' +
 
-          '<button class="gc-action gc-action--flag" data-action="flag"',
-          ' aria-label="Flag content" aria-pressed="false">',
-            ICONS.flag,
-          '</button>',
+            '<button class="gc-action gc-action--flag" data-action="flag"' +
+            ' aria-label="Flag content" aria-pressed="false">' +
+              ICONS.flag +
+            '</button>' +
 
-          '<div class="gc-rating" aria-label="Rating: ' + game.rating + ' out of 5">',
-            ICONS.star,
-            '<span>' + game.rating.toFixed(1) + '</span>',
-          '</div>',
+            '<div class="gc-rating" aria-label="Rating: ' + game.rating + ' out of 5">' +
+              ICONS.star +
+              '<span>' + game.rating.toFixed(1) + '</span>' +
+            '</div>'
+          )),
 
         '</div>', /* gc-actions */
 
@@ -220,6 +256,18 @@ var GameCard = (function () {
       e.stopPropagation();
 
       var action    = btn.dataset.action;
+
+      if (action === 'publish' || action === 'unpublish') {
+        article.dispatchEvent(new CustomEvent('warg:' + action, {
+          bubbles: true,
+          detail: { 
+            gameId: article.dataset.gameId, 
+            gameTitle: article.querySelector('.gc-title').textContent 
+          }
+        }));
+        return;
+      }
+
       var isPressed = btn.getAttribute('aria-pressed') === 'true';
 
       btn.setAttribute('aria-pressed', String(!isPressed));
