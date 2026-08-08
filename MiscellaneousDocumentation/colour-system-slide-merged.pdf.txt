@@ -1,0 +1,108 @@
+VJB System
+Example Colour Palette Secondary
+50 100
+P4 phospor tint
+#99ACFF - Primary Accent 
+Tertiary
+50
+P1 Phosphor
+#33FF33 - Secondary accent
+Primary
+50Computational Beige
+#C0B89B - Brand Primary
+100
+Console Black
+#12100E- UI Background
+100
+300
+300
+500
+500
+300
+600
+600
+700
+700
+500
+900
+900
+SDP | Luc and friends
+Colour System Guidelines
+1. Limit palette to 3 main colors.
+2. Use accent colors sparingly.
+3. Ensure text contrast meets WCAG.
+4. Maintain color consistency.
+5 . Use color to guide action.
+6 . T est color b lindness modes.
+7 . Group content b y color coding.
+8. Use neutral b ackgrounds.
+9. D ocument system updates.
+VJB Principles SDP | Luc and friends
+Design Philosophy
+The visual language should support exploration rather than compete with it. Every design decision should 
+help players navigate, understand, and enjoy the experience without unnecessary complexity.
+Exploration First Clarity Over Decoration Consistency Builds Trust Gameplay Comes First Design for Growth
+ENCOURAGE CURIOSITY AND DISCOVERY THROUGH CLEAR 
+NAVIGATION AND MEANINGFUL INTERACTIONS.
+PRIORITISE USABILITY AND READABILITY BEFORE VISUAL 
+COMPLEXITY.
+REUSABLE PATTERNS SHOULD BE PREFERRED OVER 
+UNIQUE SOLUTIONS.
+THE INTERFACE SHOULD SUPPORT THE GAME—NOT 
+DISTRACT FROM IT.
+THE SYSTEM SHOULD REMAIN SCALABLE AS NEW 
+FEATURES AND GAME MECHANICS ARE INTRODUCED.
+VJB Principles SDP | Luc and friends
+Design Philosophy
+The visual language should support exploration rather than compete with it. Every design decision should 
+help players navigate, understand, and enjoy the experience without unnecessary complexity.
+Exploration First Clarity Over Decoration Consistency Builds Trust Gameplay Comes First Design for Growth
+ENCOURAGE CURIOSITY AND DISCOVERY THROUGH CLEAR 
+NAVIGATION AND MEANINGFUL INTERACTIONS.
+PRIORITISE USABILITY AND READABILITY BEFORE VISUAL 
+COMPLEXITY.
+REUSABLE PATTERNS SHOULD BE PREFERRED OVER 
+UNIQUE SOLUTIONS.
+THE INTERFACE SHOULD SUPPORT THE GAME—NOT 
+DISTRACT FROM IT.
+THE SYSTEM SHOULD REMAIN SCALABLE AS NEW 
+FEATURES AND GAME MECHANICS ARE INTRODUCED.
+VJB System
+Exam ple C olo ur  P a le tt e S econdary
+50 100
+P4  phospor tint
+#99ACFF  -  P rimary A ccent 
+Tertiary
+50
+P1  P hosphor
+#33FF33  -  S econdary accent
+P rimary
+50Computational Beige
+#C0B89B  -  B rand P rimary
+100
+Console Blac k
+#12100 E -  UI  B ac k ground
+100
+300
+300
+500
+500
+300
+600
+600
+700
+700
+500
+900
+900
+SDP | Luc and friends
+C olo ur  S ys t e m  Gu i d elines
+1 . L imit palette to 3  main colors.
+2 . U se accent colors sparingly.
+3 . Ensure text contrast meets WCAG .
+4 . M aintain color consistency.
+5 . U se color to guide action.
+6 . Test color b lindness modes.
+7 . G roup content b y color coding.
+8 . U se neutral b ac k grounds.
+9 . D ocument system updates.
