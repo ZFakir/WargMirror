@@ -1,0 +1,147 @@
+/* ==========================================================================
+   Catalogue Page Styles
+   ========================================================================== */
+
+.catalogue-page {
+  padding-bottom: var(--space-6);
+}
+
+.catalogue-header {
+  margin-bottom: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.catalogue-title {
+  font-size: var(--font-size-hero);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.catalogue-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.filter-chip {
+  background: rgba(192, 184, 155, 0.05);
+  border: 1px solid rgba(192, 184, 155, 0.1);
+  color: var(--color-text-secondary);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.filter-chip:hover {
+  background: rgba(192, 184, 155, 0.1);
+  color: var(--color-text-primary);
+}
+
+.filter-chip.active {
+  background: rgba(153, 172, 255, 0.1);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.sort-control {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-caption);
+  color: var(--color-text-secondary);
+}
+
+.sort-select {
+  background: rgba(18, 16, 14, 0.8);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-primary);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: var(--font-size-caption);
+  outline: none;
+  cursor: pointer;
+}
+.sort-select:focus {
+  border-color: var(--color-accent);
+}
+
+/* ── Catalogue Grid ── */
+.catalogue-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+/* Adjust GameCard width for grid */
+.catalogue-grid .game-card {
+  width: 100%; /* Override the 300px fixed width from home.css */
+  min-width: 0; 
+}
+
+/* ── Pagination ── */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--space-4);
+  margin-top: var(--space-5);
+}
+
+.pagination-pages {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.pagination-page {
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-medium);
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  display: grid;
+  place-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pagination-page:hover {
+  background: rgba(192, 184, 155, 0.1);
+  color: var(--color-text-primary);
+}
+
+.pagination-page.active {
+  background: var(--color-accent);
+  color: var(--color-bg);
+  pointer-events: none;
+}
+
+.pagination-ellipsis {
+  color: var(--color-text-muted);
+  user-select: none;
+}
+
+@media (max-width: 768px) {
+  .catalogue-grid {
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  }
+}

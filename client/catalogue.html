@@ -11,6 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="styles/tokens.css" />
   <link rel="stylesheet" href="styles/home.css" />
+  <link rel="stylesheet" href="styles/catalogue.css" />
 </head>
 <body>
 
@@ -137,59 +138,42 @@
        MAIN CONTENT — Scrollable, Netflix-style rows
   ════════════════════════════════════════════════════ -->
   <main class="main-content" id="main-content" aria-label="Game discovery">
-    <div class="main-content__inner">
+    <div class="main-content__inner catalogue-page">
+      <div class="catalogue-header">
+        <h1 class="catalogue-title" id="catalogue-title">Catalogue</h1>
+        <div class="catalogue-controls">
+          <div class="filter-chips">
+            <button class="filter-chip active">All</button>
+            <button class="filter-chip">Adventure</button>
+            <button class="filter-chip">Mystery</button>
+            <button class="filter-chip">Horror</button>
+          </div>
+          <div class="sort-control">
+            <label for="sort-select">Sort by:</label>
+            <select id="sort-select" class="sort-select">
+              <option value="popular">Popularity</option>
+              <option value="newest">Newest</option>
+              <option value="rating">Top Rated</option>
+            </select>
+          </div>
+        </div>
+      </div>
 
-      <!-- ── Row: Recent ── -->
-      <section class="content-section" aria-labelledby="section-recent-title">
-        <div class="content-section__header">
-          <h2 class="content-section__title" id="section-recent-title">
-            <span class="section-icon" aria-hidden="true">🕐</span>
-            Recently Played
-          </h2>
-          <a href="catalogue.html?category=recent" class="content-section__see-all" aria-label="See all recently played games">
-            See all
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
-          </a>
-        </div>
-        <div class="card-row" id="row-recent" role="list" aria-label="Recently played games">
-          <!-- Populated by GameCard.renderRow() in home.js -->
-        </div>
+      <div class="catalogue-grid" id="catalogue-grid" role="list" aria-label="Catalogue games">
+        <!-- Populated by catalogue.js -->
+      </div>
 
-      </section>
-
-      <!-- ── Row: New & Trending ── -->
-      <section class="content-section" aria-labelledby="section-new-title">
-        <div class="content-section__header">
-          <h2 class="content-section__title" id="section-new-title">
-            <span class="section-icon" aria-hidden="true">✨</span>
-            New &amp; Trending
-          </h2>
-          <a href="catalogue.html?category=trending" class="content-section__see-all" aria-label="See all new and trending games">
-            See all
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
-          </a>
+      <div class="pagination">
+        <button class="btn btn--outline" disabled>&laquo; Prev</button>
+        <div class="pagination-pages">
+          <button class="pagination-page active">1</button>
+          <button class="pagination-page">2</button>
+          <button class="pagination-page">3</button>
+          <span class="pagination-ellipsis">...</span>
+          <button class="pagination-page">10</button>
         </div>
-        <div class="card-row" id="row-new" role="list" aria-label="New and trending games">
-          <!-- Populated by GameCard.renderRow() in home.js -->
-        </div>
-      </section>
-
-      <!-- ── Row: From Creators ── -->
-      <section class="content-section" aria-labelledby="section-creators-title">
-        <div class="content-section__header">
-          <h2 class="content-section__title" id="section-creators-title">
-            <span class="section-icon" aria-hidden="true">🎮</span>
-            From Creators
-          </h2>
-          <a href="catalogue.html?category=creators" class="content-section__see-all" aria-label="Browse all creator games">
-            See all
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
-          </a>
-        </div>
-        <div class="card-row" id="row-creators" role="list" aria-label="Games from creators">
-          <!-- Populated by GameCard.renderRow() in home.js -->
-        </div>
-      </section>
+        <button class="btn btn--outline">Next &raquo;</button>
+      </div>
 
     </div><!-- /.main-content__inner -->
   </main>
@@ -364,6 +348,6 @@
 
 <script src="scripts/data/games.js"></script>
 <script src="scripts/components/GameCard.js"></script>
-<script src="scripts/home.js"></script>
+<script src="scripts/catalogue.js"></script>
 </body>
 </html>
