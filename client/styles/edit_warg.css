@@ -42,6 +42,31 @@
   background: linear-gradient(to top, var(--color-bg-card), transparent);
 }
 
+.btn-change-image {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  z-index: 10;
+  background: rgba(18, 16, 14, 0.6);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-content: center;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+  transition: all 0.2s ease;
+}
+
+.btn-change-image:hover {
+  background: rgba(18, 16, 14, 0.9);
+  color: var(--color-text-primary);
+  border-color: var(--color-accent);
+}
+
+
 .builder-header__content {
   padding: var(--space-4);
   position: relative;
