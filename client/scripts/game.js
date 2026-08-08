@@ -4,8 +4,18 @@
  */
 
 import playModal from './components/PlayModal.js';
+import { FlagModal } from './components/FlagModal.js';
 
 document.addEventListener('DOMContentLoaded', () => {
+  // Initialize the reusable Flag Modal
+  const flagModal = new FlagModal();
+  const btnFlagGame = document.getElementById('btn-flag-game');
+  if (btnFlagGame) {
+    btnFlagGame.addEventListener('click', () => {
+      // Open the flag modal with a context (e.g., the current game title)
+      flagModal.open('Issue with this WARG');
+    });
+  }
 
   // Mock data representing a linear ARG timeline
   const GAME_TIMELINE = [

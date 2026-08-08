@@ -238,6 +238,24 @@
   transform: translateY(-2px);
 }
 
+.current-node-brief__actions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--space-4);
+  margin-top: var(--space-1);
+}
+
+.current-node-brief__actions .icon-btn {
+  background: rgba(18, 16, 14, 0.4);
+  border: 1px solid var(--color-border);
+}
+
+.current-node-brief__actions .icon-btn:hover {
+  background: rgba(192, 184, 155, 0.15);
+  color: var(--color-accent);
+}
+
 /* ── Play Menu Modal ── */
 .modal-overlay {
   position: fixed;
