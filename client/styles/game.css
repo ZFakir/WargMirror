@@ -400,3 +400,133 @@
   align-items: center;
   justify-content: center;
 }
+
+/* ── Game Feedback & Discussion ── */
+.game-feedback-wrapper {
+  background-color: var(--color-surface);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-xl);
+  border: 1px solid var(--color-border);
+}
+
+.game-actions-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding-bottom: var(--spacing-xl);
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: var(--spacing-xl);
+}
+
+.game-actions-bar .icon-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: 0 var(--spacing-md);
+  height: 36px;
+  border-radius: var(--radius-full);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  width: auto;
+}
+
+.game-discussion__title {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  margin-bottom: var(--spacing-lg);
+  color: var(--color-text);
+}
+
+.game-discussion__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  max-height: 300px;
+  overflow-y: auto;
+  padding-right: var(--spacing-sm);
+  margin-bottom: var(--spacing-xl);
+}
+
+.game-discussion__list::-webkit-scrollbar {
+  width: 6px;
+}
+.game-discussion__list::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: var(--radius-full);
+}
+
+.comment-item {
+  display: flex;
+  gap: var(--spacing-md);
+}
+
+.comment-item__avatar {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  overflow: hidden;
+  background-color: var(--color-bg);
+  border: 1px solid var(--color-border);
+}
+
+.comment-item__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.comment-item__content {
+  flex-grow: 1;
+}
+
+.comment-item__header {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-xs);
+}
+
+.comment-item__header strong {
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.comment-item__time {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.comment-item__content p {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+.game-discussion__compose {
+  display: flex;
+  gap: var(--spacing-md);
+  align-items: center;
+}
+
+.compose-input-wrapper {
+  flex-grow: 1;
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.compose-input-wrapper .input-field {
+  flex-grow: 1;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  padding: 0 var(--spacing-lg);
+  color: var(--color-text);
+  height: 40px;
+  font-size: var(--text-sm);
+}
+.compose-input-wrapper .input-field:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}

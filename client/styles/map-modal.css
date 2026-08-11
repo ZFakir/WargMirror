@@ -1,0 +1,479 @@
+
+
+/* ============ MAP MODAL CONTAINER ============ */
+.map-modal {
+  /* Scope variables from user's standalone page */
+  --color-bg: #12100E;
+  --color-bg-surface: #181510;
+  --color-bg-card: #1D1912;
+  --color-border: rgba(192, 184, 155, 0.12);
+  --color-border-accent: rgba(153, 172, 255, 0.35);
+  --color-brand: #C0B89B;
+  --color-brand-subtle: rgba(192, 184, 155, 0.08);
+  --color-accent: #99ACFF;
+  --color-accent-muted: rgba(153, 172, 255, 0.14);
+  --color-accent-glow: rgba(153, 172, 255, 0.35);
+  --color-secondary: #33FF33;
+  --color-secondary-glow: rgba(51, 255, 51, 0.35);
+  --color-danger: #FF6B6B;
+  --color-warning: #FFD166;
+  --color-text-primary: #F1EDE3;
+  --color-text-secondary: #A79F8E;
+  --color-text-muted: #6E6656;
+  --color-text-on-accent: #0A0912;
+  --radius-card: 14px;
+  --radius-sm: 8px;
+  --radius-full: 999px;
+  --font-family: 'Inter', -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  font-family: var(--font-family);
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+  -webkit-font-smoothing: antialiased;
+  
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+  border: none;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* When Map is toggled to fullscreen mode */
+.map-modal.is-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+}
+
+/* Close button for modal */
+.map-modal__close-btn {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 500; /* above map HUD */
+  background: rgba(18, 16, 14, 0.82);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-primary);
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  transition: background 0.2s, color 0.2s;
+}
+
+.map-modal__close-btn:hover {
+  background: var(--color-brand-subtle);
+  color: var(--color-text-primary);
+  border-color: var(--color-brand);
+}
+
+.map-modal__close-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* ============ INNER WRAP (from user code) ============ */
+.map-modal .wrap {
+  display: flex;
+  height: 100%; /* take up the whole modal */
+  min-height: 400px; /* modified from 560px */
+}
+
+/* ============ FIELD LOG SIDEBAR ============ */
+.map-modal .fieldlog {
+  width: 300px;
+  flex-shrink: 0;
+  background: var(--color-bg-surface);
+  border-right: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.map-modal .fieldlog__head {
+  padding: 18px 18px 14px;
+  border-bottom: 1px solid var(--color-border);
+}
+.map-modal .fieldlog__eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-secondary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.map-modal .fieldlog__eyebrow::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-secondary);
+  box-shadow: 0 0 8px var(--color-secondary-glow);
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+.map-modal .fieldlog__title {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin-top: 6px;
+}
+.map-modal .fieldlog__progress {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.map-modal .fieldlog__track {
+  flex: 1;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+.map-modal .fieldlog__fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-accent), var(--color-secondary));
+  border-radius: var(--radius-full);
+  transition: width .5s cubic-bezier(.16, 1, .3, 1);
+}
+.map-modal .fieldlog__count {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.map-modal .fieldlog__list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.map-modal .fieldlog__list::-webkit-scrollbar { width: 5px; }
+.map-modal .fieldlog__list::-webkit-scrollbar-thumb { background: rgba(153, 172, 255, 0.25); border-radius: 99px; }
+
+.map-modal .node-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background .15s ease, border-color .15s ease, transform .15s ease;
+}
+.map-modal .node-row:hover { background: var(--color-brand-subtle); transform: translateX(2px); }
+.map-modal .node-row.is-selected {
+  background: var(--color-accent-muted);
+  border-color: var(--color-border-accent);
+}
+.map-modal .node-row__dot {
+  flex-shrink: 0;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--color-text-muted);
+}
+.map-modal .node-row.status-completed .node-row__dot { background: var(--color-secondary); box-shadow: 0 0 6px var(--color-secondary-glow); }
+.map-modal .node-row.status-current .node-row__dot { background: var(--color-accent); box-shadow: 0 0 6px var(--color-accent-glow); animation: pulse-dot 1.6s ease-in-out infinite; }
+.map-modal .node-row.status-locked .node-row__dot { background: transparent; border: 1.5px solid var(--color-text-muted); }
+
+.map-modal .node-row__info { flex: 1; min-width: 0; }
+.map-modal .node-row__name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.map-modal .node-row.status-locked .node-row__name { color: var(--color-text-muted); }
+.map-modal .node-row__meta {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: 2px;
+}
+.map-modal .node-row.status-current .node-row__meta { color: var(--color-accent); }
+.map-modal .node-row.status-completed .node-row__meta { color: var(--color-secondary); }
+
+.map-modal .fieldlog__foot {
+  padding: 12px 18px;
+  border-top: 1px solid var(--color-border);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--color-text-muted);
+  display: flex;
+  justify-content: space-between;
+}
+
+/* ============ MAP AREA ============ */
+.map-modal .maparea {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+.map-modal #map-modal-leaflet {
+  position: absolute;
+  inset: 0;
+  background: var(--color-bg);
+  /* Fix z-index issue within Leaflet controls vs modal close btn */
+  z-index: 1;
+}
+/* Invert-based dark filter: flips standard OSM tiles to a dark theme */
+.map-modal .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(190deg) brightness(0.92) contrast(0.88) saturate(0.55);
+}
+/* Keep our own markers/popups/HUD unaffected by the tile filter */
+.map-modal .leaflet-marker-pane, .map-modal .leaflet-popup-pane {
+  filter: none;
+}
+.map-modal .leaflet-container { background: var(--color-bg); font-family: var(--font-family); }
+.map-modal .leaflet-control-attribution {
+  background: rgba(18, 16, 14, 0.75) !important;
+  color: var(--color-text-muted) !important;
+  font-family: var(--font-mono);
+  font-size: 9px !important;
+}
+.map-modal .leaflet-control-attribution a { color: var(--color-text-secondary) !important; }
+.map-modal .leaflet-control-zoom a {
+  background: var(--color-bg-card) !important;
+  color: var(--color-text-primary) !important;
+  border-color: var(--color-border) !important;
+}
+.map-modal .leaflet-control-zoom a:hover { background: var(--color-brand-subtle) !important; }
+
+/* Subtle scanning grid overlay */
+.map-modal .scan-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 450;
+  background-image:
+    linear-gradient(rgba(153, 172, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(153, 172, 255, 0.035) 1px, transparent 1px);
+  background-size: 38px 38px;
+  mix-blend-mode: screen;
+}
+.map-modal .scan-sweep {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 451;
+  overflow: hidden;
+}
+.map-modal .scan-sweep::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -40%;
+  width: 40%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(51, 255, 51, 0.05), transparent);
+  animation: sweep 6s linear infinite;
+}
+@keyframes sweep {
+  0% { left: -40%; }
+  100% { left: 100%; }
+}
+
+/* HUD top bar over the map */
+.map-modal .hud {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  right: 60px; /* make room for close button */
+  z-index: 460;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  pointer-events: none;
+}
+.map-modal .hud__badge {
+  pointer-events: auto;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-secondary);
+  background: rgba(18, 16, 14, 0.82);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  backdrop-filter: blur(6px);
+}
+.map-modal .hud__badge::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-secondary);
+  box-shadow: 0 0 8px var(--color-secondary-glow);
+}
+.map-modal .hud__title {
+  pointer-events: auto;
+  background: rgba(18, 16, 14, 0.82);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 8px 14px;
+  backdrop-filter: blur(6px);
+  text-align: right;
+}
+.map-modal .hud__title strong { font-size: 13px; font-weight: 700; display: block; }
+.map-modal .hud__title span { font-family: var(--font-mono); font-size: 10px; color: var(--color-text-muted); }
+
+/* ============ MARKERS ============ */
+.map-modal .node-marker { position: relative; width: 34px; height: 34px; }
+.map-modal .node-marker__core {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--color-text-muted);
+  background: var(--color-bg-card);
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  transition: transform .15s ease;
+}
+.map-modal .node-marker:hover .node-marker__core { transform: scale(1.12); }
+
+.map-modal .node-marker.completed .node-marker__core {
+  border-color: var(--color-secondary);
+  color: var(--color-secondary);
+  box-shadow: 0 0 14px var(--color-secondary-glow);
+}
+.map-modal .node-marker.current .node-marker__core {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  background: var(--color-bg-card);
+  box-shadow: 0 0 16px var(--color-accent-glow);
+}
+/* Radar ping */
+.map-modal .node-marker.current .ping {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1.5px solid var(--color-accent);
+  animation: ping 2.2s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+.map-modal .node-marker.current .ping.delay { animation-delay: 1.1s; }
+@keyframes ping {
+  0% { transform: scale(1); opacity: 0.7; }
+  100% { transform: scale(2.6); opacity: 0; }
+}
+
+/* ============ POPUP ============ */
+.map-modal .leaflet-popup-content-wrapper {
+  background: var(--color-bg-card);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border-accent);
+  border-radius: var(--radius-card);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55), 0 0 30px var(--color-accent-glow);
+  padding: 0;
+}
+.map-modal .leaflet-popup-tip { background: var(--color-bg-card); border: 1px solid var(--color-border-accent); }
+.map-modal .leaflet-popup-content { margin: 0; width: 250px !important; }
+.map-modal .leaflet-popup-close-button { color: var(--color-text-muted) !important; }
+
+.map-modal .pc { padding: 14px 16px 16px; }
+.map-modal .pc__badge {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  margin-bottom: 9px;
+}
+.map-modal .pc__badge--solo { background: rgba(153, 172, 255, 0.85); color: #07060e; }
+.map-modal .pc__badge--coop { background: rgba(51, 255, 51, 0.80); color: #050e05; }
+.map-modal .pc__badge--pvp { background: rgba(255, 107, 107, 0.85); color: #fff; }
+.map-modal .pc__title { font-size: 14.5px; font-weight: 700; line-height: 1.3; margin-bottom: 5px; letter-spacing: -0.01em; }
+.map-modal .pc__desc { font-size: 11.5px; color: var(--color-text-secondary); line-height: 1.5; margin-bottom: 10px; }
+.map-modal .pc__coords {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  color: var(--color-text-muted);
+  margin-bottom: 10px;
+  letter-spacing: 0.02em;
+}
+.map-modal .pc__row { display: flex; align-items: center; gap: 8px; }
+.map-modal .pc__track { flex: 1; height: 3px; background: rgba(255, 255, 255, 0.08); border-radius: 99px; overflow: hidden; }
+.map-modal .pc__fill { height: 100%; background: linear-gradient(90deg, var(--color-accent), var(--color-secondary)); border-radius: 99px; }
+.map-modal .pc__label { font-family: var(--font-mono); font-size: 9.5px; color: var(--color-text-muted); white-space: nowrap; }
+
+.map-modal .pc__btn {
+  margin-top: 12px;
+  width: 100%;
+  padding: 9px;
+  border-radius: var(--radius-sm);
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  text-align: center;
+  cursor: pointer;
+  transition: filter .15s ease, transform .15s ease;
+  font-family: var(--font-family);
+}
+.map-modal .pc__btn--go {
+  background: var(--color-accent);
+  color: var(--color-text-on-accent);
+}
+.map-modal .pc__btn--go:hover { filter: brightness(1.1); transform: translateY(-1px); }
+.map-modal .pc__btn--locked {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+}
+.map-modal .pc__btn--done {
+  background: rgba(51, 255, 51, 0.12);
+  color: var(--color-secondary);
+  border: 1px solid rgba(51, 255, 51, 0.3);
+}
+
+@media (max-width: 768px) {
+  .map-modal {
+    width: 95vw;
+    height: 90vh;
+  }
+  .map-modal .wrap {
+    flex-direction: column;
+  }
+  .map-modal .fieldlog {
+    width: 100%;
+    flex-shrink: 1;
+    border-right: none;
+    border-bottom: 1px solid var(--color-border);
+  }
+  .map-modal .fieldlog__list {
+    max-height: 30vh;
+  }
+  .map-modal .maparea {
+    min-height: 40vh;
+  }
+}
