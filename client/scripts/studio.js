@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const heroCard = document.querySelector('.studio-hero');
   if (heroCard) {
     heroCard.addEventListener('click', () => {
-      alert('Opening the WARG Builder...');
+      window.location.href = 'edit_warg.html';
     });
   }
 
