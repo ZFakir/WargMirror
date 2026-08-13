@@ -301,7 +301,11 @@ var GameCard = (function () {
   function _onCardOpen(article) {
     var title = article.querySelector('.gc-title');
     console.log('[WARG] Open game:', title ? title.textContent.trim() : article.dataset.gameId);
-    /* TODO: wire to router / game detail page */
+    if (window.location.pathname.includes('studio.html')) {
+      window.location.href = 'edit_warg.html';
+    } else {
+      window.location.href = 'game.html';
+    }
   }
 
   /* ── renderRow helper ────────────────────────────────── */
