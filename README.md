@@ -43,6 +43,16 @@ The system operates using a client-server architecture built on a microservices 
 *   **Quality Assurance:** Jest unit tests and CI/CD pipelines for automated testing and deployment.
 *   **Version Control:** Git-compliant management on the Git-E platform.
 
+## Deployment
+
+The platform is hosted across three managed services. See [DEPLOYMENT.md](./DEPLOYMENT.md) for full setup instructions.
+
+| Layer | Service | Purpose |
+|-------|---------|---------|
+| **Database** | [Aiven for MySQL](https://aiven.io) | Managed MySQL with spatial extensions & SSL |
+| **Backend** | [Render](https://render.com) | Node.js / Express API server |
+| **Frontend** | [Vercel](https://vercel.com) | Static HTML/CSS/JS client delivery |
+
 ## Design System (VJB System)
 
 The WARG platform's visual language is built on the **VJB System**, which follows these core principles:
