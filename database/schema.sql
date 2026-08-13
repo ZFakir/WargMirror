@@ -12,7 +12,7 @@ SET FOREIGN_KEY_CHECKS = 0;
 -- ============================================================
 
 -- Core user table. OAuth provider linkage is in user_auth_providers.
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     user_id           INT UNSIGNED     NOT NULL AUTO_INCREMENT,
     google_uid        VARCHAR(256)     NOT NULL,
     username          VARCHAR(64)      NOT NULL,
@@ -52,7 +52,7 @@ CREATE TABLE users (
 -- ============================================================
 
 -- User-to-user follows (asymmetric, like Twitter / creator subscriptions)
-CREATE TABLE user_follows (
+CREATE TABLE IF NOT EXISTS user_follows (
     follower_id INT UNSIGNED NOT NULL,   -- who is following
     followed_id INT UNSIGNED NOT NULL,   -- who is being followed
 
@@ -66,7 +66,7 @@ CREATE TABLE user_follows (
 
 
 -- Explicit bi-directional friend requests
-CREATE TABLE friend_requests (
+CREATE TABLE IF NOT EXISTS friend_requests (
     request_id  INT UNSIGNED NOT NULL AUTO_INCREMENT,
     sender_id   INT UNSIGNED NOT NULL,
     receiver_id INT UNSIGNED NOT NULL,
@@ -88,7 +88,7 @@ CREATE TABLE friend_requests (
 -- §3  NOTIFICATIONS
 -- ============================================================
 
-CREATE TABLE notifications (
+CREATE TABLE IF NOT EXISTS notifications (
     notification_id INT UNSIGNED NOT NULL AUTO_INCREMENT,
     user_id         INT UNSIGNED NOT NULL,   -- recipient
     type            VARCHAR(64)  NOT NULL,
@@ -111,7 +111,7 @@ CREATE TABLE notifications (
 -- §4  ARGS (the WARG Games)
 -- ============================================================
 
-CREATE TABLE args (
+CREATE TABLE IF NOT EXISTS args (
     arg_id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
     creator_id       INT UNSIGNED NOT NULL,
     title            VARCHAR(256) NOT NULL,
@@ -157,13 +157,13 @@ CREATE TABLE args (
 --     Waypoints form a directed graph supporting branching narrative.
 -- ============================================================
 
-CREATE TABLE waypoints (
+CREATE TABLE IF NOT EXISTS waypoints (
     waypoint_id         INT UNSIGNED      NOT NULL AUTO_INCREMENT,
     arg_id              INT UNSIGNED      NOT NULL,
     title               VARCHAR(256)      NOT NULL,
     description         TEXT                  NULL,
     -- Geospatial location (MySQL POINT, SRID 4326 / WGS 84)
-    location            POINT                 NULL SRID 4326,
+    location            POINT             NOT NULL SRID 4326,
     -- Validation radius in metres for proximity check (Basic Tier)
     validation_radius_m SMALLINT UNSIGNED NOT NULL DEFAULT 30,
     sort_order          SMALLINT UNSIGNED NOT NULL DEFAULT 0,
@@ -180,7 +180,7 @@ CREATE TABLE waypoints (
 
 
 -- Directed edges in the waypoint DAG (predecessor -> successor)
-CREATE TABLE waypoint_edges (
+CREATE TABLE IF NOT EXISTS waypoint_edges (
     edge_id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
     arg_id           INT UNSIGNED NOT NULL,
     from_waypoint_id INT UNSIGNED NOT NULL,   -- predecessor node
@@ -209,7 +209,7 @@ CREATE TABLE waypoint_edges (
 --     how a player "completes" that node.
 -- ============================================================
 
-CREATE TABLE minigames (
+CREATE TABLE IF NOT EXISTS minigames (
     game_id     INT UNSIGNED NOT NULL AUTO_INCREMENT,
     waypoint_id INT UNSIGNED NOT NULL,
     game_type   ENUM(
@@ -248,7 +248,7 @@ CREATE TABLE minigames (
 --     Clue images, audio clips, AR markers, 3-D models, etc.
 -- ============================================================
 
-CREATE TABLE assets (
+CREATE TABLE IF NOT EXISTS assets (
     asset_id    INT UNSIGNED NOT NULL AUTO_INCREMENT,
     uploader_id INT UNSIGNED NOT NULL,
     waypoint_id INT UNSIGNED     NULL DEFAULT NULL,
@@ -278,7 +278,7 @@ CREATE TABLE assets (
 -- ============================================================
 
 -- One row per player per ARG attempt. Re-attempts overwrite the old row.
-CREATE TABLE game_sessions (
+CREATE TABLE IF NOT EXISTS game_sessions (
     user_id             INT UNSIGNED NOT NULL,
     arg_id              INT UNSIGNED NOT NULL,
     status              ENUM('active','completed','abandoned')
@@ -299,7 +299,7 @@ CREATE TABLE game_sessions (
 
 
 -- Per-waypoint progress
-CREATE TABLE waypoint_progress (
+CREATE TABLE IF NOT EXISTS waypoint_progress (
     user_id      INT UNSIGNED      NOT NULL,
     waypoint_id  INT UNSIGNED      NOT NULL,
     status       ENUM('locked','unlocked','completed','skipped')
@@ -319,7 +319,7 @@ CREATE TABLE waypoint_progress (
 
 
 -- Per-minigame attempt log (tracks only the latest attempt)
-CREATE TABLE minigame_attempts (
+CREATE TABLE IF NOT EXISTS minigame_attempts (
     user_id         INT UNSIGNED      NOT NULL,
     game_id         INT UNSIGNED      NOT NULL,
     outcome         ENUM('pass','fail','timeout') NOT NULL,
@@ -345,7 +345,7 @@ CREATE TABLE minigame_attempts (
 
 -- Raw GPS breadcrumbs.  High-volume in production;
 -- consider PARTITION BY RANGE on recorded_at.
-CREATE TABLE location_events (
+CREATE TABLE IF NOT EXISTS location_events (
     event_id     BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     user_id      INT UNSIGNED    NOT NULL,
     location     POINT           NOT NULL SRID 4326,
@@ -367,7 +367,7 @@ CREATE TABLE location_events (
 
 
 -- Behavioural trust score event log (Advanced Tier)
-CREATE TABLE trust_events (
+CREATE TABLE IF NOT EXISTS trust_events (
     event_id    INT UNSIGNED NOT NULL AUTO_INCREMENT,
     user_id     INT UNSIGNED NOT NULL,
     -- e.g. 'speed_violation', 'impossible_jump', 'drift_anomaly', 'manual_flag'
@@ -389,7 +389,7 @@ CREATE TABLE trust_events (
 -- ============================================================
 
 -- Like / Dislike on an ARG (one vote per user per ARG)
-CREATE TABLE arg_votes (
+CREATE TABLE IF NOT EXISTS arg_votes (
     vote_id  INT UNSIGNED NOT NULL AUTO_INCREMENT,
     arg_id   INT UNSIGNED NOT NULL,
     user_id  INT UNSIGNED NOT NULL,
@@ -407,7 +407,7 @@ CREATE TABLE arg_votes (
 
 
 -- Star rating submitted after completing an ARG
-CREATE TABLE arg_ratings (
+CREATE TABLE IF NOT EXISTS arg_ratings (
     rating_id INT UNSIGNED     NOT NULL AUTO_INCREMENT,
     arg_id    INT UNSIGNED     NOT NULL,
     user_id   INT UNSIGNED     NOT NULL,
@@ -426,7 +426,7 @@ CREATE TABLE arg_ratings (
 
 
 -- Threaded comments / hint system (Intermediate Tier)
-CREATE TABLE comments (
+CREATE TABLE IF NOT EXISTS comments (
     comment_id INT UNSIGNED NOT NULL AUTO_INCREMENT,
     arg_id     INT UNSIGNED NOT NULL,
     user_id    INT UNSIGNED NOT NULL,
@@ -454,7 +454,7 @@ CREATE TABLE comments (
 -- §11  FLAGS & CONTENT MODERATION
 -- ============================================================
 
-CREATE TABLE flags (
+CREATE TABLE IF NOT EXISTS flags (
     flag_id         INT UNSIGNED NOT NULL AUTO_INCREMENT,
     arg_id          INT UNSIGNED NOT NULL,
     reporter_id     INT UNSIGNED NOT NULL,
@@ -491,7 +491,7 @@ CREATE TABLE flags (
 -- §12  BADGES & META-PROGRESSION
 -- ============================================================
 
-CREATE TABLE badges (
+CREATE TABLE IF NOT EXISTS badges (
     badge_id      INT UNSIGNED NOT NULL AUTO_INCREMENT,
     name          VARCHAR(128) NOT NULL,
     description   TEXT             NULL,
@@ -506,7 +506,7 @@ CREATE TABLE badges (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
-CREATE TABLE user_badges (
+CREATE TABLE IF NOT EXISTS user_badges (
     user_badge_id INT UNSIGNED NOT NULL AUTO_INCREMENT,
     user_id       INT UNSIGNED NOT NULL,
     badge_id      INT UNSIGNED NOT NULL,
@@ -527,13 +527,13 @@ CREATE TABLE user_badges (
 -- ============================================================
 
 -- Per-ARG leaderboard
-CREATE TABLE leaderboard_arg (
+CREATE TABLE IF NOT EXISTS leaderboard_arg (
     leaderboard_id    INT UNSIGNED NOT NULL AUTO_INCREMENT,
     arg_id            INT UNSIGNED NOT NULL,
     user_id           INT UNSIGNED NOT NULL,
     points            INT UNSIGNED NOT NULL DEFAULT 0,
     completion_time_s INT UNSIGNED     NULL,   -- seconds; NULL if not completed
-    rank              INT UNSIGNED     NULL,
+    `rank`            INT UNSIGNED     NULL,
     last_updated      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
                                        ON UPDATE CURRENT_TIMESTAMP,
 
@@ -548,7 +548,7 @@ CREATE TABLE leaderboard_arg (
 
 
 -- Global all-time leaderboard
-CREATE TABLE leaderboard_global (
+CREATE TABLE IF NOT EXISTS leaderboard_global (
     user_id         INT UNSIGNED NOT NULL,
     total_points    INT UNSIGNED NOT NULL DEFAULT 0,
     games_completed INT UNSIGNED NOT NULL DEFAULT 0,
@@ -568,7 +568,7 @@ CREATE TABLE leaderboard_global (
 -- ============================================================
 
 -- Daily rolled-up stats per ARG, consumed by the analytics dashboard.
-CREATE TABLE arg_analytics_daily (
+CREATE TABLE IF NOT EXISTS arg_analytics_daily (
     analytics_id       INT UNSIGNED   NOT NULL AUTO_INCREMENT,
     arg_id             INT UNSIGNED   NOT NULL,
     stat_date          DATE           NOT NULL,
@@ -592,7 +592,7 @@ CREATE TABLE arg_analytics_daily (
 -- §15  PUSH NOTIFICATION SUBSCRIPTIONS (Advanced Tier)
 -- ============================================================
 
-CREATE TABLE push_subscriptions (
+CREATE TABLE IF NOT EXISTS push_subscriptions (
     subscription_id INT UNSIGNED NOT NULL AUTO_INCREMENT,
     user_id         INT UNSIGNED NOT NULL,
     platform        ENUM('web','android','ios') NOT NULL DEFAULT 'web',
@@ -612,7 +612,7 @@ CREATE TABLE push_subscriptions (
 -- §16  ADMIN AUDIT LOG
 -- ============================================================
 
-CREATE TABLE admin_audit_log (
+CREATE TABLE IF NOT EXISTS admin_audit_log (
     log_id       INT UNSIGNED NOT NULL AUTO_INCREMENT,
     admin_id     INT UNSIGNED NOT NULL,
     action       VARCHAR(128) NOT NULL,
