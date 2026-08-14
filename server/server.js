@@ -2,13 +2,17 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
+const session = require('express-session');
+const MySQLStore = require('express-mysql-session')(session);
 require('dotenv').config();
 
 const sequelize = require('./src/config/database');
+const passport = require('./src/config/passport');
 const { sequelize: db } = require('./src/models');
 const argRoutes = require('./src/routes/argRoutes');
 const userRoutes = require('./src/routes/userRoutes');
 const sessionRoutes = require('./src/routes/sessionRoutes');
+const authRoutes = require('./src/routes/authRoutes');
 const app = express();
 const server = http.createServer(app);
 
@@ -20,9 +24,42 @@ const io = new Server(server, {
   }
 });
 
+// Build MySQL session store from DATABASE_URL
+const dbUrl = new URL(process.env.DATABASE_URL);
+const sessionStoreOptions = new MySQLStore({
+  host: dbUrl.hostname,
+  port: dbUrl.port || 3306,
+  user: dbUrl.username,
+  password: dbUrl.password,
+  database: dbUrl.pathname.slice(1), // remove leading "/"
+  ssl: { rejectUnauthorized: false },
+  createDatabaseTable: true,
+  expiration: 86400000 // 24 hours
+});
+
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: process.env.CLIENT_URL || '*',
+  credentials: true
+}));
 app.use(express.json());
+
+// Session middleware (must come before passport)
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'warg-dev-secret',
+  store: sessionStoreOptions,
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    maxAge: 86400000, // 24 hours
+    secure: false,    // Set to true in production with HTTPS
+    httpOnly: true
+  }
+}));
+
+// Passport middleware
+app.use(passport.initialize());
+app.use(passport.session());
 
 // Basic Route
 app.get('/', (req, res) => {
@@ -30,6 +67,7 @@ app.get('/', (req, res) => {
 });
 
 // Mount API Routes
+app.use('/auth', authRoutes);
 app.use('/api/args', argRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/sessions', sessionRoutes);
