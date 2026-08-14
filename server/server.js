@@ -5,7 +5,10 @@ const cors = require('cors');
 require('dotenv').config();
 
 const sequelize = require('./src/config/database');
-
+const { sequelize: db } = require('./src/models');
+const argRoutes = require('./src/routes/argRoutes');
+const userRoutes = require('./src/routes/userRoutes');
+const sessionRoutes = require('./src/routes/sessionRoutes');
 const app = express();
 const server = http.createServer(app);
 
@@ -26,6 +29,11 @@ app.get('/', (req, res) => {
   res.json({ message: 'WARG Platform Backend is running!' });
 });
 
+// Mount API Routes
+app.use('/api/args', argRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/sessions', sessionRoutes);
+
 // Socket.io connection handling
 io.on('connection', (socket) => {
   console.log(`A user connected: ${socket.id}`);
@@ -40,9 +48,11 @@ const PORT = process.env.PORT || 3000;
 
 async function startServer() {
   try {
-    // Test the database connection
+    // Test the database connection and sync models
     await sequelize.authenticate();
     console.log('✅ Connection to the database has been established successfully.');
+    await db.sync({ alter: false });
+    console.log('✅ Database models synced.');
 
     server.listen(PORT, () => {
       console.log(`🚀 Server is running on port ${PORT}`);
