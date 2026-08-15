@@ -143,13 +143,8 @@ The WARG platform's visual language is built on the **VJB System**, which follow
 
 ---
 
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feat/your-feature`)
-3. Commit your changes (`git commit -m "feat: add your feature"`)
-4. Push to the branch (`git push origin feat/your-feature`)
-5. Open a Pull Request
+## 🤝 Contributions
+This project is the work of Luc & Friends. Special thanks to the team - Zaeem, Yami, and Chris.
 
 ---
 
