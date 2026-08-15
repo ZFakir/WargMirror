@@ -260,6 +260,15 @@
 }
 .map-modal .leaflet-control-zoom a:hover { background: var(--color-brand-subtle) !important; }
 
+/* ============ CIRCULAR BUBBLE MASK ============ */
+.map-modal .bubble-mask-svg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 449;  /* above tiles (200), below scan overlay (450) & markers (600) */
+  overflow: hidden;
+}
+
 /* Subtle scanning grid overlay */
 .map-modal .scan-overlay {
   position: absolute;
