@@ -6,11 +6,21 @@
  */
 
 export class MapModal {
+  // Map configuration — single source of truth
+  static MAP_CONFIG = {
+    center: [-26.19180, 28.02990],    // Wits Main Campus
+    startZoom: 16,
+    minZoom: 14,
+    maxZoom: 19,
+    bubbleRadiusMeters: 2000,          // 2 km campus bubble
+  };
+
   constructor() {
     this.isInitialized = false;
     this.isMapRendered = false;
     this.map = null;
     this.markerLookup = {};
+    this._maskSvg = null;
     
     // Core data
     this.NODES = [
@@ -179,16 +189,48 @@ export class MapModal {
     }
   }
 
+  /**
+   * Compute an L.latLngBounds box around a center point using geodesic distance.
+   * Uses the relationship: 1° latitude ≈ 111 320 m; 1° longitude ≈ 111 320 · cos(lat) m.
+   */
+  _geodesicBounds(center, radiusMeters) {
+    const [lat, lng] = center;
+    const METERS_PER_DEG_LAT = 111320;
+    const METERS_PER_DEG_LNG = 111320 * Math.cos(lat * Math.PI / 180);
+
+    const dLat = radiusMeters / METERS_PER_DEG_LAT;
+    const dLng = radiusMeters / METERS_PER_DEG_LNG;
+
+    return L.latLngBounds(
+      [lat - dLat, lng - dLng],
+      [lat + dLat, lng + dLng]
+    );
+  }
+
   initMapAndNodes() {
     if (this.isMapRendered || !window.L) return;
 
-    this.map = L.map('map-modal-leaflet', { zoomControl: true }).setView([-26.19180, 28.02990], 17);
+    const cfg = MapModal.MAP_CONFIG;
+    const bounds = this._geodesicBounds(cfg.center, cfg.bubbleRadiusMeters);
+
+    this.map = L.map('map-modal-leaflet', {
+      zoomControl: true,
+      center: cfg.center,
+      zoom: cfg.startZoom,
+      minZoom: cfg.minZoom,
+      maxZoom: cfg.maxZoom,
+      maxBounds: bounds,
+      maxBoundsViscosity: 1.0,        // hard-stop at the edge
+    });
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap contributors',
       subdomains: 'abc',
-      maxZoom: 19
+      maxZoom: cfg.maxZoom,
     }).addTo(this.map);
+
+    // Circular bubble mask
+    this._addCircularMask();
 
     this.NODES.forEach(node => {
       const marker = L.marker([node.lat, node.lng], { icon: this.iconFor(node) }).addTo(this.map);
@@ -214,6 +256,109 @@ export class MapModal {
 
     this.renderList();
     this.isMapRendered = true;
+  }
+
+  /* ─── Circular Bubble Mask ─── */
+
+  /**
+   * Creates an SVG overlay that blacks out everything outside a circle
+   * of `bubbleRadiusMeters` around the map center. The fill colour
+   * matches the modal background so it blends seamlessly.
+   *
+   * Technique: a full-viewport <rect> with an SVG <mask> — the mask is
+   * white everywhere (visible) except a circular cut-out (hidden),
+   * meaning the dark rect is painted everywhere *except* the circle.
+   */
+  _addCircularMask() {
+    const mapContainer = this.map.getContainer();
+
+    // Create the SVG element
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns, 'svg');
+    svg.classList.add('bubble-mask-svg');
+    svg.setAttribute('xmlns', ns);
+
+    // Defs → mask
+    const defs = document.createElementNS(ns, 'defs');
+    const mask = document.createElementNS(ns, 'mask');
+    mask.setAttribute('id', 'bubble-cutout');
+
+    // White rect = everything visible (will be painted by the dark fill)
+    this._maskRect = document.createElementNS(ns, 'rect');
+    this._maskRect.setAttribute('fill', 'white');
+    mask.appendChild(this._maskRect);
+
+    // Black circle = the hole (blocks the dark fill → map shows through)
+    this._maskCircle = document.createElementNS(ns, 'circle');
+    this._maskCircle.setAttribute('fill', 'black');
+    mask.appendChild(this._maskCircle);
+
+    defs.appendChild(mask);
+    svg.appendChild(defs);
+
+    // The visible dark overlay that references the mask
+    this._overlayRect = document.createElementNS(ns, 'rect');
+    this._overlayRect.setAttribute('fill', '#12100E');  // --color-bg
+    this._overlayRect.setAttribute('mask', 'url(#bubble-cutout)');
+    svg.appendChild(this._overlayRect);
+
+    // Optional: soft feathered edge on the bubble
+    const feather = document.createElementNS(ns, 'filter');
+    feather.setAttribute('id', 'bubble-feather');
+    const blur = document.createElementNS(ns, 'feGaussianBlur');
+    blur.setAttribute('stdDeviation', '6');
+    feather.appendChild(blur);
+    defs.appendChild(feather);
+    this._maskCircle.setAttribute('filter', 'url(#bubble-feather)');
+
+    mapContainer.appendChild(svg);
+    this._maskSvg = svg;
+
+    // Initial positioning
+    this._updateMask();
+
+    // Re-position on every map movement, zoom, or container resize
+    this.map.on('move zoom zoomend resize', () => this._updateMask());
+    // Also handle window resize for fullscreen toggling
+    window.addEventListener('resize', () => {
+      if (this._maskSvg) this._updateMask();
+    });
+  }
+
+  /**
+   * Recompute the mask circle position and pixel-radius so it stays
+   * locked to the geographic center regardless of pan / zoom.
+   */
+  _updateMask() {
+    const cfg = MapModal.MAP_CONFIG;
+    const container = this.map.getContainer();
+    const w = container.clientWidth;
+    const h = container.clientHeight;
+
+    // SVG viewport
+    this._maskSvg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+    this._maskSvg.setAttribute('width', w);
+    this._maskSvg.setAttribute('height', h);
+
+    // Full-size rects
+    for (const rect of [this._maskRect, this._overlayRect]) {
+      rect.setAttribute('x', '0');
+      rect.setAttribute('y', '0');
+      rect.setAttribute('width', w);
+      rect.setAttribute('height', h);
+    }
+
+    // Project the centre and a point on the circle edge to get pixel radius
+    const centerPx = this.map.latLngToContainerPoint(cfg.center);
+    // Offset by bubbleRadiusMeters eastward to find the pixel radius
+    const METERS_PER_DEG_LNG = 111320 * Math.cos(cfg.center[0] * Math.PI / 180);
+    const edgeLng = cfg.center[1] + cfg.bubbleRadiusMeters / METERS_PER_DEG_LNG;
+    const edgePx = this.map.latLngToContainerPoint([cfg.center[0], edgeLng]);
+    const radiusPx = Math.abs(edgePx.x - centerPx.x);
+
+    this._maskCircle.setAttribute('cx', centerPx.x);
+    this._maskCircle.setAttribute('cy', centerPx.y);
+    this._maskCircle.setAttribute('r', radiusPx);
   }
 
   iconFor(node) {
@@ -265,7 +410,7 @@ export class MapModal {
         </div>`;
       
       row.addEventListener('click', () => {
-        this.map.flyTo([node.lat, node.lng], 17, { duration: 0.6 });
+        this.map.flyTo([node.lat, node.lng], MapModal.MAP_CONFIG.startZoom, { duration: 0.6 });
         this.markerLookup[node.id].openPopup();
       });
       
@@ -292,9 +437,12 @@ export class MapModal {
       document.body.style.overflow = '';
     }
     
-    // Resize map to fit new dimensions
+    // Resize map to fit new dimensions and re-align the mask
     if (this.map) {
-      setTimeout(() => this.map.invalidateSize(), 300);
+      setTimeout(() => {
+        this.map.invalidateSize();
+        if (this._maskSvg) this._updateMask();
+      }, 300);
     }
   }
 }
