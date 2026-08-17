@@ -5,4 +5,7 @@ opencv-python==4.8.0.76
 scikit-image==0.21.0
 numpy==1.25.2
 torch>=2.0.0
+torchvision>=0.15.2
+Pillow>=9.5.0
 segment-anything
+
