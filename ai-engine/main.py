@@ -43,3 +43,17 @@ async def evaluate_colour(image: UploadFile = File(...), target_colour: str = Fo
         passed=(similarity_score >= 0.80),
         message="Colour evaluation complete."
     )
+
+@app.post("/api/v1/texture-match", response_model=EvaluationResult)
+async def evaluate_texture(image: UploadFile = File(...), reference_image: UploadFile = File(...)):
+    image_bytes = await image.read()
+    reference_bytes = await reference_image.read()
+    
+    # Extract feature vectors and evaluate via Cosine Similarity[cite: 7]
+    similarity = mobilenet_extractor.evaluate_texture(image_bytes, reference_bytes)
+    
+    return EvaluationResult(
+        confidence_score=similarity,
+        passed=(similarity >= 0.50), # Tuned threshold for high-dimensional embeddings
+        message="Texture evaluation complete."
+    )
