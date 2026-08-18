@@ -101,5 +101,22 @@ document.addEventListener('DOMContentLoaded', async () => {
       }).join('');
     }
   }
+
+  // ── My Library ──
+  const libraryGrid = document.getElementById('profile-library-grid');
+  if (libraryGrid && typeof GameCard !== 'undefined') {
+    try {
+      const args = await api.getUserLibrary(currentUser.user_id);
+      
+      if (args.length === 0) {
+        libraryGrid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:var(--color-text-muted);padding:var(--space-4)">Your library is empty.</p>';
+      } else {
+        GameCard.renderRow(args, libraryGrid, { hideProgress: false });
+      }
+    } catch (err) {
+      console.error('Failed to load user library:', err);
+      libraryGrid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:var(--color-text-muted);padding:var(--space-4)">Failed to load library.</p>';
+    }
+  }
 });
 

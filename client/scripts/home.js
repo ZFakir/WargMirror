@@ -46,7 +46,7 @@ function openSidebar() {
 function closeSidebar() {
   if (isMobile()) {
     sidebar.classList.remove('drawer-open');
-    if (!rightPanel.classList.contains('drawer-open')) hideOverlay();
+    if (!rightPanel || !rightPanel.classList.contains('drawer-open')) hideOverlay();
     btnSidebarToggle.setAttribute('aria-expanded', 'false');
   } else {
     appShell.classList.add('sidebar-collapsed');
@@ -210,7 +210,12 @@ function showRowEmpty(rowId, message) {
 }
 
 async function initHomeData() {
-  if (typeof GameCard === 'undefined' || typeof api === 'undefined') return;
+  // If we are not on the home page, exit early to prevent container null errors
+  if (!document.getElementById('row-recent')) return;
+
+  if (typeof api === 'undefined') {
+    console.error('API not loaded'); return;
+  }
 
   // Show skeletons immediately
   showRowSkeleton('row-recent');
