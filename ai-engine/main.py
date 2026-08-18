@@ -1,6 +1,6 @@
 from fastapi import FastAPI, UploadFile, File, Form
 from pydantic import BaseModel
-from vision import sam_extractor, hsv_matcher
+from vision import sam_extractor, hsv_matcher, mobilenet_extractor 
 
 app = FastAPI(title="WARG AI Engine")
 
@@ -49,11 +49,11 @@ async def evaluate_texture(image: UploadFile = File(...), reference_image: Uploa
     image_bytes = await image.read()
     reference_bytes = await reference_image.read()
     
-    # Extract feature vectors and evaluate via Cosine Similarity[cite: 7]
+    # Extract feature vectors and evaluate via Cosine Similarity
     similarity = mobilenet_extractor.evaluate_texture(image_bytes, reference_bytes)
     
     return EvaluationResult(
         confidence_score=similarity,
-        passed=(similarity >= 0.50), # Tuned threshold for high-dimensional embeddings
+        passed=(similarity >= 0.60), # Tuned threshold for high-dimensional embeddings
         message="Texture evaluation complete."
     )
