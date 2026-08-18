@@ -15,6 +15,8 @@ const MinigameAttempt = require('./MinigameAttempt');
 const LocationEvent = require('./LocationEvent');
 const TrustEvent = require('./TrustEvent');
 const ArgVote = require('./ArgVote');
+const Badge = require('./Badge');
+const UserBadge = require('./UserBadge');
 
 // Define Associations
 
@@ -72,6 +74,15 @@ TrustEvent.belongsTo(User, { foreignKey: 'user_id' });
 ArgVote.belongsTo(User, { foreignKey: 'user_id' });
 ArgVote.belongsTo(Arg, { foreignKey: 'arg_id' });
 
+// Badges (Many-to-Many with User)
+User.belongsToMany(Badge, { through: UserBadge, foreignKey: 'user_id' });
+Badge.belongsToMany(User, { through: UserBadge, foreignKey: 'badge_id' });
+// Add relationships directly to UserBadge if you want to include it easily
+UserBadge.belongsTo(User, { foreignKey: 'user_id' });
+UserBadge.belongsTo(Badge, { foreignKey: 'badge_id' });
+User.hasMany(UserBadge, { foreignKey: 'user_id' });
+Badge.hasMany(UserBadge, { foreignKey: 'badge_id' });
+
 module.exports = {
   sequelize,
   User,
@@ -88,5 +99,7 @@ module.exports = {
   MinigameAttempt,
   LocationEvent,
   TrustEvent,
-  ArgVote
+  ArgVote,
+  Badge,
+  UserBadge
 };

@@ -1,10 +1,11 @@
-const { User, Arg, FriendRequest, GameSession } = require('../models');
+const { User, Arg, FriendRequest, GameSession, Badge } = require('../models');
 const { Op } = require('sequelize');
 
 exports.getUserProfile = async (req, res) => {
   try {
     const user = await User.findByPk(req.params.id, {
-      attributes: { exclude: ['google_uid', 'session_token'] }
+      attributes: { exclude: ['google_uid', 'session_token'] },
+      include: [{ model: Badge, attributes: ['badge_id', 'name', 'description'], through: { attributes: ['awarded_at'] } }]
     });
     if (!user) return res.status(404).json({ error: 'User not found' });
     res.json(user);
