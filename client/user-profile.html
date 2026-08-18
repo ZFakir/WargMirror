@@ -87,7 +87,7 @@
           <div class="profile-banner"></div>
           <div class="profile-info">
             <div class="profile-picture-container">
-              <img src="https://api.dicebear.com/9.x/identicon/svg?seed=WARGPlayer&backgroundColor=1a1816" alt="Player avatar" class="profile-picture" />
+              <img id="profile-avatar" src="https://api.dicebear.com/9.x/identicon/svg?seed=WARGPlayer&backgroundColor=1a1816" alt="Player avatar" class="profile-picture" />
               <button class="edit-icon profile-picture-edit" aria-label="Edit profile picture">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M12 20h9"></path>
@@ -97,7 +97,7 @@
             </div>
             <div class="profile-details">
               <div class="profile-name-row">
-                <h1 class="profile-name">Alex Johnson</h1>
+                <h1 class="profile-name" id="profile-name">Loading…</h1>
                 <button class="edit-icon" aria-label="Edit name">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M12 20h9"></path>
@@ -105,32 +105,32 @@
                   </svg>
                 </button>
               </div>
-              <div class="profile-title">
-                Level 12 Explorer
+              <div class="profile-title" id="profile-title">
+                Player
               </div>
             </div>
           </div>
         </div>
 
         <!-- Stats Section -->
-        <div class="profile-stats-grid">
+        <div class="profile-stats-grid" id="profile-stats-grid">
           <div class="stat-card">
             <div class="stat-header">
               <h2 class="stat-title">Total Points</h2>
             </div>
-            <p class="stat-value">1,450</p>
+            <p class="stat-value" id="stat-total-points">—</p>
           </div>
           <div class="stat-card">
             <div class="stat-header">
               <h2 class="stat-title">Games Completed</h2>
             </div>
-            <p class="stat-value">24</p>
+            <p class="stat-value" id="stat-games-completed">—</p>
           </div>
           <div class="stat-card">
             <div class="stat-header">
               <h2 class="stat-title">Distance Walked</h2>
             </div>
-            <p class="stat-value">42 km</p>
+            <p class="stat-value" id="stat-distance-walked">—</p>
           </div>
         </div>
 
@@ -176,6 +176,8 @@
   </main>
 
 </div>
+<script src="scripts/api.js"></script>
 <script src="scripts/home.js"></script>
+<script src="scripts/user-profile.js"></script>
 </body>
 </html>

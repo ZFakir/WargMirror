@@ -151,10 +151,11 @@
         <h1 class="catalogue-title" id="catalogue-title">Catalogue</h1>
         <div class="catalogue-controls">
           <div class="filter-chips">
-            <button class="filter-chip active">All</button>
-            <button class="filter-chip">Adventure</button>
-            <button class="filter-chip">Mystery</button>
-            <button class="filter-chip">Horror</button>
+            <button class="filter-chip active" data-filter="all">All</button>
+            <button class="filter-chip" data-filter="solo">Solo</button>
+            <button class="filter-chip" data-filter="coop">Co-op</button>
+            <button class="filter-chip" data-filter="pvp">PvP</button>
+            <button class="filter-chip" data-filter="live">Live</button>
           </div>
           <div class="sort-control">
             <label for="sort-select">Sort by:</label>
@@ -354,7 +355,7 @@
 
 </div><!-- /.app-shell -->
 
-<script src="scripts/data/games.js"></script>
+<script src="scripts/api.js"></script>
 <script src="scripts/components/GameCard.js"></script>
 <script src="scripts/catalogue.js"></script>
 </body>
