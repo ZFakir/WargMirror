@@ -255,7 +255,7 @@ var GameCard = (function () {
       }
       e.stopPropagation();
 
-      var action    = btn.dataset.action;
+      var action = btn.dataset.action;
 
       if (action === 'publish' || action === 'unpublish') {
         article.dispatchEvent(new CustomEvent('warg:' + action, {
@@ -266,6 +266,19 @@ var GameCard = (function () {
           }
         }));
         return;
+      }
+
+      var argId = article.dataset.gameId;
+
+      if (action === 'flag') {
+        if (typeof window.FlagModal !== 'undefined') {
+          // Use a singleton flag modal instance for GameCard
+          if (!window._gameCardFlagModal) window._gameCardFlagModal = new window.FlagModal();
+          window._gameCardFlagModal.open(argId, 'Report Game');
+        } else {
+          console.error('[GameCard] FlagModal not loaded');
+        }
+        return; // Don't toggle state on flag button
       }
 
       var isPressed = btn.getAttribute('aria-pressed') === 'true';
@@ -286,6 +299,21 @@ var GameCard = (function () {
           like.setAttribute('aria-pressed', 'false');
           like.classList.remove('is-active');
         }
+      }
+
+      // Fire API call
+      if (typeof api !== 'undefined' && api.voteArg) {
+        api.voteArg(argId, action).then(res => {
+          if (res && res.success) {
+            // Update counts in DOM
+            var likeCount = article.querySelector('[data-action="like"] .gc-action__count');
+            var dislikeCount = article.querySelector('[data-action="dislike"] .gc-action__count');
+            if (likeCount) likeCount.textContent = formatCount(res.like_count);
+            if (dislikeCount) dislikeCount.textContent = formatCount(res.dislike_count);
+          }
+        }).catch(err => {
+          console.error('[GameCard] Failed to vote:', err);
+        });
       }
     });
 

@@ -17,6 +17,7 @@ const TrustEvent = require('./TrustEvent');
 const ArgVote = require('./ArgVote');
 const Badge = require('./Badge');
 const UserBadge = require('./UserBadge');
+const Flag = require('./Flag');
 
 // Define Associations
 
@@ -83,6 +84,13 @@ UserBadge.belongsTo(Badge, { foreignKey: 'badge_id' });
 User.hasMany(UserBadge, { foreignKey: 'user_id' });
 Badge.hasMany(UserBadge, { foreignKey: 'badge_id' });
 
+// Flags
+Flag.belongsTo(Arg, { foreignKey: 'arg_id' });
+Flag.belongsTo(User, { as: 'Reporter', foreignKey: 'reporter_id' });
+Flag.belongsTo(User, { as: 'Resolver', foreignKey: 'resolved_by' });
+Arg.hasMany(Flag, { foreignKey: 'arg_id' });
+User.hasMany(Flag, { foreignKey: 'reporter_id' });
+
 module.exports = {
   sequelize,
   User,
@@ -101,5 +109,6 @@ module.exports = {
   TrustEvent,
   ArgVote,
   Badge,
-  UserBadge
+  UserBadge,
+  Flag
 };

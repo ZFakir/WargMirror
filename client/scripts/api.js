@@ -23,6 +23,19 @@ var api = (function () {
     return res.json();
   }
 
+  async function _post(path, body) {
+    const res = await fetch(API_BASE + path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      credentials: 'include'
+    });
+    if (!res.ok) {
+      throw Object.assign(new Error('API error'), { status: res.status, path });
+    }
+    return res.json();
+  }
+
   /* ── Data normaliser ────────────────────────────────────── */
   /**
    * Maps an API Arg object → GameCard-compatible shape.
@@ -145,6 +158,15 @@ var api = (function () {
     return _get('/api/users/' + userId + '/friends');
   }
 
+  /* ── Game Actions ───────────────────────────────────────── */
+  async function voteArg(argId, voteType, userId = 1) { // Defaulting user_id to 1 until auth is hooked up
+    return _post('/api/args/' + argId + '/vote', { vote: voteType, user_id: userId });
+  }
+
+  async function flagArg(argId, reason, description, reporterId = 1) { // Defaulting user_id to 1 until auth is hooked up
+    return _post('/api/args/' + argId + '/flag', { reason, description, reporter_id: reporterId });
+  }
+
   /* ── Public API ─────────────────────────────────────────── */
   return {
     getCurrentUser,
@@ -155,6 +177,8 @@ var api = (function () {
     getActiveSessions,
     getFriends,
     normaliseArg,
+    voteArg,
+    flagArg,
   };
 
 }());
