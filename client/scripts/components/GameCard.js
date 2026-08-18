@@ -276,7 +276,13 @@ var GameCard = (function () {
           if (!window._gameCardFlagModal) window._gameCardFlagModal = new window.FlagModal();
           window._gameCardFlagModal.open(argId, 'Report Game');
         } else {
-          console.error('[GameCard] FlagModal not loaded');
+          // Dynamically import the module (relative to the HTML page loading it)
+          import('./scripts/components/FlagModal.js?v=2').then(module => {
+            if (!window._gameCardFlagModal) window._gameCardFlagModal = new module.FlagModal();
+            window._gameCardFlagModal.open(argId, 'Report Game');
+          }).catch(err => {
+            console.error('[GameCard] Failed to load FlagModal:', err);
+          });
         }
         return; // Don't toggle state on flag button
       }
