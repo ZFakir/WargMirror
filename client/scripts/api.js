@@ -137,6 +137,14 @@ var api = (function () {
     return _get('/api/sessions/' + userId);
   }
 
+  /**
+   * Returns friends of a user.
+   * Requires authentication.
+   */
+  async function getFriends(userId) {
+    return _get('/api/users/' + userId + '/friends');
+  }
+
   /* ── Public API ─────────────────────────────────────────── */
   return {
     getCurrentUser,
@@ -145,6 +153,7 @@ var api = (function () {
     getUserProfile,
     getUserLibrary,
     getActiveSessions,
+    getFriends,
     normaliseArg,
   };
 

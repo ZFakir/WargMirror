@@ -161,10 +161,10 @@ document.addEventListener('keydown', e => {
 
 /* ── Friends search: live filter ── */
 const friendsSearchInput = document.getElementById('friends-search-input');
-const friendItems = document.querySelectorAll('.friend-item');
 
 friendsSearchInput?.addEventListener('input', () => {
   const query = friendsSearchInput.value.toLowerCase().trim();
+  const friendItems = document.querySelectorAll('.friend-item');
   friendItems.forEach(item => {
     const name = item.querySelector('.friend-item__name')?.textContent.toLowerCase() ?? '';
     item.closest('li').style.display = (!query || name.includes(query)) ? '' : 'none';
@@ -247,6 +247,14 @@ async function initHomeData() {
       if (statDist) statDist.textContent = Math.round((profile.distance_walked_m || 0) / 1000) + ' km';
     } catch (_) { /* profile stats are non-critical */ }
 
+    // Fetch and render friends
+    try {
+      var friends = await api.getFriends(currentUser.user_id);
+      renderFriends(friends);
+    } catch (err) {
+      console.error('Failed to fetch friends', err);
+    }
+
     // Fetch active sessions for "Recently Played"
     var sessionArgIds = new Set();
     try {
@@ -276,6 +284,12 @@ async function initHomeData() {
         '<p style="color:var(--color-text-muted);font-size:var(--font-size-caption);text-align:center;padding:var(--space-3) 0">' +
         '<a href="login.html" style="color:var(--color-accent)">Log in</a> to track your progress and recent games.</p>';
     }
+
+    // Guest: show login prompt for friends list
+    var onlineList = document.getElementById('online-friends-list');
+    var offlineList = document.getElementById('offline-friends-list');
+    if (onlineList) onlineList.innerHTML = '<li style="padding:1rem;color:var(--text-muted);font-size:var(--font-size-sm);text-align:center;">Log in to see friends</li>';
+    if (offlineList) offlineList.innerHTML = '';
 
     // Guest recently played = newest ARGs
     var newestArgs = args.slice().sort(function (a, b) {
@@ -308,8 +322,75 @@ async function initHomeData() {
   } else {
     GameCard.renderRow('row-creators', creatorsArgs);
   }
+  // Init horizontal scroll for cards
+  initCardScrolls();
 }
 
+function renderFriends(friends) {
+  const onlineList = document.getElementById('online-friends-list');
+  const offlineList = document.getElementById('offline-friends-list');
+  const onlineCount = document.getElementById('online-friends-count');
+  
+  if (!onlineList || !offlineList) return;
+
+  onlineList.innerHTML = '';
+  offlineList.innerHTML = '';
+
+  let onlineFriends = 0;
+
+  friends.forEach(friend => {
+    const isOnline = friend.GameSessions && friend.GameSessions.length > 0;
+    const session = isOnline ? friend.GameSessions[0] : null;
+    const gameTitle = session && session.Arg ? session.Arg.title : 'an unknown game';
+    
+    const activityText = isOnline ? `Playing: ${gameTitle}` : 'Offline';
+    const statusClass = isOnline ? 'status--online' : 'status--offline';
+    
+    const initials = (friend.username || '??').substring(0, 2).toUpperCase();
+    
+    let avatarImg;
+    if (friend.avatar) {
+      // Assuming avatar is returned as base64 or buffer. If buffer, we might need different handling. 
+      // Dicebear is used natively as fallback.
+      avatarImg = `<div class="friend-item__avatar-img" aria-hidden="true">${initials}</div>`;
+    } else {
+      avatarImg = `<div class="friend-item__avatar-img" aria-hidden="true">${initials}</div>`;
+    }
+
+    const li = document.createElement('li');
+    li.innerHTML = `
+      <div class="friend-item" role="button" tabindex="0" aria-label="${friend.username} is ${activityText}">
+        <div class="friend-item__avatar">
+          ${avatarImg}
+          <span class="friend-item__status-dot ${statusClass}" aria-label="${isOnline ? 'Online' : 'Offline'}"></span>
+        </div>
+        <div class="friend-item__info">
+          <div class="friend-item__name">${friend.username}</div>
+          <div class="friend-item__activity">${activityText}</div>
+        </div>
+        <button class="friend-item__action" aria-label="Invite ${friend.username} to a game">Invite</button>
+      </div>
+    `;
+
+    if (isOnline) {
+      onlineList.appendChild(li);
+      onlineFriends++;
+    } else {
+      offlineList.appendChild(li);
+    }
+  });
+
+  if (onlineCount) onlineCount.textContent = onlineFriends;
+
+  if (onlineFriends === 0) {
+    onlineList.innerHTML = '<li style="padding:1rem;color:var(--text-muted);font-size:var(--font-size-sm);text-align:center;">No friends online</li>';
+  }
+  if (friends.length - onlineFriends === 0) {
+    offlineList.innerHTML = '<li style="padding:1rem;color:var(--text-muted);font-size:var(--font-size-sm);text-align:center;">No offline friends</li>';
+  }
+}
+
+// Kick off
 document.addEventListener('DOMContentLoaded', initHomeData);
 
 /* ── Friend item keyboard activation ── */
