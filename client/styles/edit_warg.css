@@ -107,17 +107,32 @@
   background: rgba(192, 184, 155, 0.05);
 }
 
-/* ── Map Section ── */
+/* ── Builder Layout ── */
+.builder-editor-layout {
+  display: flex;
+  gap: var(--space-4);
+  height: calc(100vh - 350px);
+  min-height: 500px;
+  margin-bottom: var(--space-5);
+}
+
+.builder-main-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
 .builder-map-section {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-  margin-bottom: var(--space-5);
+  flex: 1;
 }
 
 .builder-map-wrapper {
   position: relative;
-  height: 500px;
+  flex: 1;
   background: #151515; /* Dark map background */
   border-radius: var(--radius-xl);
   border: 1px solid var(--color-border);
@@ -178,25 +193,98 @@
   box-shadow: 0 0 0 6px rgba(51, 255, 51, 0.3), 0 6px 15px rgba(0,0,0,0.6);
 }
 
+/* Burger icon / drag handle */
+.mock-waypoint__handle {
+  position: absolute;
+  top: -12px;
+  right: -12px;
+  width: 20px;
+  height: 20px;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+  align-items: center;
+  padding: 4px;
+  cursor: grab;
+  z-index: 15;
+  box-shadow: var(--shadow-sm);
+}
+
+.mock-waypoint__handle:active {
+  cursor: grabbing;
+}
+
+.mock-waypoint__handle span {
+  display: block;
+  width: 10px;
+  height: 2px;
+  background: var(--color-text-secondary);
+  border-radius: 1px;
+}
+
+.mock-waypoint.ghost {
+  opacity: 0.5;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.mock-waypoint.selected {
+  box-shadow: 0 0 0 6px rgba(153, 172, 255, 0.4), 0 6px 15px rgba(0,0,0,0.6);
+  border: 2px solid #fff;
+}
+
 /* Path drawing simulation */
 .mock-path {
   position: absolute;
   top: 0; left: 0; width: 100%; height: 100%;
   pointer-events: none;
+  z-index: 1;
 }
-.mock-path line {
+
+.mock-path .edge-group {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.mock-path .edge-visible {
   stroke: var(--color-border-accent);
   stroke-width: 3;
+  transition: stroke 0.2s;
+}
+
+.mock-path .edge-hitbox {
+  stroke: transparent;
+  stroke-width: 15;
+}
+
+.mock-path .edge-group:hover .edge-visible {
+  stroke: var(--color-accent);
+  stroke-width: 4;
+}
+
+.mock-path .edge-group.selected .edge-visible {
+  stroke: #fff;
+  stroke-width: 4;
+}
+
+.mock-path .edge-drawing {
+  stroke: var(--color-text-secondary);
+  stroke-width: 3;
   stroke-dasharray: 6 6;
+  pointer-events: none;
 }
 
 /* ── Actions ── */
 .builder-actions {
   display: flex;
-  justify-content: center;
+  justify-content: flex-end;
+  gap: var(--space-4);
 }
 
-.builder-btn-add {
+.builder-btn-pill {
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -207,7 +295,7 @@
   transition: transform 0.2s var(--ease-spring), box-shadow 0.2s var(--ease-out);
 }
 
-.builder-btn-add:hover {
+.builder-btn-pill:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(153, 172, 255, 0.4);
 }
@@ -323,17 +411,43 @@
   margin-bottom: var(--space-4);
 }
 
-/* ── Waypoint Editor Menu ── */
-.waypoint-editor {
+/* ── Right Panel ── */
+.builder-right-panel {
+  width: 320px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
   background: var(--color-bg-card);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-card);
   padding: var(--space-4);
-  margin-bottom: var(--space-5);
+  box-shadow: var(--shadow-lg);
+  overflow-y: auto;
+}
+
+.panel-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--color-text-muted);
+  height: 100%;
+  gap: var(--space-3);
+}
+
+.panel-empty-state svg {
+  width: 48px;
+  height: 48px;
+  opacity: 0.5;
+}
+
+/* ── Waypoint Editor Menu ── */
+.waypoint-editor, .edge-editor {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-  box-shadow: var(--shadow-lg);
   animation: slideDown 0.3s var(--ease-spring);
 }
 
@@ -384,14 +498,8 @@
 /* Relationships Grid */
 .relationships-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: 1fr;
   gap: var(--space-4);
-}
-
-@media (max-width: 768px) {
-  .relationships-grid {
-    grid-template-columns: 1fr;
-  }
 }
 
 .relationship-card {
