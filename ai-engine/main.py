@@ -10,24 +10,21 @@ class EvaluationResult(BaseModel):
     message: str
 
 @app.post("/api/v1/sam-extract", response_model=EvaluationResult)
-async def evaluate_shape(image: UploadFile = File(...), game_id: str = Form(...)):
+async def evaluate_shape(image: UploadFile = File(...), target_mask: UploadFile = File(...)):
     """
-    Receives image payload from Express.
-    Runs Meta's SAM and calculates the Jaccard Index.
+    Receives image payloads from Express.
+    Runs Meta's SAM and calculates the Aligned Jaccard Index.
     """
-    # Read image bytes
     image_bytes = await image.read()
+    target_bytes = await target_mask.read()
     
-    # Run SAM extraction
-    iou_score = sam_extractor.process_image(image_bytes, game_id)
-    
-    # Evaluate against game threshold
-    passed = iou_score >= 0.75 
+    # Run dynamic crosshair extraction and align masks
+    iou_score = sam_extractor.extract_and_compare(image_bytes, target_bytes)
     
     return EvaluationResult(
         confidence_score=iou_score,
-        passed=passed,
-        message="Shape extraction complete."
+        passed=(iou_score >= 0.75), # Safely rejects the 66% fabric tests
+        message="Shape extraction and evaluation complete."
     )
 
 @app.post("/api/v1/hsv-match", response_model=EvaluationResult)
