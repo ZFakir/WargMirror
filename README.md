@@ -151,6 +151,8 @@ The WARG platform's visual language is built on the **VJB System**, which follow
 4. Push to the branch (`git push origin feat/your-feature`)
 5. Open a Pull Request
 
+> See [METHODOLOGY.md](./METHODOLOGY.md) for our day-to-day development process, [MEETINGS.md](./MEETINGS.md) for our stakeholder meeting notes, and [WARG_GIT_Policy.pdf](./MiscellaneousDocumentation/WARG_GIT_Policy.pdf) for our version control conventions.
+
 ---
 
 ## 📄 License
