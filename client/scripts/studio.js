@@ -65,7 +65,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const heroCard = document.querySelector('.studio-hero');
   if (heroCard) {
     heroCard.addEventListener('click', () => {
-      window.location.href = 'edit_warg.html';
+      window.location.href = 'create_warg.html';
     });
   }
 

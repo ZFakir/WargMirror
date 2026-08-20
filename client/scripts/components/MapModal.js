@@ -21,6 +21,10 @@ export class MapModal {
     this.map = null;
     this.markerLookup = {};
     this._maskSvg = null;
+    this._edgesSvg = null;      // SVG overlay for editor edges
+    this._editorMode = false;
+    this._editorCallbacks = {};
+    this._selectedNodeId = null;
     
     // Core data
     this.NODES = [
@@ -58,6 +62,78 @@ export class MapModal {
     });
   }
 
+  /**
+   * Editor mode initializer — used by edit_warg.js and create_warg.js
+   * @param {Object} options
+   * @param {Array}  options.nodes     - Initial node state array
+   * @param {Function} options.onMapClick   - (lat, lng) => void
+   * @param {Function} options.onNodeSelected - (id) => void
+   * @param {Function} options.onNodeMoved   - (id, lat, lng) => void
+   * @param {Function} options.onMapDeselect - () => void
+   */
+  async initEditor(options = {}) {
+    this._editorMode = true;
+    this._editorCallbacks = options;
+
+    await Promise.all([
+      this.loadCSS('https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css'),
+      this.loadCSS('styles/map-modal.css')
+    ]);
+    await this.loadLeafletJS();
+
+    this.injectHTML();
+
+    this.container = document.querySelector('.map-modal');
+    this.fullscreenBtn = document.getElementById('btn-map-fullscreen');
+
+    this.bindEvents();
+    this.startClock();
+
+    // Wire map-click for placement and deselect, waiting a tick for DOM
+    await new Promise(resolve => {
+      setTimeout(() => {
+        this.initMapAndNodes();
+        if (this.map) {
+          this.map.invalidateSize();
+
+          // Click on empty map space
+          this.map.on('click', (e) => {
+            if (this._editorCallbacks.onMapClick) {
+              this._editorCallbacks.onMapClick(e.latlng.lat, e.latlng.lng);
+            } else if (this._editorCallbacks.onMapDeselect) {
+              this._editorCallbacks.onMapDeselect();
+            }
+          });
+
+          // Re-project edges on map move/zoom
+          this.map.on('move zoom zoomend', () => {
+            this._redrawEdgeSvg();
+          });
+
+          // Mouse move for temp edge
+          this.map.on('mousemove', (e) => {
+            if (this._editorCallbacks.onMapMouseMove) {
+              this._editorCallbacks.onMapMouseMove(e.latlng.lat, e.latlng.lng);
+            }
+          });
+
+          // Mouse up for ending edge on empty space
+          this.map.on('mouseup', (e) => {
+            if (this._editorCallbacks.onMapMouseUp) {
+              this._editorCallbacks.onMapMouseUp();
+            }
+          });
+        }
+        resolve();
+      }, 50);
+    });
+
+    this.isInitialized = true;
+  }
+
+  /**
+   * Standard player mode initializer (game.html)
+   */
   async init() {
     if (this.isInitialized) return;
 
@@ -113,6 +189,47 @@ export class MapModal {
     const target = document.getElementById('game-map');
     if (!target || target.querySelector('.map-modal')) return;
 
+    // Editor mode: simpler HUD without the field log
+    if (this._editorMode) {
+      const html = `
+        <div class="map-modal" aria-labelledby="map-modal-title">
+          <button class="map-modal__close-btn" id="btn-map-fullscreen" aria-label="Toggle Fullscreen" title="Toggle Fullscreen">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+            </svg>
+          </button>
+          <div class="maparea" style="width:100%;height:100%;position:relative;">
+            <div id="map-modal-leaflet" style="width:100%;height:100%;"></div>
+            <div class="scan-overlay"></div>
+            <div class="scan-sweep"></div>
+            <div class="hud">
+              <div class="hud__badge">EDITOR</div>
+              <div class="hud__title">
+                <strong>Campus Node Network</strong>
+                <span>click map to place • drag markers to move</span>
+              </div>
+            </div>
+            <!-- SVG overlay for editor edges -->
+            <svg id="editor-edges-svg" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:500;"
+                 xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <marker id="ed-arrow" markerWidth="10" markerHeight="10" refX="16" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+                  <polyline points="0,1 5,5 0,9" fill="none" stroke="rgba(153,172,255,0.8)" stroke-width="2"/>
+                </marker>
+                <marker id="ed-arrow-mid" markerWidth="10" markerHeight="10" refX="2.5" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+                  <polyline points="0,1 5,5 0,9" fill="none" stroke="rgba(153,172,255,0.8)" stroke-width="2"/>
+                </marker>
+              </defs>
+            </svg>
+          </div>
+        </div>
+      `;
+      target.innerHTML = html;
+      this._edgesSvg = document.getElementById('editor-edges-svg');
+      return;
+    }
+
+    // Player mode HTML (unchanged)
     const html = `
         <div class="map-modal" aria-labelledby="map-modal-title">
           
@@ -220,7 +337,7 @@ export class MapModal {
       minZoom: cfg.minZoom,
       maxZoom: cfg.maxZoom,
       maxBounds: bounds,
-      maxBoundsViscosity: 1.0,        // hard-stop at the edge
+      maxBoundsViscosity: 1.0,
     });
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -232,30 +349,254 @@ export class MapModal {
     // Circular bubble mask
     this._addCircularMask();
 
-    this.NODES.forEach(node => {
-      const marker = L.marker([node.lat, node.lng], { icon: this.iconFor(node) }).addTo(this.map);
-      marker.bindPopup(this.popupHTML(node), { closeButton: true, className: '' });
-      this.markerLookup[node.id] = marker;
+    // In editor mode don't add the static NODES
+    if (!this._editorMode) {
+      this.NODES.forEach(node => {
+        const marker = L.marker([node.lat, node.lng], { icon: this.iconFor(node) }).addTo(this.map);
+        marker.bindPopup(this.popupHTML(node), { closeButton: true, className: '' });
+        this.markerLookup[node.id] = marker;
+      });
+
+      // Handle clicks inside popups
+      this.map.on('popupopen', (e) => {
+        const btn = e.popup._contentNode.querySelector('.map-play-btn');
+        if (btn) {
+          btn.addEventListener('click', () => {
+            const nodeId = btn.getAttribute('data-node-id');
+            const node = this.NODES.find(n => n.id === nodeId);
+            if (node) {
+              document.dispatchEvent(new CustomEvent('warg:play-node', { detail: node }));
+              this.close();
+            }
+          });
+        }
+      });
+
+      this.renderList();
+    }
+
+    this.isMapRendered = true;
+  }
+
+  /* ─── Editor Mode API ─── */
+
+  /**
+   * Add a draggable editor marker for a node.
+   * @param {{ id, lat, lng, title }} node
+   */
+  addEditorNode(node) {
+    if (!this.map) return;
+
+    const icon = L.divIcon({
+      className: '',
+      html: `<div class="node-marker editor-node" id="em-${node.id}">
+               <div class="node-marker__core">+</div>
+               <div class="mock-waypoint__handle"><span></span><span></span><span></span></div>
+             </div>`,
+      iconSize: [34, 34],
+      iconAnchor: [17, 17],
+      popupAnchor: [0, -14]
     });
 
-    // Handle clicks inside popups
-    this.map.on('popupopen', (e) => {
-      const btn = e.popup._contentNode.querySelector('.map-play-btn');
-      if (btn) {
-        btn.addEventListener('click', () => {
-          const nodeId = btn.getAttribute('data-node-id');
-          const node = this.NODES.find(n => n.id === nodeId);
-          if (node) {
-            // Dispatch custom event that game.js can listen for
-            document.dispatchEvent(new CustomEvent('warg:play-node', { detail: node }));
-            this.close(); // optionally close the map
-          }
+    const marker = L.marker([node.lat, node.lng], { icon, draggable: true }).addTo(this.map);
+
+    // Let the handle handle dragging, core handles edge drawing
+    marker.on('add', () => {
+      const el = marker.getElement();
+      if (!el) return;
+      const core = el.querySelector('.node-marker__core');
+      const handle = el.querySelector('.mock-waypoint__handle');
+
+      if (core) {
+        L.DomEvent.on(core, 'mousedown', (e) => {
+          L.DomEvent.stopPropagation(e); // prevent map panning
+          e.preventDefault(); // prevent leaflet drag
+          if (this._editorCallbacks.onNodeCoreDown) this._editorCallbacks.onNodeCoreDown(node.id);
+        });
+        L.DomEvent.on(core, 'mouseup', (e) => {
+          L.DomEvent.stopPropagation(e);
+          if (this._editorCallbacks.onNodeMouseUp) this._editorCallbacks.onNodeMouseUp(node.id);
+        });
+      }
+      if (handle) {
+        L.DomEvent.on(handle, 'mousedown', (e) => {
+          // let leaflet handle the drag via default marker behavior
+          // but we still want to select the node
+          if (this._editorCallbacks.onNodeSelected) this._editorCallbacks.onNodeSelected(node.id);
         });
       }
     });
 
-    this.renderList();
-    this.isMapRendered = true;
+    marker.on('click', (e) => {
+      L.DomEvent.stopPropagation(e);
+      if (this._editorCallbacks.onNodeSelected) this._editorCallbacks.onNodeSelected(node.id);
+    });
+
+    marker.on('dragend', () => {
+      const ll = marker.getLatLng();
+      if (this._editorCallbacks.onNodeMoved) this._editorCallbacks.onNodeMoved(node.id, ll.lat, ll.lng);
+    });
+
+    this.markerLookup[node.id] = marker;
+  }
+
+  /**
+   * Remove an editor marker by node id.
+   */
+  removeEditorNode(id) {
+    const marker = this.markerLookup[id];
+    if (marker && this.map) {
+      this.map.removeLayer(marker);
+      delete this.markerLookup[id];
+    }
+  }
+
+  /**
+   * Visually highlight the selected node marker.
+   */
+  setSelectedNode(id) {
+    this._selectedNodeId = id;
+    Object.entries(this.markerLookup).forEach(([nodeId, marker]) => {
+      const el = marker.getElement();
+      if (!el) return;
+      const core = el.querySelector('.node-marker');
+      if (core) core.classList.toggle('selected', nodeId === id);
+    });
+  }
+
+  /**
+   * Update the tooltip/title of an editor node marker.
+   */
+  updateEditorNodeTitle(id, title) {
+    const marker = this.markerLookup[id];
+    if (marker) marker.setTooltipContent(title);
+  }
+
+  /**
+   * Redraw SVG edge lines between editor nodes.
+   * @param {Array} edges
+   * @param {Array} nodes
+   */
+  updateEditorEdges(edges, nodes) {
+    this._cachedEdges = edges;
+    this._cachedNodes = nodes;
+    this._redrawEdgeSvg();
+  }
+
+  /**
+   * Set a temporary edge for drawing
+   */
+  setTempEdge(fromId, lat, lng) {
+    this._tempEdge = { from: fromId, lat, lng };
+    this._redrawEdgeSvg();
+  }
+
+  clearTempEdge() {
+    this._tempEdge = null;
+    this._redrawEdgeSvg();
+  }
+
+  _redrawEdgeSvg() {
+    const svg = this._edgesSvg;
+    if (!svg || !this.map) return;
+
+    // Remove old lines (keep <defs>)
+    [...svg.querySelectorAll('line,g.ed-edge')].forEach(el => el.remove());
+
+    const edges = this._cachedEdges || [];
+    const nodes = this._cachedNodes || [];
+    const ns = 'http://www.w3.org/2000/svg';
+
+    // Re-project each edge
+    edges.forEach(edge => {
+      const fromNode = nodes.find(n => n.id === edge.from);
+      const toNode   = nodes.find(n => n.id === edge.to);
+      if (!fromNode || !toNode) return;
+
+      const fp = this.map.latLngToContainerPoint([fromNode.lat, fromNode.lng]);
+      const tp = this.map.latLngToContainerPoint([toNode.lat,   toNode.lng]);
+      const mx = (fp.x + tp.x) / 2;
+      const my = (fp.y + tp.y) / 2;
+
+      const g = document.createElementNS(ns, 'g');
+      g.setAttribute('class', 'ed-edge');
+      g.style.pointerEvents = 'auto';
+      g.style.cursor = 'pointer';
+
+      // Invisible thicker line for hitbox
+      const hitbox = document.createElementNS(ns, 'line');
+      hitbox.setAttribute('x1', fp.x); hitbox.setAttribute('y1', fp.y);
+      hitbox.setAttribute('x2', tp.x); hitbox.setAttribute('y2', tp.y);
+      hitbox.setAttribute('stroke', 'transparent');
+      hitbox.setAttribute('stroke-width', '15');
+      
+      // Selected edge styling
+      const isSelected = this._selectedNodeId === edge.id; // Using same prop for edge ID for convenience
+      const color = isSelected ? '#fff' : 'rgba(153,172,255,0.75)';
+      const width = isSelected ? '3' : '2';
+
+      // Half 1 → mid with mid-arrow
+      const l1 = document.createElementNS(ns, 'line');
+      l1.setAttribute('x1', fp.x); l1.setAttribute('y1', fp.y);
+      l1.setAttribute('x2', mx);   l1.setAttribute('y2', my);
+      l1.setAttribute('stroke', color);
+      l1.setAttribute('stroke-width', width);
+      l1.setAttribute('stroke-dasharray', '6 4');
+      l1.setAttribute('marker-end', 'url(#ed-arrow-mid)');
+
+      // Half 2 → end with end-arrow
+      const l2 = document.createElementNS(ns, 'line');
+      l2.setAttribute('x1', mx);   l2.setAttribute('y1', my);
+      l2.setAttribute('x2', tp.x); l2.setAttribute('y2', tp.y);
+      l2.setAttribute('stroke', color);
+      l2.setAttribute('stroke-width', width);
+      l2.setAttribute('stroke-dasharray', '6 4');
+      l2.setAttribute('marker-end', 'url(#ed-arrow)');
+
+      g.appendChild(hitbox);
+      g.appendChild(l1);
+      g.appendChild(l2);
+      
+      // Edge click
+      g.addEventListener('click', (e) => {
+        L.DomEvent.stopPropagation(e);
+        if (this._editorCallbacks.onEdgeSelected) this._editorCallbacks.onEdgeSelected(edge.id);
+      });
+
+      svg.appendChild(g);
+    });
+
+    // Temp drawing edge
+    if (this._tempEdge) {
+      const fromNode = nodes.find(n => n.id === this._tempEdge.from);
+      if (fromNode) {
+        const fp = this.map.latLngToContainerPoint([fromNode.lat, fromNode.lng]);
+        const tp = this.map.latLngToContainerPoint([this._tempEdge.lat, this._tempEdge.lng]);
+        const mx = (fp.x + tp.x) / 2;
+        const my = (fp.y + tp.y) / 2;
+
+        const g = document.createElementNS(ns, 'g');
+        const l1 = document.createElementNS(ns, 'line');
+        l1.setAttribute('x1', fp.x); l1.setAttribute('y1', fp.y);
+        l1.setAttribute('x2', mx);   l1.setAttribute('y2', my);
+        l1.setAttribute('stroke', 'rgba(153,172,255,0.4)');
+        l1.setAttribute('stroke-width', '2');
+        l1.setAttribute('stroke-dasharray', '4 4');
+        l1.setAttribute('marker-end', 'url(#ed-arrow-mid)');
+
+        const l2 = document.createElementNS(ns, 'line');
+        l2.setAttribute('x1', mx);   l2.setAttribute('y1', my);
+        l2.setAttribute('x2', tp.x); l2.setAttribute('y2', tp.y);
+        l2.setAttribute('stroke', 'rgba(153,172,255,0.4)');
+        l2.setAttribute('stroke-width', '2');
+        l2.setAttribute('stroke-dasharray', '4 4');
+        l2.setAttribute('marker-end', 'url(#ed-arrow)');
+
+        g.appendChild(l1);
+        g.appendChild(l2);
+        svg.appendChild(g);
+      }
+    }
   }
 
   /* ─── Circular Bubble Mask ─── */
