@@ -259,49 +259,11 @@
 
     <!-- Online friends -->
     <div class="panel-title" style="font-size:var(--font-size-caption);">
-      <span>Online <span class="text-green">·</span> 3</span>
+      <span>Online <span class="text-green">·</span> <span id="online-friends-count">0</span></span>
     </div>
 
-    <ul class="friends-list" aria-label="Online friends">
-      <li>
-        <div class="friend-item" role="button" tabindex="0" aria-label="Nadia is playing Cipher at the Great Hall">
-          <div class="friend-item__avatar">
-            <div class="friend-item__avatar-img" aria-hidden="true">NA</div>
-            <span class="friend-item__status-dot status--online" aria-label="Online"></span>
-          </div>
-          <div class="friend-item__info">
-            <div class="friend-item__name">Nadia A.</div>
-            <div class="friend-item__activity">Playing: Cipher at Great Hall</div>
-          </div>
-          <button class="friend-item__action" aria-label="Invite Nadia to a game">Invite</button>
-        </div>
-      </li>
-      <li>
-        <div class="friend-item" role="button" tabindex="0" aria-label="Jordan is playing AR Photo-Bombs">
-          <div class="friend-item__avatar">
-            <div class="friend-item__avatar-img" aria-hidden="true">JS</div>
-            <span class="friend-item__status-dot status--online" aria-label="Online"></span>
-          </div>
-          <div class="friend-item__info">
-            <div class="friend-item__name">Jordan S.</div>
-            <div class="friend-item__activity">Playing: AR Photo-Bombs</div>
-          </div>
-          <button class="friend-item__action" aria-label="Invite Jordan to a game">Invite</button>
-        </div>
-      </li>
-      <li>
-        <div class="friend-item" role="button" tabindex="0" aria-label="Thabo is browsing games">
-          <div class="friend-item__avatar">
-            <div class="friend-item__avatar-img" aria-hidden="true">TM</div>
-            <span class="friend-item__status-dot status--online" aria-label="Online"></span>
-          </div>
-          <div class="friend-item__info">
-            <div class="friend-item__name">Thabo M.</div>
-            <div class="friend-item__activity">Browsing games</div>
-          </div>
-          <button class="friend-item__action" aria-label="Invite Thabo to a game">Invite</button>
-        </div>
-      </li>
+    <ul class="friends-list" id="online-friends-list" aria-label="Online friends">
+      <!-- Dynamically populated by home.js -->
     </ul>
 
     <!-- Away/Offline friends -->
@@ -309,46 +271,8 @@
       <span>Away / Offline</span>
     </div>
 
-    <ul class="friends-list" aria-label="Away and offline friends">
-      <li>
-        <div class="friend-item" role="button" tabindex="0" aria-label="Priya was last seen 2 hours ago">
-          <div class="friend-item__avatar">
-            <div class="friend-item__avatar-img" aria-hidden="true">PR</div>
-            <span class="friend-item__status-dot status--away" aria-label="Away"></span>
-          </div>
-          <div class="friend-item__info">
-            <div class="friend-item__name">Priya R.</div>
-            <div class="friend-item__activity">Last seen 2h ago</div>
-          </div>
-          <button class="friend-item__action" aria-label="Invite Priya to a game">Invite</button>
-        </div>
-      </li>
-      <li>
-        <div class="friend-item" role="button" tabindex="0" aria-label="Marcus was last seen yesterday">
-          <div class="friend-item__avatar">
-            <div class="friend-item__avatar-img" aria-hidden="true">MK</div>
-            <span class="friend-item__status-dot status--offline" aria-label="Offline"></span>
-          </div>
-          <div class="friend-item__info">
-            <div class="friend-item__name">Marcus K.</div>
-            <div class="friend-item__activity">Last seen yesterday</div>
-          </div>
-          <button class="friend-item__action" aria-label="Invite Marcus to a game">Invite</button>
-        </div>
-      </li>
-      <li>
-        <div class="friend-item" role="button" tabindex="0" aria-label="Leila was last seen 3 days ago">
-          <div class="friend-item__avatar">
-            <div class="friend-item__avatar-img" aria-hidden="true">LO</div>
-            <span class="friend-item__status-dot status--offline" aria-label="Offline"></span>
-          </div>
-          <div class="friend-item__info">
-            <div class="friend-item__name">Leila O.</div>
-            <div class="friend-item__activity">Last seen 3 days ago</div>
-          </div>
-          <button class="friend-item__action" aria-label="Invite Leila to a game">Invite</button>
-        </div>
-      </li>
+    <ul class="friends-list" id="offline-friends-list" aria-label="Away and offline friends">
+      <!-- Dynamically populated by home.js -->
     </ul>
 
     <div class="panel-divider" role="separator"></div>
@@ -370,8 +294,8 @@
 
 </div><!-- /.app-shell -->
 
-<script src="scripts/data/games.js"></script>
-<script src="scripts/components/GameCard.js"></script>
+<script src="scripts/api.js"></script>
+<script src="scripts/components/GameCard.js?v=2"></script>
 <script src="scripts/home.js"></script>
 </body>
 </html>

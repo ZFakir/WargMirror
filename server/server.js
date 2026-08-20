@@ -39,7 +39,11 @@ const sessionStoreOptions = new MySQLStore({
 
 // Middleware
 app.use(cors({
-  origin: process.env.CLIENT_URL || '*',
+  origin: [
+    process.env.CLIENT_URL || '*',
+    'http://localhost:5500',
+    'http://127.0.0.1:5500'
+  ],
   credentials: true
 }));
 app.use(express.json());
