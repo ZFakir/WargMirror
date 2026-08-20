@@ -37,6 +37,15 @@
         </svg>
         <span class="nav-item__label">Discover</span>
       </a>
+      
+      <a href="catalogue.html" id="nav-library" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+        </svg>
+        <span class="nav-item__label">My Library</span>
+        <span class="nav-item__badge" id="nav-library-badge" style="display:none">0</span>
+      </a>
+
       <a href="studio.html" id="nav-creator-studio" class="nav-item">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M12 20h9"/>
@@ -68,7 +77,17 @@
       <span class="topbar__wordmark">WARG</span>
     </div>
     <div class="topbar__search" role="search">
-      <input type="search" placeholder="Search games, creators…" />
+      <svg class="topbar__search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <input
+        type="search"
+        id="search-input"
+        placeholder="Search games, creators, locations…"
+        aria-label="Search games"
+        autocomplete="off"
+        spellcheck="false"
+      />
     </div>
     <div class="topbar__actions">
       <button class="avatar-btn" id="btn-profile" title="My Profile">
@@ -87,7 +106,7 @@
           <div class="profile-banner"></div>
           <div class="profile-info">
             <div class="profile-picture-container">
-              <img src="https://api.dicebear.com/9.x/identicon/svg?seed=WARGPlayer&backgroundColor=1a1816" alt="Player avatar" class="profile-picture" />
+              <img id="profile-avatar" src="https://api.dicebear.com/9.x/identicon/svg?seed=WARGPlayer&backgroundColor=1a1816" alt="Player avatar" class="profile-picture" />
               <button class="edit-icon profile-picture-edit" aria-label="Edit profile picture">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M12 20h9"></path>
@@ -97,7 +116,7 @@
             </div>
             <div class="profile-details">
               <div class="profile-name-row">
-                <h1 class="profile-name">Alex Johnson</h1>
+                <h1 class="profile-name" id="profile-name">Loading…</h1>
                 <button class="edit-icon" aria-label="Edit name">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M12 20h9"></path>
@@ -105,32 +124,32 @@
                   </svg>
                 </button>
               </div>
-              <div class="profile-title">
-                Level 12 Explorer
+              <div class="profile-title" id="profile-title">
+                Player
               </div>
             </div>
           </div>
         </div>
 
         <!-- Stats Section -->
-        <div class="profile-stats-grid">
+        <div class="profile-stats-grid" id="profile-stats-grid">
           <div class="stat-card">
             <div class="stat-header">
               <h2 class="stat-title">Total Points</h2>
             </div>
-            <p class="stat-value">1,450</p>
+            <p class="stat-value" id="stat-total-points">—</p>
           </div>
           <div class="stat-card">
             <div class="stat-header">
               <h2 class="stat-title">Games Completed</h2>
             </div>
-            <p class="stat-value">24</p>
+            <p class="stat-value" id="stat-games-completed">—</p>
           </div>
           <div class="stat-card">
             <div class="stat-header">
               <h2 class="stat-title">Distance Walked</h2>
             </div>
-            <p class="stat-value">42 km</p>
+            <p class="stat-value" id="stat-distance-walked">—</p>
           </div>
         </div>
 
@@ -139,35 +158,18 @@
           <div class="section-header">
             <h2 class="section-title">Badges Earned</h2>
           </div>
-          <div class="badges-grid">
-            <div class="badge-item">
-              <div class="badge-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-              </div>
-              <p class="badge-name">First Steps</p>
-              <p class="badge-date">Jan 12, 2026</p>
-            </div>
-            <div class="badge-item">
-              <div class="badge-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-              </div>
-              <p class="badge-name">Night Owl</p>
-              <p class="badge-date">Feb 05, 2026</p>
-            </div>
-            <div class="badge-item">
-              <div class="badge-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M16 12l-4-4-4 4"></path><path d="M12 16V8"></path></svg>
-              </div>
-              <p class="badge-name">Speedrunner</p>
-              <p class="badge-date">Mar 22, 2026</p>
-            </div>
-            <div class="badge-item">
-              <div class="badge-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-              </div>
-              <p class="badge-name">Social Butterfly</p>
-              <p class="badge-date">Apr 10, 2026</p>
-            </div>
+          <div class="badges-grid" id="profile-badges-grid">
+            <!-- Badges populated dynamically by user-profile.js -->
+          </div>
+        </div>
+
+        <!-- My Library Section -->
+        <div class="profile-section">
+          <div class="section-header">
+            <h2 class="section-title">My Library</h2>
+          </div>
+          <div class="card-grid" id="profile-library-grid">
+            <!-- Games populated dynamically by user-profile.js -->
           </div>
         </div>
 
@@ -176,6 +178,9 @@
   </main>
 
 </div>
+<script src="scripts/api.js"></script>
+<script src="scripts/components/GameCard.js?v=2"></script>
 <script src="scripts/home.js"></script>
+<script src="scripts/user-profile.js"></script>
 </body>
 </html>

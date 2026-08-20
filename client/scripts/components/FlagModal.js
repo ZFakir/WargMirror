@@ -6,8 +6,24 @@
 
 export class FlagModal {
   constructor() {
+    this.argId = null;
     this.initDOM();
     this.bindEvents();
+  }
+
+  open(argId, title = 'Report / Flag') {
+    this.argId = argId;
+    this.overlay.querySelector('#flag-modal-title').innerHTML = `
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/>
+        <line x1="4" y1="22" x2="4" y2="15"/>
+      </svg>
+      ${title}
+    `;
+    this.overlay.setAttribute('aria-hidden', 'false');
+    this.subjectInput.value = '';
+    this.descriptionInput.value = '';
+    this.subjectInput.focus();
   }
 
   initDOM() {
@@ -44,8 +60,15 @@ export class FlagModal {
         </div>
         <div class="flag-modal__body">
           <div class="form-group">
-            <label for="flag-subject">Subject</label>
-            <input type="text" id="flag-subject" placeholder="What is the issue?" autocomplete="off" />
+            <label for="flag-reason">Reason</label>
+            <select id="flag-reason">
+              <option value="inappropriate_content">Inappropriate Content</option>
+              <option value="inaccurate_location">Inaccurate Location</option>
+              <option value="safety_concern">Safety Concern</option>
+              <option value="spam">Spam</option>
+              <option value="copyright">Copyright Violation</option>
+              <option value="other">Other</option>
+            </select>
           </div>
           <div class="form-group">
             <label for="flag-description">Description</label>
@@ -61,7 +84,7 @@ export class FlagModal {
 
     document.body.appendChild(this.overlay);
 
-    this.subjectInput = this.overlay.querySelector('#flag-subject');
+    this.reasonInput = this.overlay.querySelector('#flag-reason');
     this.descriptionInput = this.overlay.querySelector('#flag-description');
     this.closeBtn = this.overlay.querySelector('#btn-flag-modal-close');
     this.cancelBtn = this.overlay.querySelector('#btn-flag-cancel');
@@ -86,29 +109,43 @@ export class FlagModal {
       }
     });
 
-    // Mock submit behavior
-    this.submitBtn.addEventListener('click', () => {
-      const subject = this.subjectInput.value.trim();
+    // Submit behavior
+    this.submitBtn.addEventListener('click', async () => {
+      const reason = this.reasonInput.value;
       const description = this.descriptionInput.value.trim();
 
-      if (!subject || !description) {
-        alert("Please fill out both the subject and description.");
+      if (!reason) {
+        alert("Please select a reason.");
         return;
       }
 
-      // Simulate a successful submission
       const origText = this.submitBtn.textContent;
       this.submitBtn.textContent = 'Submitting...';
       this.submitBtn.disabled = true;
 
-      setTimeout(() => {
+      try {
+        if (typeof api !== 'undefined' && api.flagArg) {
+          await api.flagArg(this.argId, reason, description);
+        } else {
+          console.warn('API not found, mocking submission');
+          await new Promise(r => setTimeout(r, 800));
+        }
+        
+        this.submitBtn.textContent = 'Reported!';
+        this.submitBtn.style.background = 'var(--color-success)';
+        
+        setTimeout(() => {
+          this.close();
+          this.submitBtn.textContent = origText;
+          this.submitBtn.style.background = '';
+          this.submitBtn.disabled = false;
+        }, 1500);
+      } catch (err) {
+        console.error('Failed to submit flag', err);
+        alert('Failed to submit report. Please try again.');
         this.submitBtn.textContent = origText;
         this.submitBtn.disabled = false;
-        this.close();
-        
-        // Optional: show a toast or alert that it was successful
-        alert("Report submitted successfully! Thanks for keeping the platform safe.");
-      }, 800);
+      }
     });
   }
 
@@ -116,25 +153,13 @@ export class FlagModal {
     return this.overlay.getAttribute('aria-hidden') === 'false';
   }
 
-  open(context = '') {
-    if (context) {
-      this.subjectInput.value = context;
-    } else {
-      this.subjectInput.value = '';
-    }
-    this.descriptionInput.value = '';
-    
-    this.overlay.setAttribute('aria-hidden', 'false');
-    document.body.style.overflow = 'hidden'; // Prevent background scrolling
-    
-    // Auto-focus subject input slightly after modal appears
-    setTimeout(() => {
-      this.subjectInput.focus();
-    }, 100);
-  }
-
   close() {
     this.overlay.setAttribute('aria-hidden', 'true');
     document.body.style.overflow = '';
   }
+}
+
+// Expose globally for non-module scripts like GameCard.js
+if (typeof window !== 'undefined') {
+  window.FlagModal = FlagModal;
 }
