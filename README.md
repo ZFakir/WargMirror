@@ -146,6 +146,8 @@ The WARG platform's visual language is built on the **VJB System**, which follow
 ## 🤝 Contributions
 This project is the work of Luc & Friends. Special thanks to the team - Zaeem, Yami, and Chris.
 
+> See [METHODOLOGY.md](./METHODOLOGY.md) for our day-to-day development process, [MEETINGS.md](./MEETINGS.md) for our stakeholder meeting notes, and [WARG_GIT_Policy.pdf](./MiscellaneousDocumentation/WARG_GIT_Policy.pdf) for our version control conventions.
+
 ---
 
 ## 📄 License
