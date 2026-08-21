@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "seed": "node seed.js"
+    "seed": "node seed.js",
+    "lint": "eslint ."
   },
   "dependencies": {
     "cors": "^2.8.5",
@@ -19,5 +20,10 @@
     "passport-google-oauth20": "^2.0.0",
     "sequelize": "^6.37.3",
     "socket.io": "^4.7.5"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.8.1",
+    "globals": "^17.11.0"
   }
 }
