@@ -334,11 +334,12 @@ var GameCard = (function () {
 
   function _onCardOpen(article) {
     var title = article.querySelector('.gc-title');
-    console.log('[WARG] Open game:', title ? title.textContent.trim() : article.dataset.gameId);
+    var gameId = article.dataset.gameId;
+    console.log('[WARG] Open game:', title ? title.textContent.trim() : gameId);
     if (window.location.pathname.includes('studio.html')) {
-      window.location.href = 'edit_warg.html';
+      window.location.href = 'edit_warg.html?id=' + gameId;
     } else {
-      window.location.href = 'game.html';
+      window.location.href = 'game.html?id=' + gameId;
     }
   }
 

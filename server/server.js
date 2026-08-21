@@ -13,6 +13,7 @@ const argRoutes = require('./src/routes/argRoutes');
 const userRoutes = require('./src/routes/userRoutes');
 const sessionRoutes = require('./src/routes/sessionRoutes');
 const authRoutes = require('./src/routes/authRoutes');
+const commentRoutes = require('./src/routes/commentRoutes');
 const app = express();
 const server = http.createServer(app);
 
@@ -75,6 +76,7 @@ app.use('/auth', authRoutes);
 app.use('/api/args', argRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/sessions', sessionRoutes);
+app.use('/api/comments', commentRoutes);
 
 // Socket.io connection handling
 io.on('connection', (socket) => {
@@ -102,7 +104,7 @@ async function startServer() {
   } catch (error) {
     console.error('❌ Unable to connect to the database:', error.message);
     console.log('Starting server anyway (without DB connection)...');
-    
+
     server.listen(PORT, () => {
       console.log(`🚀 Server is running on port ${PORT} (No Database)`);
     });

@@ -10,7 +10,9 @@ router.get('/google', passport.authenticate('google', {
 // Google redirects back here after the user grants/denies permission
 router.get('/google/callback', (req, res, next) => {
   passport.authenticate('google', (err, user, info) => {
-    const clientUrl = process.env.CLIENT_URL || '';
+    // Use CLIENT_PAGES_URL for redirects (includes /client path for local dev).
+    // Falls back to CLIENT_URL if not set.
+    const clientUrl = process.env.CLIENT_PAGES_URL || process.env.CLIENT_URL || '';
 
     // Database or other server error
     if (err) {
@@ -55,7 +57,7 @@ router.get('/logout', (req, res) => {
       return res.status(500).json({ error: 'Failed to logout' });
     }
     req.session.destroy(() => {
-      res.redirect((process.env.CLIENT_URL || '') + '/login.html');
+      res.redirect((process.env.CLIENT_PAGES_URL || process.env.CLIENT_URL || '') + '/login.html');
     });
   });
 });

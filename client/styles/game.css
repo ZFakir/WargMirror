@@ -32,13 +32,11 @@
   justify-content: center;
   gap: var(--spacing-sm);
   color: var(--color-text-muted);
-  background: repeating-linear-gradient(
-    45deg,
-    var(--color-surface),
-    var(--color-surface) 10px,
-    var(--color-bg) 10px,
-    var(--color-bg) 20px
-  );
+  background: repeating-linear-gradient(45deg,
+      var(--color-surface),
+      var(--color-surface) 10px,
+      var(--color-bg) 10px,
+      var(--color-bg) 20px);
 }
 
 .game-map__placeholder p {
@@ -103,7 +101,8 @@
   position: absolute;
   top: 50%;
   height: 4px;
-  background-color: var(--color-secondary); /* P1 Phosphor / Green */
+  background-color: var(--color-secondary);
+  /* P1 Phosphor / Green */
   transform: translateY(-50%);
   z-index: 1;
   transform-origin: left center;
@@ -119,8 +118,10 @@
 
 /* State: Leading/Current Incomplete Node */
 .timeline-node.is-current {
-  border-color: var(--color-brand); /* Computational Beige */
-  background-color: transparent; /* Hollow */
+  border-color: var(--color-brand);
+  /* Computational Beige */
+  background-color: transparent;
+  /* Hollow */
   box-shadow: 0 0 10px rgba(192, 184, 155, 0.4);
 }
 
@@ -219,7 +220,8 @@
 .current-node-brief__play {
   width: 75%;
   align-self: center;
-  padding: 1.25rem 2rem; /* Thicker padding */
+  padding: 1.25rem 2rem;
+  /* Thicker padding */
   background-color: var(--color-accent);
   color: var(--color-text-on-accent);
   border: none;
@@ -450,6 +452,7 @@
 .game-discussion__list::-webkit-scrollbar {
   width: 6px;
 }
+
 .game-discussion__list::-webkit-scrollbar-thumb {
   background: var(--color-border);
   border-radius: var(--radius-full);
@@ -526,6 +529,7 @@
   height: 40px;
   font-size: var(--text-sm);
 }
+
 .compose-input-wrapper .input-field:focus {
   outline: none;
   border-color: var(--color-accent);
