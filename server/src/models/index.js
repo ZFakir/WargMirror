@@ -44,6 +44,7 @@ Arg.hasMany(Waypoint, { foreignKey: 'arg_id' });
 
 // Waypoint Edges
 WaypointEdge.belongsTo(Arg, { foreignKey: 'arg_id' });
+Arg.hasMany(WaypointEdge, { foreignKey: 'arg_id' });
 WaypointEdge.belongsTo(Waypoint, { as: 'FromWaypoint', foreignKey: 'from_waypoint_id' });
 WaypointEdge.belongsTo(Waypoint, { as: 'ToWaypoint', foreignKey: 'to_waypoint_id' });
 

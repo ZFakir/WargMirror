@@ -17,9 +17,44 @@ document.addEventListener('DOMContentLoaded', () => {
       flagModal.open('Issue with this WARG');
     });
   }
-  
-  // Initialize the embedded Map
-  mapModal.init();
+  // Assume ARG 1 for now, or get it from URL parameters if available
+  const urlParams = new URLSearchParams(window.location.search);
+  const argId = urlParams.get('id') || 1; 
+
+  async function loadArgAndInitMap() {
+    try {
+      const res = await fetch(`http://localhost:3000/api/args/${argId}`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to load ARG');
+      const argData = await res.json();
+      
+      const nodes = [];
+      if (argData.Waypoints) {
+        argData.Waypoints.forEach((wp, index) => {
+          nodes.push({
+            id: wp.waypoint_id.toString(),
+            name: wp.title || 'Waypoint',
+            lat: wp.location.coordinates[1],
+            lng: wp.location.coordinates[0],
+            desc: wp.description || '',
+            type: 'solo',
+            status: index === 0 ? 'current' : 'locked', // First waypoint current, rest locked
+            progress: 0,
+            progLabel: 'Not started'
+          });
+        });
+      }
+      
+      // Update page title
+      document.title = argData.title ? `WARG – ${argData.title}` : 'WARG – Discover Games';
+
+      mapModal.init({ nodes });
+    } catch (err) {
+      console.error('Failed to load ARG data for map:', err);
+      mapModal.init(); // Fallback to hardcoded nodes
+    }
+  }
+
+  loadArgAndInitMap();
 
   // Listen for the 'Play' event from the Map Modal
   document.addEventListener('warg:play-node', (e) => {
@@ -39,9 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnPostComment = document.getElementById('btn-post-comment');
   const checkIsSpoiler = document.getElementById('comment-is-spoiler');
   
-  // Assume ARG 1 for now, or get it from URL parameters if available
-  const urlParams = new URLSearchParams(window.location.search);
-  const argId = urlParams.get('id') || 1; 
+
 
   async function loadComments() {
     try {

@@ -119,6 +119,7 @@ export class MapModal {
 
           // Mouse up for ending edge on empty space
           this.map.on('mouseup', (e) => {
+            this.enableAllDragging();
             if (this._editorCallbacks.onMapMouseUp) {
               this._editorCallbacks.onMapMouseUp();
             }
@@ -134,8 +135,15 @@ export class MapModal {
   /**
    * Standard player mode initializer (game.html)
    */
-  async init() {
+  async init(options = {}) {
     if (this.isInitialized) return;
+    
+    if (options.nodes) {
+      this.NODES = options.nodes;
+      if (options.nodes.length > 0) {
+        MapModal.MAP_CONFIG.center = [options.nodes[0].lat, options.nodes[0].lng];
+      }
+    }
 
     // 1. & 2. Inject CSS and wait for them to load
     await Promise.all([
@@ -218,6 +226,12 @@ export class MapModal {
                 </marker>
                 <marker id="ed-arrow-mid" markerWidth="10" markerHeight="10" refX="2.5" refY="5" orient="auto" markerUnits="userSpaceOnUse">
                   <polyline points="0,1 5,5 0,9" fill="none" stroke="rgba(153,172,255,0.8)" stroke-width="2"/>
+                </marker>
+                <marker id="ed-arrow-selected" markerWidth="10" markerHeight="10" refX="16" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+                  <polyline points="0,1 5,5 0,9" fill="none" stroke="#fff" stroke-width="3"/>
+                </marker>
+                <marker id="ed-arrow-mid-selected" markerWidth="10" markerHeight="10" refX="2.5" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+                  <polyline points="0,1 5,5 0,9" fill="none" stroke="#fff" stroke-width="3"/>
                 </marker>
               </defs>
             </svg>
@@ -378,6 +392,14 @@ export class MapModal {
     this.isMapRendered = true;
   }
 
+  disableAllDragging() {
+    Object.values(this.markerLookup).forEach(m => m.dragging && m.dragging.disable());
+  }
+
+  enableAllDragging() {
+    Object.values(this.markerLookup).forEach(m => m.dragging && m.dragging.enable());
+  }
+
   /* ─── Editor Mode API ─── */
 
   /**
@@ -398,19 +420,22 @@ export class MapModal {
       popupAnchor: [0, -14]
     });
 
-    const marker = L.marker([node.lat, node.lng], { icon, draggable: true }).addTo(this.map);
+    // Markers are NOT draggable by default — only the handle enables dragging
+    const marker = L.marker([node.lat, node.lng], { icon, draggable: false }).addTo(this.map);
 
-    // Let the handle handle dragging, core handles edge drawing
-    marker.on('add', () => {
+    // marker.on('add') fires synchronously during .addTo() — before we can attach it.
+    // Use a microtask so the DOM element is present when we query it.
+    setTimeout(() => {
       const el = marker.getElement();
       if (!el) return;
       const core = el.querySelector('.node-marker__core');
       const handle = el.querySelector('.mock-waypoint__handle');
 
       if (core) {
+        // Core: initiates edge-drawing; marker dragging is off so map sees mousemove
         L.DomEvent.on(core, 'mousedown', (e) => {
-          L.DomEvent.stopPropagation(e); // prevent map panning
-          e.preventDefault(); // prevent leaflet drag
+          L.DomEvent.stopPropagation(e);
+          e.preventDefault();
           if (this._editorCallbacks.onNodeCoreDown) this._editorCallbacks.onNodeCoreDown(node.id);
         });
         L.DomEvent.on(core, 'mouseup', (e) => {
@@ -418,23 +443,31 @@ export class MapModal {
           if (this._editorCallbacks.onNodeMouseUp) this._editorCallbacks.onNodeMouseUp(node.id);
         });
       }
+
       if (handle) {
+        // Handle: enable Leaflet drag for this marker then hand the event to Leaflet
         L.DomEvent.on(handle, 'mousedown', (e) => {
-          // let leaflet handle the drag via default marker behavior
-          // but we still want to select the node
+          marker.dragging.enable();
           if (this._editorCallbacks.onNodeSelected) this._editorCallbacks.onNodeSelected(node.id);
+          marker.dragging._draggable._onDown(e);
         });
       }
+    }, 0);
+
+    marker.on('drag', () => {
+      const ll = marker.getLatLng();
+      if (this._editorCallbacks.onNodeMoving) this._editorCallbacks.onNodeMoving(node.id, ll.lat, ll.lng);
+    });
+
+    marker.on('dragend', () => {
+      marker.dragging.disable();   // back to non-draggable after each move
+      const ll = marker.getLatLng();
+      if (this._editorCallbacks.onNodeMoved) this._editorCallbacks.onNodeMoved(node.id, ll.lat, ll.lng);
     });
 
     marker.on('click', (e) => {
       L.DomEvent.stopPropagation(e);
       if (this._editorCallbacks.onNodeSelected) this._editorCallbacks.onNodeSelected(node.id);
-    });
-
-    marker.on('dragend', () => {
-      const ll = marker.getLatLng();
-      if (this._editorCallbacks.onNodeMoved) this._editorCallbacks.onNodeMoved(node.id, ll.lat, ll.lng);
     });
 
     this.markerLookup[node.id] = marker;
@@ -462,6 +495,42 @@ export class MapModal {
       const core = el.querySelector('.node-marker');
       if (core) core.classList.toggle('selected', nodeId === id);
     });
+  }
+
+  /**
+   * Visually highlight the selected edge.
+   */
+  setSelectedEdge(id) {
+    this._selectedEdgeId = id;
+    this._redrawEdgeSvg();
+  }
+
+  /**
+   * Show a ghost node for placement mode.
+   */
+  updateGhostNode(lat, lng) {
+    if (!this.map) return;
+    if (!this.ghostMarker) {
+      const icon = L.divIcon({
+        className: '',
+        html: `<div class="node-marker editor-node ghost">
+                 <div class="node-marker__core">+</div>
+                 <div class="mock-waypoint__handle"><span></span><span></span><span></span></div>
+               </div>`,
+        iconSize: [34, 34],
+        iconAnchor: [17, 17]
+      });
+      this.ghostMarker = L.marker([lat, lng], { icon, interactive: false }).addTo(this.map);
+    } else {
+      this.ghostMarker.setLatLng([lat, lng]);
+    }
+  }
+
+  hideGhostNode() {
+    if (this.ghostMarker && this.map) {
+      this.map.removeLayer(this.ghostMarker);
+      this.ghostMarker = null;
+    }
   }
 
   /**
@@ -531,9 +600,11 @@ export class MapModal {
       hitbox.setAttribute('stroke-width', '15');
       
       // Selected edge styling
-      const isSelected = this._selectedNodeId === edge.id; // Using same prop for edge ID for convenience
+      const isSelected = this._selectedEdgeId === edge.id;
       const color = isSelected ? '#fff' : 'rgba(153,172,255,0.75)';
       const width = isSelected ? '3' : '2';
+      const arrowMid = isSelected ? 'url(#ed-arrow-mid-selected)' : 'url(#ed-arrow-mid)';
+      const arrowEnd = isSelected ? 'url(#ed-arrow-selected)' : 'url(#ed-arrow)';
 
       // Half 1 → mid with mid-arrow
       const l1 = document.createElementNS(ns, 'line');
@@ -542,7 +613,7 @@ export class MapModal {
       l1.setAttribute('stroke', color);
       l1.setAttribute('stroke-width', width);
       l1.setAttribute('stroke-dasharray', '6 4');
-      l1.setAttribute('marker-end', 'url(#ed-arrow-mid)');
+      l1.setAttribute('marker-end', arrowMid);
 
       // Half 2 → end with end-arrow
       const l2 = document.createElementNS(ns, 'line');
@@ -551,7 +622,7 @@ export class MapModal {
       l2.setAttribute('stroke', color);
       l2.setAttribute('stroke-width', width);
       l2.setAttribute('stroke-dasharray', '6 4');
-      l2.setAttribute('marker-end', 'url(#ed-arrow)');
+      l2.setAttribute('marker-end', arrowEnd);
 
       g.appendChild(hitbox);
       g.appendChild(l1);

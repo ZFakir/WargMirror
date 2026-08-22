@@ -8,19 +8,87 @@ import { MapModal } from './components/MapModal.js';
 document.addEventListener('DOMContentLoaded', async () => {
   // ── Create vs Edit mode ──
   const isCreateMode = window.location.pathname.includes('create_warg');
+  const urlParams = new URLSearchParams(window.location.search);
+  let currentArgId = urlParams.get('id');
 
-  // ── State — nodes now use real lat/lng ──
-  let nodes = isCreateMode ? [] : [
-    { id: 'wp1', lat: -26.19233, lng: 28.02987, title: 'The Great Hall', description: 'Find the plaque near the entrance.', gamemode: 'GPS Location', type: 'gps' },
-    { id: 'wp2', lat: -26.19075, lng: 28.03215, title: 'Library Archway', description: 'Scan the historic archway to reveal the hidden message.', gamemode: 'AR Object Scan', type: 'ar' },
-    { id: 'wp3', lat: -26.19320, lng: 28.02790, title: 'Coffee Shop Secret', description: 'Scan the special barcode on the cup.', gamemode: 'Barcode Game', type: 'barcode' }
-  ];
-  let edges = isCreateMode ? [] : [
-    { id: 'e1', from: 'wp1', to: 'wp2', triggers: [] },
-    { id: 'e2', from: 'wp2', to: 'wp3', triggers: [] }
-  ];
+  let nodes = [];
+  let edges = [];
+  let nextId = 1;
+  let nextEdgeId = 1;
 
-  let nextId = isCreateMode ? 1 : 4;
+  // UI Elements for Title/Desc
+  const titleEl = document.getElementById('arg-title');
+  const descEl = document.getElementById('arg-desc');
+
+  const mapBackendGameTypeToFrontend = (gameType) => {
+    const map = {
+      'gps_proximity': { type: 'gps', label: 'GPS Location' },
+      'ar_object_scan': { type: 'ar', label: 'AR Object Scan' },
+      'qr_barcode': { type: 'barcode', label: 'Barcode Game' }
+    };
+    return map[gameType] || { type: 'gps', label: 'GPS Location' };
+  };
+
+  if (!isCreateMode && currentArgId) {
+    try {
+      const res = await fetch(`http://localhost:3000/api/args/${currentArgId}`, { credentials: 'include' });
+      if (res.ok) {
+        const argData = await res.json();
+        if (titleEl) titleEl.textContent = argData.title;
+        if (descEl) descEl.textContent = argData.description || 'Add a description for your WARG…';
+        
+        // Map Waypoints to nodes
+        const idMap = {}; // mapping waypoint_id to frontend node id
+        if (argData.Waypoints) {
+          argData.Waypoints.forEach(wp => {
+            const nodeId = `wp${nextId++}`;
+            idMap[wp.waypoint_id] = nodeId;
+            
+            let mg = wp.Minigames && wp.Minigames.length > 0 ? wp.Minigames[0] : { game_type: 'gps_proximity' };
+            const mappedType = mapBackendGameTypeToFrontend(mg.game_type);
+
+            nodes.push({
+              id: nodeId,
+              waypoint_id: wp.waypoint_id,
+              lat: wp.location.coordinates[1],
+              lng: wp.location.coordinates[0],
+              title: wp.title,
+              description: wp.description,
+              type: mappedType.type,
+              gamemode: mappedType.label
+            });
+          });
+        }
+
+        if (argData.WaypointEdges) {
+          argData.WaypointEdges.forEach(edge => {
+            edges.push({
+              id: `e${nextEdgeId++}`,
+              from: idMap[edge.from_waypoint_id],
+              to: idMap[edge.to_waypoint_id],
+              triggers: []
+            });
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch ARG data:', err);
+    }
+  } else if (!isCreateMode) {
+    // Demo data for visual testing if no ID provided in edit mode
+    nodes = [
+      { id: 'wp1', lat: -26.19233, lng: 28.02987, title: 'The Great Hall', description: 'Find the plaque near the entrance.', gamemode: 'GPS Location', type: 'gps' },
+      { id: 'wp2', lat: -26.19075, lng: 28.03215, title: 'Library Archway', description: 'Scan the historic archway to reveal the hidden message.', gamemode: 'AR Object Scan', type: 'ar' },
+      { id: 'wp3', lat: -26.19320, lng: 28.02790, title: 'Coffee Shop Secret', description: 'Scan the special barcode on the cup.', gamemode: 'Barcode Game', type: 'barcode' }
+    ];
+    edges = [
+      { id: 'e1', from: 'wp1', to: 'wp2', triggers: [] },
+      { id: 'e2', from: 'wp2', to: 'wp3', triggers: [] }
+    ];
+    nextId = 4;
+    nextEdgeId = 3;
+  }
+
   let selectedId = null;
   let selectedType = null; // 'node' or 'edge'
   let isPlacementMode = false;
@@ -72,7 +140,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         lat, lng,
         title: 'New Waypoint',
         description: '',
-        gamemode: 'Unknown',
+        gamemode: 'GPS Location',
         type: 'gps'
       };
       nodes.push(newNode);
@@ -87,6 +155,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     },
     onEdgeSelected(id) {
       selectItem('edge', id);
+    },
+    onNodeMoving(id, lat, lng) {
+      const node = nodes.find(n => n.id === id);
+      if (node) { node.lat = lat; node.lng = lng; }
+      mapModal.updateEditorEdges(edges, nodes);
     },
     onNodeMoved(id, lat, lng) {
       const node = nodes.find(n => n.id === id);
@@ -103,6 +176,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     onMapMouseMove(lat, lng) {
       if (dragState && dragState.type === 'edge_draw') {
         mapModal.setTempEdge(dragState.from, lat, lng);
+      } else if (isPlacementMode) {
+        mapModal.updateGhostNode(lat, lng);
       }
     },
     onNodeMouseUp(id) {
@@ -113,7 +188,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           if (hasPath(id, dragState.from)) {
             openAlertModal("Cannot connect waypoints: This would create a cyclic loop. WARGs must be a directed acyclic graph (DAG).");
           } else {
-            const newEdge = { id: `e${Date.now()}`, from: dragState.from, to: id, triggers: [] };
+            const newEdge = { id: `e${nextEdgeId++}`, from: dragState.from, to: id, triggers: [] };
             edges.push(newEdge);
             selectItem('edge', newEdge.id);
           }
@@ -127,6 +202,24 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     }
   });
+
+  function hasPath(fromId, toId) {
+    if (fromId === toId) return true;
+    const visited = new Set();
+    const queue = [fromId];
+    while (queue.length > 0) {
+      const current = queue.shift();
+      if (current === toId) return true;
+      if (!visited.has(current)) {
+        visited.add(current);
+        const outgoingEdges = edges.filter(e => e.from === current);
+        for (const edge of outgoingEdges) {
+          queue.push(edge.to);
+        }
+      }
+    }
+    return false;
+  }
 
   function _endEdgeDraw() {
     dragState = null;
@@ -144,6 +237,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   function _setPlacementCursor(on) {
     const mapEl = document.getElementById('game-map');
     if (mapEl) mapEl.style.cursor = on ? 'crosshair' : '';
+    if (!on && mapModal) {
+      mapModal.hideGhostNode();
+    }
   }
 
   // ── Panel Management ──
@@ -153,8 +249,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     isPlacementMode = false;
     _setPlacementCursor(false);
     updatePanel();
-    // Highlight selected marker
+    // Highlight selected marker and edge
     mapModal.setSelectedNode(type === 'node' ? id : null);
+    mapModal.setSelectedEdge(type === 'edge' ? id : null);
   }
 
   function clearSelection() {
@@ -164,6 +261,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     _setPlacementCursor(false);
     updatePanel();
     mapModal.setSelectedNode(null);
+    mapModal.setSelectedEdge(null);
   }
 
   function updatePanel() {
@@ -264,20 +362,80 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
+  async function saveArg(status) {
+    const title = titleEl ? titleEl.textContent.trim() : 'Untitled WARG';
+    const description = descEl ? descEl.textContent.trim() : '';
+
+    const payload = {
+      title,
+      description,
+      status,
+      waypoints: nodes,
+      edges: edges
+    };
+
+    const method = currentArgId ? 'PUT' : 'POST';
+    const url = currentArgId ? `http://localhost:3000/api/args/${currentArgId}` : `http://localhost:3000/api/args`;
+
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        credentials: 'include'
+      });
+      
+      if (!res.ok) {
+        throw new Error('Failed to save ARG');
+      }
+      
+      const data = await res.json();
+      
+      if (!currentArgId && data.arg_id) {
+        currentArgId = data.arg_id;
+        window.history.pushState({}, '', `edit_warg.html?id=${currentArgId}`);
+      }
+      
+      return data;
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  function setLoadingState(btn, isLoading, originalText) {
+    if (!btn) return;
+    if (isLoading) {
+      btn.disabled = true;
+      btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;animation:spin 1s linear infinite;margin-right:8px;vertical-align:middle"><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/></svg><span style="vertical-align:middle">${originalText}</span>`;
+    } else {
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
+  }
+
   // ── Global Save Actions ──
   if (btnGlobalSave) {
-    btnGlobalSave.addEventListener('click', () => {
-      const msg = isCreateMode
-        ? 'Your new WARG has been saved as a draft.'
-        : 'All changes have been successfully saved to the server.';
-      openAlertModal(msg);
+    btnGlobalSave.addEventListener('click', async () => {
+      const origText = btnGlobalSave.textContent;
+      setLoadingState(btnGlobalSave, true, origText);
+      try {
+        await saveArg('unpublished');
+        const msg = isCreateMode && !currentArgId
+          ? 'Your new WARG has been saved as a draft.'
+          : 'All changes have been successfully saved to the server.';
+        openAlertModal(msg);
+      } catch (err) {
+        openAlertModal('Failed to save draft. Please try again.');
+      } finally {
+        setLoadingState(btnGlobalSave, false, origText);
+      }
     });
   }
 
   // ── Publish Action ──
   if (btnGlobalPublish) {
     btnGlobalPublish.addEventListener('click', () => {
-      const titleEl = document.getElementById('arg-title');
       const wargTitle = (titleEl ? titleEl.textContent.trim() : '') || 'Untitled WARG';
       if (nodes.length === 0) {
         openAlertModal('Please add at least one waypoint before publishing your WARG.');
@@ -286,9 +444,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       openConfirmModal(
         'Publish WARG',
         `Publish "${wargTitle}"? It will become visible to all players.`,
-        () => {
-          openAlertModal(`"${wargTitle}" has been published! Players can now discover and play it.`);
-          setTimeout(() => { window.location.href = 'studio.html'; }, 2000);
+        async () => {
+          try {
+            await saveArg('published');
+            openAlertModal(`"${wargTitle}" has been published! Players can now discover and play it.`);
+            setTimeout(() => { window.location.href = 'studio.html'; }, 2000);
+          } catch (err) {
+            openAlertModal('Failed to publish WARG. Please try again.');
+          }
         }
       );
     });
@@ -333,9 +496,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (btnCancelConfirm) btnCancelConfirm.addEventListener('click', closeConfirmModal);
 
   if (btnAcceptConfirm) {
-    btnAcceptConfirm.addEventListener('click', () => {
-      if (confirmCallback) confirmCallback();
-      closeConfirmModal();
+    btnAcceptConfirm.addEventListener('click', async () => {
+      if (confirmCallback) {
+        const origText = btnAcceptConfirm.textContent;
+        setLoadingState(btnAcceptConfirm, true, origText);
+        try {
+          await confirmCallback();
+        } finally {
+          setLoadingState(btnAcceptConfirm, false, origText);
+          closeConfirmModal();
+        }
+      } else {
+        closeConfirmModal();
+      }
     });
   }
 
@@ -356,24 +529,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     alertModalOverlay.addEventListener('click', (e) => {
       if (e.target === alertModalOverlay) closeAlertModal();
     });
-  }
-
-  // ── Cycle Detection Utility ──
-  function hasPath(startId, targetId) {
-    if (startId === targetId) return true;
-    const visited = new Set();
-    const stack = [startId];
-    while (stack.length > 0) {
-      const current = stack.pop();
-      if (current === targetId) return true;
-      if (!visited.has(current)) {
-        visited.add(current);
-        edges.filter(e => e.from === current).forEach(e => {
-          if (!visited.has(e.to)) stack.push(e.to);
-        });
-      }
-    }
-    return false;
   }
 
   if (confirmModalOverlay) {

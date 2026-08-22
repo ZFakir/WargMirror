@@ -11,6 +11,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (typeof GameCard === 'undefined' || typeof api === 'undefined') return;
 
+  // Show skeletons immediately
+  GameCard.renderSkeletons('row-published', 3);
+  GameCard.renderSkeletons('row-unpublished', 3);
+
   // ── Check auth ──
   const currentUser = await api.getCurrentUser();
 

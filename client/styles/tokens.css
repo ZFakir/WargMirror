@@ -111,3 +111,5 @@
     --touch-target:       44px;
   }
 }
+
+@keyframes spin { 100% { transform: rotate(360deg); } }
