@@ -1,11 +1,11 @@
 import cv2
 import numpy as np
 import torch
-from segment_anything import sam_model_registry, SamPredictor
+from mobile_sam import sam_model_registry, SamPredictor
 
 # Initialise SAM (Requires downloading the model checkpoint locally)
-MODEL_TYPE = "vit_h"
-CHECKPOINT_PATH = "weights/sam_vit_h_4b8939.pth"
+MODEL_TYPE = "vit_t"
+CHECKPOINT_PATH = "weights/mobile_sam.pt"
 
 try:
     sam = sam_model_registry[MODEL_TYPE](checkpoint=CHECKPOINT_PATH)
