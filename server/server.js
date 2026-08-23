@@ -13,6 +13,7 @@ const argRoutes = require('./src/routes/argRoutes');
 const userRoutes = require('./src/routes/userRoutes');
 const sessionRoutes = require('./src/routes/sessionRoutes');
 const authRoutes = require('./src/routes/authRoutes');
+const aiRoutes = require('./src/routes/aiRoutes');
 const app = express();
 const server = http.createServer(app);
 
@@ -75,6 +76,7 @@ app.use('/auth', authRoutes);
 app.use('/api/args', argRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/sessions', sessionRoutes);
+app.use('/api/ai', aiRoutes);
 
 // Socket.io connection handling
 io.on('connection', (socket) => {
