@@ -1,6 +1,6 @@
 from fastapi import FastAPI, UploadFile, File, Form
 from pydantic import BaseModel
-from vision import sam_extractor, hsv_matcher, mobilenet_extractor 
+from vision import sam_extractor, hsv_matcher, mobilenet_extractor, then_vs_now, symmetry
 
 app = FastAPI(title="WARG AI Engine")
 
@@ -53,4 +53,29 @@ async def evaluate_texture(image: UploadFile = File(...), reference_image: Uploa
         confidence_score=similarity,
         passed=(similarity >= 0.60), # Tuned threshold for high-dimensional embeddings
         message="Texture evaluation complete."
+    )
+
+@app.post("/api/v1/sift-match", response_model=EvaluationResult)
+async def evaluate_sift(image: UploadFile = File(...), archival_image: UploadFile = File(...)):
+    image_bytes = await image.read()
+    archival_bytes = await archival_image.read()
+    
+    result = then_vs_now.evaluate_archival_sift(image_bytes, archival_bytes)
+    
+    return EvaluationResult(
+        confidence_score=float(result["matches"]),
+        passed=result["passed"],
+        message="SIFT evaluation complete."
+    )
+
+@app.post("/api/v1/symmetry", response_model=EvaluationResult)
+async def evaluate_symmetry_endpoint(image: UploadFile = File(...)):
+    image_bytes = await image.read()
+    
+    result = symmetry.evaluate_symmetry(image_bytes)
+    
+    return EvaluationResult(
+        confidence_score=result["similarity_score"],
+        passed=result["passed"],
+        message="Symmetry evaluation complete."
     )

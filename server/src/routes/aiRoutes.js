@@ -26,4 +26,13 @@ router.post('/texture-match', upload.fields([
   { name: 'reference_image', maxCount: 1 }
 ]), aiController.evaluateTexture);
 
+router.post('/sift-match', upload.fields([
+  { name: 'image', maxCount: 1 },
+  { name: 'archival_image', maxCount: 1 }
+]), aiController.evaluateSift);
+
+router.post('/symmetry', upload.fields([
+  { name: 'image', maxCount: 1 }
+]), aiController.evaluateSymmetry);
+
 module.exports = router;
