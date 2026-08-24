@@ -78,6 +78,12 @@ To distribute the review workload among the team, we operate on a rotating revie
 - One member is assigned to review all standard Pull Requests
 - A second member is assigned specifically to review the primary reviewer's PRs, ensuring no code is merged without oversight
 
+## Development Process
+
+See [METHODOLOGY.md](./METHODOLOGY.md) for how we plan, assign, and review work, [MEETINGS.md](./MEETINGS.md) for our stakeholder check-in log, and [WARG_GIT_Policy.pdf](./MiscellaneousDocumentation/WARG_GIT_Policy.pdf) for our git/branching conventions.
+
+Task tracking is done on our [GitHub Projects board](https://github.com/users/ZFakir/projects/3/views/1).
+
 ## Versioning
 
 We utilize Semantic Versioning (`Major.Minor.Patch`) for our project releases.
