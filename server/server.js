@@ -20,16 +20,14 @@ const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
     origin: function (origin, callback) {
-      // Allow dynamic origins for production, localhost for dev
-      const allowedOrigins = [
-        process.env.CLIENT_URL,
-        'http://localhost:5500',
-        'http://127.0.0.1:5500'
-      ];
+      // In production, configure CLIENT_URL in your environment variables. 
+      // For multiple origins (e.g., local dev + prod), separate them with commas in your .env
+      const allowedOrigins = process.env.CLIENT_URL ? process.env.CLIENT_URL.split(',') : [];
+      
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
-        callback(null, true); // Temporarily allow all during development, replace with error in strict prod
+        callback(new Error('Origin not allowed by CORS')); 
       }
     },
     methods: ['GET', 'POST'],
@@ -53,14 +51,13 @@ const sessionStoreOptions = new MySQLStore({
 // Middleware
 app.use(cors({
   origin: function (origin, callback) {
-    const allowedOrigins = [
-      process.env.CLIENT_URL,
-      'http://localhost:5500',
-      'http://127.0.0.1:5500'
-    ];
-    // If we have an origin and it's not in the list, still allow it for now but ideally restrict in prod
-    // By returning the origin itself, we bypass the wildcard error with credentials: true
-    callback(null, origin || true);
+    const allowedOrigins = process.env.CLIENT_URL ? process.env.CLIENT_URL.split(',') : [];
+    
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Origin not allowed by CORS'));
+    }
   },
   credentials: true
 }));
