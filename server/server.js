@@ -19,8 +19,21 @@ const server = http.createServer(app);
 // Setup Socket.io for live/co-op game modes
 const io = new Server(server, {
   cors: {
-    origin: '*', // Allow all origins for now. In production, restrict this to your frontend URL
-    methods: ['GET', 'POST']
+    origin: function (origin, callback) {
+      // Allow dynamic origins for production, localhost for dev
+      const allowedOrigins = [
+        process.env.CLIENT_URL,
+        'http://localhost:5500',
+        'http://127.0.0.1:5500'
+      ];
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(null, true); // Temporarily allow all during development, replace with error in strict prod
+      }
+    },
+    methods: ['GET', 'POST'],
+    credentials: true
   }
 });
 
@@ -39,14 +52,21 @@ const sessionStoreOptions = new MySQLStore({
 
 // Middleware
 app.use(cors({
-  origin: [
-    process.env.CLIENT_URL || '*',
-    'http://localhost:5500',
-    'http://127.0.0.1:5500'
-  ],
+  origin: function (origin, callback) {
+    const allowedOrigins = [
+      process.env.CLIENT_URL,
+      'http://localhost:5500',
+      'http://127.0.0.1:5500'
+    ];
+    // If we have an origin and it's not in the list, still allow it for now but ideally restrict in prod
+    // By returning the origin itself, we bypass the wildcard error with credentials: true
+    callback(null, origin || true);
+  },
   credentials: true
 }));
 app.use(express.json());
+
+app.set('trust proxy', 1); // Trust first proxy (Render/Heroku/Vercel)
 
 // Session middleware (must come before passport)
 app.use(session({
@@ -56,7 +76,8 @@ app.use(session({
   saveUninitialized: false,
   cookie: {
     maxAge: 86400000, // 24 hours
-    secure: false,    // Set to true in production with HTTPS
+    secure: process.env.NODE_ENV === 'production',    
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
     httpOnly: true
   }
 }));
