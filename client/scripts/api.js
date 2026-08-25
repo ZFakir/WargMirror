@@ -10,7 +10,8 @@
  */
 
 /* eslint-disable no-var */
-var API_BASE = 'http://localhost:3000';
+// Use the globally configured API_BASE_URL (from config.js) or fallback
+var API_BASE = window.API_BASE_URL || 'https://wargmirror.onrender.com';
 
 var api = (function () {
 

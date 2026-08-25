@@ -22,9 +22,13 @@ const io = new Server(server, {
     origin: function (origin, callback) {
       // In production, configure CLIENT_URL in your environment variables. 
       // For multiple origins (e.g., local dev + prod), separate them with commas in your .env
-      const allowedOrigins = process.env.CLIENT_URL ? process.env.CLIENT_URL.split(',') : [];
+      const allowedOrigins = process.env.CLIENT_URL 
+        ? process.env.CLIENT_URL.split(',').map(url => url.trim().replace(/\/$/, '')) 
+        : [];
       
-      if (!origin || allowedOrigins.includes(origin)) {
+      const normalizedOrigin = origin ? origin.trim().replace(/\/$/, '') : null;
+
+      if (!normalizedOrigin || allowedOrigins.includes(normalizedOrigin)) {
         callback(null, true);
       } else {
         callback(new Error('Origin not allowed by CORS')); 
@@ -51,9 +55,13 @@ const sessionStoreOptions = new MySQLStore({
 // Middleware
 app.use(cors({
   origin: function (origin, callback) {
-    const allowedOrigins = process.env.CLIENT_URL ? process.env.CLIENT_URL.split(',') : [];
+    const allowedOrigins = process.env.CLIENT_URL 
+      ? process.env.CLIENT_URL.split(',').map(url => url.trim().replace(/\/$/, '')) 
+      : [];
     
-    if (!origin || allowedOrigins.includes(origin)) {
+    const normalizedOrigin = origin ? origin.trim().replace(/\/$/, '') : null;
+
+    if (!normalizedOrigin || allowedOrigins.includes(normalizedOrigin)) {
       callback(null, true);
     } else {
       callback(new Error('Origin not allowed by CORS'));
