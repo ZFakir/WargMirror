@@ -57,7 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Form Validation and Submission
-  form.addEventListener('submit', (e) => {
+  form.addEventListener('submit', async (e) => {
     e.preventDefault();
     let isValid = true;
 
@@ -85,17 +85,47 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (isValid) {
-      // Valid checks passed
-      console.log('Account creation prepared!', {
-        username,
-        email,
-        passwordLength: password.length,
-        avatar: currentAvatarUrl
-      });
-      
-      // Usually you'd send this to your backend here.
-      // For now, redirect to the home page.
-      window.location.href = 'home.html';
+      const submitBtn = form.querySelector('button[type="submit"]');
+      const originalText = submitBtn.textContent;
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Processing...';
+
+      try {
+        const response = await fetch('http://localhost:3000/auth/signup', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            username,
+            email,
+            password
+          })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          // Signup and login successful
+          window.location.href = 'home.html';
+        } else {
+          // Handle backend validation errors
+          if (data.error && data.error.toLowerCase().includes('email')) {
+            showError('email', data.error);
+          } else if (data.error && data.error.toLowerCase().includes('username')) {
+            showError('username', data.error);
+          } else {
+            alert(data.error || 'An error occurred during signup.');
+          }
+          submitBtn.disabled = false;
+          submitBtn.textContent = originalText;
+        }
+      } catch (error) {
+        console.error('Signup error:', error);
+        alert('An error occurred during signup. Please ensure the server is running.');
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+      }
     }
   });
 
