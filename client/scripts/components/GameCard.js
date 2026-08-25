@@ -334,11 +334,12 @@ var GameCard = (function () {
 
   function _onCardOpen(article) {
     var title = article.querySelector('.gc-title');
-    console.log('[WARG] Open game:', title ? title.textContent.trim() : article.dataset.gameId);
+    var gameId = article.dataset.gameId;
+    console.log('[WARG] Open game:', title ? title.textContent.trim() : gameId);
     if (window.location.pathname.includes('studio.html')) {
-      window.location.href = 'edit_warg.html';
+      window.location.href = 'edit_warg.html?id=' + gameId;
     } else {
-      window.location.href = 'game.html';
+      window.location.href = 'game.html?id=' + gameId;
     }
   }
 
@@ -364,7 +365,26 @@ var GameCard = (function () {
     container.appendChild(frag);
   }
 
+  /* ── renderSkeletons helper ────────────────────────────── */
+  function renderSkeletons(containerId, count) {
+    count = count || 5;
+    var container = document.getElementById(containerId);
+    if (!container) return;
+    var skeletons = '';
+    for (var i = 0; i < count; i++) {
+      skeletons += '<div class="game-card game-card--skeleton" aria-hidden="true">' +
+        '<div class="gc-cover" style="background:var(--color-surface-2)"></div>' +
+        '<div class="gc-body">' +
+          '<div class="skeleton-line skeleton-line--title"></div>' +
+          '<div class="skeleton-line skeleton-line--caption"></div>' +
+          '<div class="skeleton-line skeleton-line--caption" style="width:60%"></div>' +
+        '</div>' +
+      '</div>';
+    }
+    container.innerHTML = skeletons;
+  }
+
   /* ── Public API ─────────────────────────────────────── */
-  return { create: create, renderRow: renderRow };
+  return { create: create, renderRow: renderRow, renderSkeletons: renderSkeletons };
 
 }());

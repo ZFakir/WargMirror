@@ -1,8 +1,0 @@
-{
-  "label": "Technical",
-  "position": 3,
-  "link": {
-    "type": "generated-index",
-    "description": "Architecture, tech stack, and implementation details for WARG's gameplay systems."
-  }
-}

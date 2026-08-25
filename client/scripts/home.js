@@ -182,26 +182,7 @@ notifBtn?.addEventListener('click', () => {
 
 /* ── Initialize Data from API ── */
 
-/**
- * Render a skeleton loading state for a card row.
- */
-function showRowSkeleton(rowId, count) {
-  count = count || 5;
-  var container = document.getElementById(rowId);
-  if (!container) return;
-  var skeletons = '';
-  for (var i = 0; i < count; i++) {
-    skeletons += '<div class="game-card game-card--skeleton" aria-hidden="true">' +
-      '<div class="gc-cover" style="background:var(--color-surface-2)"></div>' +
-      '<div class="gc-body">' +
-        '<div class="skeleton-line skeleton-line--title"></div>' +
-        '<div class="skeleton-line skeleton-line--caption"></div>' +
-        '<div class="skeleton-line skeleton-line--caption" style="width:60%"></div>' +
-      '</div>' +
-    '</div>';
-  }
-  container.innerHTML = skeletons;
-}
+
 
 function showRowEmpty(rowId, message) {
   var container = document.getElementById(rowId);
@@ -218,9 +199,9 @@ async function initHomeData() {
   }
 
   // Show skeletons immediately
-  showRowSkeleton('row-recent');
-  showRowSkeleton('row-new');
-  showRowSkeleton('row-creators');
+  GameCard.renderSkeletons('row-recent', 4);
+  GameCard.renderSkeletons('row-new', 4);
+  GameCard.renderSkeletons('row-creators', 4);
 
   // Fetch ARGs (public) and current user (optional) in parallel
   var results = await Promise.allSettled([

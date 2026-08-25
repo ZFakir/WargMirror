@@ -57,15 +57,23 @@
 
 .studio-hero__cta {
   font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--color-bg);
+  background: linear-gradient(135deg, var(--color-accent) 0%, #b8c5ff 100%);
   padding: var(--spacing-md) var(--spacing-2xl);
   border-radius: 9999px;
-  box-shadow: 0 4px 15px var(--color-brand-glow, rgba(230, 81, 0, 0.4));
-  transition: transform 0.2s var(--ease-spring), box-shadow 0.2s var(--ease-out);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 20px var(--color-accent-glow);
+  transition: transform 0.2s var(--ease-spring), box-shadow 0.2s var(--ease-out), filter 0.2s;
 }
 
 .studio-hero__cta:hover {
   transform: translateY(-2px) scale(1.02);
-  box-shadow: 0 6px 20px var(--color-brand-glow, rgba(230, 81, 0, 0.6));
+  box-shadow: 0 6px 24px var(--color-accent-glow);
+  filter: brightness(1.1);
 }
 
 @media (max-width: 768px) {
