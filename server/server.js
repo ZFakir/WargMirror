@@ -20,8 +20,19 @@ const server = http.createServer(app);
 // Setup Socket.io for live/co-op game modes
 const io = new Server(server, {
   cors: {
-    origin: '*', // Allow all origins for now. In production, restrict this to your frontend URL
-    methods: ['GET', 'POST']
+    origin: function (origin, callback) {
+      // In production, configure CLIENT_URL in your environment variables. 
+      // For multiple origins (e.g., local dev + prod), separate them with commas in your .env
+      const allowedOrigins = process.env.CLIENT_URL ? process.env.CLIENT_URL.split(',') : [];
+      
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Origin not allowed by CORS')); 
+      }
+    },
+    methods: ['GET', 'POST'],
+    credentials: true
   }
 });
 
@@ -40,14 +51,20 @@ const sessionStoreOptions = new MySQLStore({
 
 // Middleware
 app.use(cors({
-  origin: [
-    process.env.CLIENT_URL || '*',
-    'http://localhost:5500',
-    'http://127.0.0.1:5500'
-  ],
+  origin: function (origin, callback) {
+    const allowedOrigins = process.env.CLIENT_URL ? process.env.CLIENT_URL.split(',') : [];
+    
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Origin not allowed by CORS'));
+    }
+  },
   credentials: true
 }));
 app.use(express.json());
+
+app.set('trust proxy', 1); // Trust first proxy (Render/Heroku/Vercel)
 
 // Session middleware (must come before passport)
 app.use(session({
@@ -57,7 +74,8 @@ app.use(session({
   saveUninitialized: false,
   cookie: {
     maxAge: 86400000, // 24 hours
-    secure: false,    // Set to true in production with HTTPS
+    secure: process.env.NODE_ENV === 'production',    
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
     httpOnly: true
   }
 }));
