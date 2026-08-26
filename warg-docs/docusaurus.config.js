@@ -1,25 +1,46 @@
 // @ts-check
+// `@type` JSDoc annotations allow editor autocompletion and type checking
+// (when paired with `@ts-check`).
+// There are various equivalent ways to declare your Docusaurus config.
+// See: https://docusaurus.io/docs/api/docusaurus-config
+
 import {themes as prismThemes} from 'prism-react-renderer';
+
+// This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
-  title: 'WARG Platform',
-  tagline: 'Turn your campus into the game.',
+  title: 'WARG Platform Docs',
+  tagline: 'Documentation for the Wits Alternate Reality Game Platform',
   favicon: 'img/favicon.ico',
 
+  markdown: {
+    mermaid: true,
+  },
+  themes: ['@docusaurus/theme-mermaid'],
+
+
+  // Future flags, see https://docusaurus.io/docs/api/docusaurus-config#future
   future: {
-    v4: true,
+    v4: true, // Improve compatibility with the upcoming Docusaurus v4
   },
 
-  // TODO: update to your actual Cloudflare Pages / custom domain URL once deployed
-  url: 'https://warg-docs.pages.dev',
+  // Set the production url of your site here
+  url: 'https://your-docusaurus-site.example.com',
+  // Set the /<baseUrl>/ pathname under which your site is served
+  // For GitHub pages deployment, it is often '/<projectName>/'
   baseUrl: '/',
 
-  organizationName: 'ZFakir',
-  projectName: 'WargMirror',
+  // GitHub pages deployment config.
+  // If you aren't using GitHub pages, you don't need these.
+  organizationName: 'facebook', // Usually your GitHub org/user name.
+  projectName: 'docusaurus', // Usually your repo name.
 
   onBrokenLinks: 'throw',
 
+  // Even if you don't use internationalization, you can use this field to set
+  // useful metadata like html lang. For example, if your site is Chinese, you
+  // may want to replace "en" with "zh-Hans".
   i18n: {
     defaultLocale: 'en',
     locales: ['en'],
@@ -31,12 +52,27 @@ const config = {
       /** @type {import('@docusaurus/preset-classic').Options} */
       ({
         docs: {
-          routeBasePath: '/', // serve docs at site root instead of /docs
           sidebarPath: './sidebars.js',
+          // Please change this to your repo.
+          // Remove this to remove the "edit this page" links.
           editUrl:
-            'https://github.com/ZFakir/WargMirror/tree/main/warg-docs/',
+            'https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/',
         },
-        blog: false,
+        blog: {
+          showReadingTime: true,
+          feedOptions: {
+            type: ['rss', 'atom'],
+            xslt: true,
+          },
+          // Please change this to your repo.
+          // Remove this to remove the "edit this page" links.
+          editUrl:
+            'https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/',
+          // Useful options to enforce blogging best practices
+          onInlineTags: 'warn',
+          onInlineAuthors: 'warn',
+          onUntruncatedBlogPosts: 'warn',
+        },
         theme: {
           customCss: './src/css/custom.css',
         },
@@ -47,21 +83,27 @@ const config = {
   themeConfig:
     /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
     ({
+      // Replace with your project's social card
+      image: 'img/docusaurus-social-card.jpg',
       colorMode: {
-        defaultMode: 'dark',
         respectPrefersColorScheme: true,
       },
       navbar: {
-        title: 'WARG Platform',
+        title: 'WARG Platform Docs',
+        logo: {
+          alt: 'My Site Logo',
+          src: 'img/logo.svg',
+        },
         items: [
           {
             type: 'docSidebar',
-            sidebarId: 'docsSidebar',
+            sidebarId: 'tutorialSidebar',
             position: 'left',
-            label: 'Docs',
+            label: 'Tutorial',
           },
+          {to: '/blog', label: 'Blog', position: 'left'},
           {
-            href: 'https://github.com/ZFakir/WargMirror',
+            href: 'https://github.com/facebook/docusaurus',
             label: 'GitHub',
             position: 'right',
           },
@@ -73,20 +115,44 @@ const config = {
           {
             title: 'Docs',
             items: [
-              {label: 'Team Process', to: '/process/methodology'},
-              {label: 'Architecture', to: '/technical/architecture'},
-              {label: 'Design System', to: '/design/colour-system'},
+              {
+                label: 'Tutorial',
+                to: '/docs/intro',
+              },
             ],
           },
           {
-            title: 'Project',
+            title: 'Community',
             items: [
-              {label: 'Source (GitHub)', href: 'https://github.com/ZFakir/WargMirror'},
-              {label: 'Deployment Guide', href: 'https://github.com/ZFakir/WargMirror/blob/main/DEPLOYMENT.md'},
+              {
+                label: 'Stack Overflow',
+                href: 'https://stackoverflow.com/questions/tagged/docusaurus',
+              },
+              {
+                label: 'Discord',
+                href: 'https://discordapp.com/invite/docusaurus',
+              },
+              {
+                label: 'X',
+                href: 'https://x.com/docusaurus',
+              },
+            ],
+          },
+          {
+            title: 'More',
+            items: [
+              {
+                label: 'Blog',
+                to: '/blog',
+              },
+              {
+                label: 'GitHub',
+                href: 'https://github.com/facebook/docusaurus',
+              },
             ],
           },
         ],
-        copyright: `WARG Platform — Luc and Friends — Software Design Project, University of the Witwatersrand — ${new Date().getFullYear()}`,
+        copyright: `Copyright © ${new Date().getFullYear()} My Project, Inc. Built with Docusaurus.`,
       },
       prism: {
         theme: prismThemes.github,

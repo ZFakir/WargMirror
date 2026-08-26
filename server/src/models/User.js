@@ -3,9 +3,11 @@ const sequelize = require('../config/database');
 
 const User = sequelize.define('User', {
   user_id: { type: DataTypes.INTEGER.UNSIGNED, primaryKey: true, autoIncrement: true },
-  google_uid: { type: DataTypes.STRING(256), allowNull: false, unique: true },
+  google_uid: { type: DataTypes.STRING(256), allowNull: true, unique: true },
+  auth_provider: { type: DataTypes.ENUM('local', 'google'), allowNull: false, defaultValue: 'google' },
   username: { type: DataTypes.STRING(64), allowNull: false, unique: true },
   email: { type: DataTypes.STRING(256), allowNull: false, unique: true },
+  password_hash: { type: DataTypes.STRING(255), allowNull: true },
   avatar: { type: DataTypes.BLOB('medium'), allowNull: true },
   role: { type: DataTypes.ENUM('player', 'creator', 'admin'), allowNull: false, defaultValue: 'player' },
   session_token: { type: DataTypes.CHAR(64), allowNull: true },

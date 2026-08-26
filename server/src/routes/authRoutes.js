@@ -1,6 +1,7 @@
 const express = require('express');
 const passport = require('passport');
 const router = express.Router();
+const authController = require('../controllers/authController');
 
 // Redirect to Google's consent screen
 router.get('/google', passport.authenticate('google', {
@@ -10,7 +11,9 @@ router.get('/google', passport.authenticate('google', {
 // Google redirects back here after the user grants/denies permission
 router.get('/google/callback', (req, res, next) => {
   passport.authenticate('google', (err, user, info) => {
-    const clientUrl = process.env.CLIENT_URL || '';
+    // Use CLIENT_PAGES_URL for redirects (includes /client path for local dev).
+    // Falls back to CLIENT_URL if not set.
+    const clientUrl = process.env.CLIENT_PAGES_URL || process.env.CLIENT_URL || '';
 
     // Database or other server error
     if (err) {
@@ -30,6 +33,32 @@ router.get('/google/callback', (req, res, next) => {
         return res.redirect(clientUrl + '/login.html?error=session_error');
       }
       return res.redirect(clientUrl + '/home.html');
+    });
+  })(req, res, next);
+});
+
+// Local Signup
+router.post('/signup', authController.signup);
+
+// Check if user exists (for frontend validation)
+router.get('/check-user', authController.checkUserExists);
+
+// Local Login
+router.post('/login', (req, res, next) => {
+  passport.authenticate('local', (err, user, info) => {
+    if (err) {
+      console.error('❌ Local Auth Error:', err.message);
+      return res.status(500).json({ error: 'Server error during authentication' });
+    }
+    if (!user) {
+      return res.status(401).json({ error: info.message || 'Authentication failed' });
+    }
+    req.logIn(user, (loginErr) => {
+      if (loginErr) {
+        console.error('❌ Session Error:', loginErr.message);
+        return res.status(500).json({ error: 'Session error' });
+      }
+      return res.json({ message: 'Login successful', user_id: user.user_id });
     });
   })(req, res, next);
 });
@@ -55,7 +84,7 @@ router.get('/logout', (req, res) => {
       return res.status(500).json({ error: 'Failed to logout' });
     }
     req.session.destroy(() => {
-      res.redirect((process.env.CLIENT_URL || '') + '/login.html');
+      res.redirect((process.env.CLIENT_PAGES_URL || process.env.CLIENT_URL || '') + '/login.html');
     });
   });
 });

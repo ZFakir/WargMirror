@@ -18,6 +18,7 @@ const ArgVote = require('./ArgVote');
 const Badge = require('./Badge');
 const UserBadge = require('./UserBadge');
 const Flag = require('./Flag');
+const Comment = require('./Comment');
 
 // Define Associations
 
@@ -43,6 +44,7 @@ Arg.hasMany(Waypoint, { foreignKey: 'arg_id' });
 
 // Waypoint Edges
 WaypointEdge.belongsTo(Arg, { foreignKey: 'arg_id' });
+Arg.hasMany(WaypointEdge, { foreignKey: 'arg_id' });
 WaypointEdge.belongsTo(Waypoint, { as: 'FromWaypoint', foreignKey: 'from_waypoint_id' });
 WaypointEdge.belongsTo(Waypoint, { as: 'ToWaypoint', foreignKey: 'to_waypoint_id' });
 
@@ -91,6 +93,16 @@ Flag.belongsTo(User, { as: 'Resolver', foreignKey: 'resolved_by' });
 Arg.hasMany(Flag, { foreignKey: 'arg_id' });
 User.hasMany(Flag, { foreignKey: 'reporter_id' });
 
+// Comments
+Comment.belongsTo(User, { foreignKey: 'user_id' });
+Comment.belongsTo(Arg, { foreignKey: 'arg_id' });
+User.hasMany(Comment, { foreignKey: 'user_id' });
+Arg.hasMany(Comment, { foreignKey: 'arg_id' });
+
+// Comment replies (self-referential)
+Comment.hasMany(Comment, { as: 'replies', foreignKey: 'parent_id' });
+Comment.belongsTo(Comment, { as: 'parent', foreignKey: 'parent_id' });
+
 module.exports = {
   sequelize,
   User,
@@ -110,5 +122,6 @@ module.exports = {
   ArgVote,
   Badge,
   UserBadge,
-  Flag
+  Flag,
+  Comment
 };

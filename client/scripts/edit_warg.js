@@ -1,50 +1,119 @@
 /**
- * WARG Platform — Edit WARG Script
- * Interactive DAG editor for WARG graph.
+ * WARG Platform — Edit / Create WARG Script
+ * Uses MapModal for real geographic waypoint placement.
  */
 
-document.addEventListener('DOMContentLoaded', () => {
-  // ── State ──
-  let nodes = [
-    { id: 'wp1', x: 30, y: 40, title: 'The Great Hall', description: 'Find the plaque near the entrance.', gamemode: 'GPS Location', type: 'gps' },
-    { id: 'wp2', x: 60, y: 35, title: 'Library Archway', description: 'Scan the historic archway to reveal the hidden message.', gamemode: 'AR Object Scan', type: 'ar' },
-    { id: 'wp3', x: 75, y: 70, title: 'Coffee Shop Secret', description: 'Scan the special barcode on the cup.', gamemode: 'Barcode Game', type: 'barcode' }
-  ];
-  let edges = [
-    { id: 'e1', from: 'wp1', to: 'wp2', triggers: [] },
-    { id: 'e2', from: 'wp2', to: 'wp3', triggers: [] }
-  ];
+import { MapModal } from './components/MapModal.js';
 
-  let nextId = 4;
+document.addEventListener('DOMContentLoaded', async () => {
+  // ── Create vs Edit mode ──
+  const isCreateMode = window.location.pathname.includes('create_warg');
+  const urlParams = new URLSearchParams(window.location.search);
+  let currentArgId = urlParams.get('id');
+
+  let nodes = [];
+  let edges = [];
+  let nextId = 1;
+  let nextEdgeId = 1;
+
+  // UI Elements for Title/Desc
+  const titleEl = document.getElementById('arg-title');
+  const descEl = document.getElementById('arg-desc');
+
+  const mapBackendGameTypeToFrontend = (gameType) => {
+    const map = {
+      'gps_proximity': { type: 'gps', label: 'GPS Location' },
+      'ar_object_scan': { type: 'ar', label: 'AR Object Scan' },
+      'qr_barcode': { type: 'barcode', label: 'Barcode Game' }
+    };
+    return map[gameType] || { type: 'gps', label: 'GPS Location' };
+  };
+
+  if (!isCreateMode && currentArgId) {
+    try {
+      const res = await fetch(`http://localhost:3000/api/args/${currentArgId}`, { credentials: 'include' });
+      if (res.ok) {
+        const argData = await res.json();
+        if (titleEl) titleEl.textContent = argData.title;
+        if (descEl) descEl.textContent = argData.description || 'Add a description for your WARG…';
+        
+        // Map Waypoints to nodes
+        const idMap = {}; // mapping waypoint_id to frontend node id
+        if (argData.Waypoints) {
+          argData.Waypoints.forEach(wp => {
+            const nodeId = `wp${nextId++}`;
+            idMap[wp.waypoint_id] = nodeId;
+            
+            let mg = wp.Minigames && wp.Minigames.length > 0 ? wp.Minigames[0] : { game_type: 'gps_proximity' };
+            const mappedType = mapBackendGameTypeToFrontend(mg.game_type);
+
+            nodes.push({
+              id: nodeId,
+              waypoint_id: wp.waypoint_id,
+              lat: wp.location.coordinates[1],
+              lng: wp.location.coordinates[0],
+              title: wp.title,
+              description: wp.description,
+              type: mappedType.type,
+              gamemode: mappedType.label
+            });
+          });
+        }
+
+        if (argData.WaypointEdges) {
+          argData.WaypointEdges.forEach(edge => {
+            edges.push({
+              id: `e${nextEdgeId++}`,
+              from: idMap[edge.from_waypoint_id],
+              to: idMap[edge.to_waypoint_id],
+              triggers: []
+            });
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch ARG data:', err);
+    }
+  } else if (!isCreateMode) {
+    // Demo data for visual testing if no ID provided in edit mode
+    nodes = [
+      { id: 'wp1', lat: -26.19233, lng: 28.02987, title: 'The Great Hall', description: 'Find the plaque near the entrance.', gamemode: 'GPS Location', type: 'gps' },
+      { id: 'wp2', lat: -26.19075, lng: 28.03215, title: 'Library Archway', description: 'Scan the historic archway to reveal the hidden message.', gamemode: 'AR Object Scan', type: 'ar' },
+      { id: 'wp3', lat: -26.19320, lng: 28.02790, title: 'Coffee Shop Secret', description: 'Scan the special barcode on the cup.', gamemode: 'Barcode Game', type: 'barcode' }
+    ];
+    edges = [
+      { id: 'e1', from: 'wp1', to: 'wp2', triggers: [] },
+      { id: 'e2', from: 'wp2', to: 'wp3', triggers: [] }
+    ];
+    nextId = 4;
+    nextEdgeId = 3;
+  }
+
   let selectedId = null;
   let selectedType = null; // 'node' or 'edge'
   let isPlacementMode = false;
-  
-  // Interaction State
-  let dragState = null; // null | { type: 'node_move', id: 'wp1' } | { type: 'edge_draw', from: 'wp1', x: 0, y: 0 }
-  let mousePos = { x: 50, y: 50 }; // percentages
+  let dragState = null; // null | { type: 'edge_draw', from: 'wp1' }
 
   // ── Elements ──
-  const mapWrapper = document.getElementById('game-map-wrapper');
-  const mapContainer = document.getElementById('game-map');
   const btnAddWaypoint = document.getElementById('btn-add-waypoint');
-  
+
   // Right Panel Elements
   const panelEmptyState = document.getElementById('panel-empty-state');
-  
+
   // Node Editor Elements
   const waypointEditor = document.getElementById('waypoint-editor');
   const editorTitle = document.getElementById('editor-title');
   const editorDesc = document.getElementById('editor-desc');
   const btnRemoveWaypoint = document.getElementById('btn-remove-waypoint');
-  
+
   // Edge Editor Elements
   const edgeEditor = document.getElementById('edge-editor');
   const btnRemoveEdge = document.getElementById('btn-remove-edge');
-  
-  // Global Save
+
+  // Global Save / Publish
   const btnGlobalSave = document.getElementById('btn-global-save');
-  
+  const btnGlobalPublish = document.getElementById('btn-global-publish');
+
   // Confirm Modal Elements
   const confirmModalOverlay = document.getElementById('confirm-modal-overlay');
   const confirmModalTitle = document.getElementById('confirm-modal-title');
@@ -60,222 +129,116 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnCloseAlertModal = document.getElementById('btn-close-alert-modal');
   const btnAcceptAlert = document.getElementById('btn-accept-alert');
 
-  const svgNS = "http://www.w3.org/2000/svg";
-
-  // ── Utilities ──
-  function getMousePercentages(e) {
-    const rect = mapWrapper.getBoundingClientRect();
-    let x = ((e.clientX - rect.left) / rect.width) * 100;
-    let y = ((e.clientY - rect.top) / rect.height) * 100;
-    x = Math.max(0, Math.min(100, x));
-    y = Math.max(0, Math.min(100, y));
-    return { x, y };
-  }
-
-  // ── Rendering ──
-  function renderMap() {
-    if (!mapContainer) return;
-    mapContainer.innerHTML = '';
-
-    // Render Edges
-    const svg = document.createElementNS(svgNS, 'svg');
-    svg.setAttribute('class', 'mock-path');
-    
-    // Define arrow marker
-    const defs = document.createElementNS(svgNS, 'defs');
-    const marker = document.createElementNS(svgNS, 'marker');
-    marker.setAttribute('id', 'arrowhead');
-    marker.setAttribute('markerWidth', '12');
-    marker.setAttribute('markerHeight', '12');
-    marker.setAttribute('refX', '18'); // Offset from node center
-    marker.setAttribute('refY', '5');
-    marker.setAttribute('orient', 'auto');
-    marker.setAttribute('markerUnits', 'userSpaceOnUse');
-
-    const arrowPath = document.createElementNS(svgNS, 'polyline');
-    arrowPath.setAttribute('points', '0,1 5,5 0,9');
-    arrowPath.setAttribute('fill', 'none');
-    arrowPath.setAttribute('stroke', 'var(--color-border-accent)');
-    arrowPath.setAttribute('stroke-width', '2');
-    
-    marker.appendChild(arrowPath);
-    defs.appendChild(marker);
-
-    // Define mid arrow marker
-    const markerMid = document.createElementNS(svgNS, 'marker');
-    markerMid.setAttribute('id', 'arrowhead-mid');
-    markerMid.setAttribute('markerWidth', '12');
-    markerMid.setAttribute('markerHeight', '12');
-    markerMid.setAttribute('refX', '2.5'); // Visually centered at the vertex
-    markerMid.setAttribute('refY', '5');
-    markerMid.setAttribute('orient', 'auto');
-    markerMid.setAttribute('markerUnits', 'userSpaceOnUse');
-
-    const arrowPathMid = document.createElementNS(svgNS, 'polyline');
-    arrowPathMid.setAttribute('points', '0,1 5,5 0,9');
-    arrowPathMid.setAttribute('fill', 'none');
-    arrowPathMid.setAttribute('stroke', 'var(--color-border-accent)');
-    arrowPathMid.setAttribute('stroke-width', '2');
-    
-    markerMid.appendChild(arrowPathMid);
-    defs.appendChild(markerMid);
-    
-    svg.appendChild(defs);
-    
-    // Existing Edges
-    edges.forEach(edge => {
-      const fromNode = nodes.find(n => n.id === edge.from);
-      const toNode = nodes.find(n => n.id === edge.to);
-      if (fromNode && toNode) {
-        const group = document.createElementNS(svgNS, 'g');
-        group.setAttribute('class', `edge-group ${selectedType === 'edge' && selectedId === edge.id ? 'selected' : ''}`);
-        
-        // Invisible thicker line for hitbox
-        const hitbox = document.createElementNS(svgNS, 'line');
-        hitbox.setAttribute('class', 'edge-hitbox');
-        hitbox.setAttribute('x1', `${fromNode.x}%`);
-        hitbox.setAttribute('y1', `${fromNode.y}%`);
-        hitbox.setAttribute('x2', `${toNode.x}%`);
-        hitbox.setAttribute('y2', `${toNode.y}%`);
-        
-        const midX = (fromNode.x + toNode.x) / 2;
-        const midY = (fromNode.y + toNode.y) / 2;
-
-        // Visible line 1 (to mid)
-        const visible1 = document.createElementNS(svgNS, 'line');
-        visible1.setAttribute('class', 'edge-visible');
-        visible1.setAttribute('x1', `${fromNode.x}%`);
-        visible1.setAttribute('y1', `${fromNode.y}%`);
-        visible1.setAttribute('x2', `${midX}%`);
-        visible1.setAttribute('y2', `${midY}%`);
-        visible1.setAttribute('marker-end', 'url(#arrowhead-mid)');
-        
-        // Visible line 2 (from mid)
-        const visible2 = document.createElementNS(svgNS, 'line');
-        visible2.setAttribute('class', 'edge-visible');
-        visible2.setAttribute('x1', `${midX}%`);
-        visible2.setAttribute('y1', `${midY}%`);
-        visible2.setAttribute('x2', `${toNode.x}%`);
-        visible2.setAttribute('y2', `${toNode.y}%`);
-        visible2.setAttribute('marker-end', 'url(#arrowhead)');
-        
-        group.appendChild(hitbox);
-        group.appendChild(visible1);
-        group.appendChild(visible2);
-        
-        // Edge interactions
-        group.addEventListener('mousedown', (e) => {
-          if (isPlacementMode) return;
-          e.stopPropagation();
-          selectItem('edge', edge.id);
-        });
-
-        svg.appendChild(group);
+  // ── Initialise Leaflet map in editor mode ──
+  const mapModal = new MapModal();
+  await mapModal.initEditor({
+    nodes,
+    onMapClick(lat, lng) {
+      if (!isPlacementMode) return;
+      const newNode = {
+        id: `wp${nextId++}`,
+        lat, lng,
+        title: 'New Waypoint',
+        description: '',
+        gamemode: 'GPS Location',
+        type: 'gps'
+      };
+      nodes.push(newNode);
+      mapModal.addEditorNode(newNode);
+      mapModal.updateEditorEdges(edges, nodes);
+      selectItem('node', newNode.id);
+      isPlacementMode = false;
+      _setPlacementCursor(false);
+    },
+    onNodeSelected(id) {
+      selectItem('node', id);
+    },
+    onEdgeSelected(id) {
+      selectItem('edge', id);
+    },
+    onNodeMoving(id, lat, lng) {
+      const node = nodes.find(n => n.id === id);
+      if (node) { node.lat = lat; node.lng = lng; }
+      mapModal.updateEditorEdges(edges, nodes);
+    },
+    onNodeMoved(id, lat, lng) {
+      const node = nodes.find(n => n.id === id);
+      if (node) { node.lat = lat; node.lng = lng; }
+      mapModal.updateEditorEdges(edges, nodes);
+    },
+    onMapDeselect() {
+      clearSelection();
+    },
+    onNodeCoreDown(id) {
+      dragState = { type: 'edge_draw', from: id };
+      _setPlacementCursor(true);
+    },
+    onMapMouseMove(lat, lng) {
+      if (dragState && dragState.type === 'edge_draw') {
+        mapModal.setTempEdge(dragState.from, lat, lng);
+      } else if (isPlacementMode) {
+        mapModal.updateGhostNode(lat, lng);
       }
-    });
-
-    // Temp drawing edge
-    if (dragState && dragState.type === 'edge_draw') {
-      const fromNode = nodes.find(n => n.id === dragState.from);
-      if (fromNode) {
-        const midX = (fromNode.x + dragState.x) / 2;
-        const midY = (fromNode.y + dragState.y) / 2;
-
-        const drawingLine1 = document.createElementNS(svgNS, 'line');
-        drawingLine1.setAttribute('class', 'edge-drawing');
-        drawingLine1.setAttribute('x1', `${fromNode.x}%`);
-        drawingLine1.setAttribute('y1', `${fromNode.y}%`);
-        drawingLine1.setAttribute('x2', `${midX}%`);
-        drawingLine1.setAttribute('y2', `${midY}%`);
-        drawingLine1.setAttribute('marker-end', 'url(#arrowhead-mid)');
-        
-        const drawingLine2 = document.createElementNS(svgNS, 'line');
-        drawingLine2.setAttribute('class', 'edge-drawing');
-        drawingLine2.setAttribute('x1', `${midX}%`);
-        drawingLine2.setAttribute('y1', `${midY}%`);
-        drawingLine2.setAttribute('x2', `${dragState.x}%`);
-        drawingLine2.setAttribute('y2', `${dragState.y}%`);
-        drawingLine2.setAttribute('marker-end', 'url(#arrowhead)');
-        
-        svg.appendChild(drawingLine1);
-        svg.appendChild(drawingLine2);
-      }
-    }
-
-    mapContainer.appendChild(svg);
-
-    // Render Nodes
-    nodes.forEach(wp => {
-      const pin = document.createElement('div');
-      pin.className = `mock-waypoint ${selectedType === 'node' && selectedId === wp.id ? 'selected' : ''}`;
-      pin.setAttribute('data-id', wp.id);
-      pin.setAttribute('data-type', wp.type);
-      pin.style.left = `${wp.x}%`;
-      pin.style.top = `${wp.y}%`;
-      pin.title = wp.title;
-
-      // Handle (burger icon)
-      const handle = document.createElement('div');
-      handle.className = 'mock-waypoint__handle';
-      handle.title = 'Drag to move';
-      handle.innerHTML = '<span></span><span></span><span></span>';
-      
-      // Node events
-      handle.addEventListener('mousedown', (e) => {
-        if (isPlacementMode) return;
-        e.stopPropagation();
-        selectItem('node', wp.id);
-        dragState = { type: 'node_move', id: wp.id };
-      });
-
-      pin.addEventListener('mousedown', (e) => {
-        if (isPlacementMode) return;
-        e.stopPropagation();
-        selectItem('node', wp.id);
-        if (e.target !== handle && !handle.contains(e.target)) {
-          // Click on body: start drawing edge
-          dragState = { type: 'edge_draw', from: wp.id, x: wp.x, y: wp.y };
-        }
-      });
-      
-      pin.addEventListener('mouseup', (e) => {
-        if (dragState && dragState.type === 'edge_draw' && dragState.from !== wp.id) {
-          e.stopPropagation();
-          // Check for existing edge to prevent duplicates
-          const exists = edges.some(edge => 
-            (edge.from === dragState.from && edge.to === wp.id)
-          );
-          
-          if (!exists) {
-            if (hasPath(wp.id, dragState.from)) {
-              openAlertModal("Cannot connect waypoints: This would create a cyclic loop. WARGs must be a directed acyclic graph (DAG).");
-            } else {
-              const newEdge = {
-                id: `e${Date.now()}`,
-                from: dragState.from,
-                to: wp.id,
-                triggers: []
-              };
-              edges.push(newEdge);
-              selectItem('edge', newEdge.id);
-            }
+    },
+    onNodeMouseUp(id) {
+      if (dragState && dragState.type === 'edge_draw' && dragState.from !== id) {
+        // Prevent duplicate edges
+        const exists = edges.some(edge => edge.from === dragState.from && edge.to === id);
+        if (!exists) {
+          if (hasPath(id, dragState.from)) {
+            openAlertModal("Cannot connect waypoints: This would create a cyclic loop. WARGs must be a directed acyclic graph (DAG).");
+          } else {
+            const newEdge = { id: `e${nextEdgeId++}`, from: dragState.from, to: id, triggers: [] };
+            edges.push(newEdge);
+            selectItem('edge', newEdge.id);
           }
         }
-        dragState = null;
-        renderMap();
-      });
+      }
+      _endEdgeDraw();
+    },
+    onMapMouseUp() {
+      if (dragState && dragState.type === 'edge_draw') {
+        _endEdgeDraw();
+      }
+    }
+  });
 
-      pin.appendChild(handle);
-      mapContainer.appendChild(pin);
-    });
+  function hasPath(fromId, toId) {
+    if (fromId === toId) return true;
+    const visited = new Set();
+    const queue = [fromId];
+    while (queue.length > 0) {
+      const current = queue.shift();
+      if (current === toId) return true;
+      if (!visited.has(current)) {
+        visited.add(current);
+        const outgoingEdges = edges.filter(e => e.from === current);
+        for (const edge of outgoingEdges) {
+          queue.push(edge.to);
+        }
+      }
+    }
+    return false;
+  }
 
-    // Render Ghost Node in Placement Mode
-    if (isPlacementMode) {
-      const ghost = document.createElement('div');
-      ghost.className = 'mock-waypoint ghost';
-      ghost.style.left = `${mousePos.x}%`;
-      ghost.style.top = `${mousePos.y}%`;
-      mapContainer.appendChild(ghost);
+  function _endEdgeDraw() {
+    dragState = null;
+    mapModal.clearTempEdge();
+    mapModal.updateEditorEdges(edges, nodes);
+    _setPlacementCursor(false);
+  }
+
+  // Paint initial nodes onto the map
+  nodes.forEach(n => mapModal.addEditorNode(n));
+  mapModal.updateEditorEdges(edges, nodes);
+  clearSelection();
+
+  // ── Placement cursor helper ──
+  function _setPlacementCursor(on) {
+    const mapEl = document.getElementById('game-map');
+    if (mapEl) mapEl.style.cursor = on ? 'crosshair' : '';
+    if (!on && mapModal) {
+      mapModal.hideGhostNode();
     }
   }
 
@@ -284,33 +247,37 @@ document.addEventListener('DOMContentLoaded', () => {
     selectedType = type;
     selectedId = id;
     isPlacementMode = false;
+    _setPlacementCursor(false);
     updatePanel();
-    renderMap();
+    // Highlight selected marker and edge
+    mapModal.setSelectedNode(type === 'node' ? id : null);
+    mapModal.setSelectedEdge(type === 'edge' ? id : null);
   }
 
   function clearSelection() {
     selectedType = null;
     selectedId = null;
     isPlacementMode = false;
+    _setPlacementCursor(false);
     updatePanel();
-    renderMap();
+    mapModal.setSelectedNode(null);
+    mapModal.setSelectedEdge(null);
   }
 
   function updatePanel() {
-    panelEmptyState.hidden = true;
-    waypointEditor.hidden = true;
-    edgeEditor.hidden = true;
+    if (panelEmptyState) panelEmptyState.setAttribute('hidden', 'true');
+    if (waypointEditor) waypointEditor.setAttribute('hidden', 'true');
+    if (edgeEditor) edgeEditor.setAttribute('hidden', 'true');
 
     if (!selectedType) {
-      panelEmptyState.hidden = false;
+      if (panelEmptyState) panelEmptyState.removeAttribute('hidden');
     } else if (selectedType === 'node') {
-      waypointEditor.hidden = false;
+      if (waypointEditor) waypointEditor.removeAttribute('hidden');
       const node = nodes.find(n => n.id === selectedId);
       if (node) {
-        editorTitle.value = node.title;
-        editorDesc.value = node.description;
-        
-        // Mock render games
+        if (editorTitle) editorTitle.value = node.title;
+        if (editorDesc) editorDesc.value = node.description;
+
         const gamesList = document.getElementById('editor-games-list');
         if (gamesList) {
           gamesList.innerHTML = `
@@ -324,16 +291,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
     } else if (selectedType === 'edge') {
-      edgeEditor.hidden = false;
+      if (edgeEditor) edgeEditor.removeAttribute('hidden');
       const edge = edges.find(e => e.id === selectedId);
       if (edge) {
         const fromNode = nodes.find(n => n.id === edge.from);
         const titleEl = document.getElementById('edge-editor-title');
-        if (titleEl && fromNode) {
-          titleEl.textContent = `Transition from ${fromNode.title}`;
-        }
-        
-        // Mock render transitions from predecessor games
+        if (titleEl && fromNode) titleEl.textContent = `Transition from ${fromNode.title}`;
+
         const transitionList = document.getElementById('transition-games-list');
         if (transitionList && fromNode) {
           transitionList.innerHTML = `
@@ -341,7 +305,7 @@ document.addEventListener('DOMContentLoaded', () => {
               <div class="transition-game-card__title">${fromNode.gamemode}</div>
               <div class="transition-game-card__controls">
                 <label class="trigger-checkbox-label">
-                  <input type="checkbox" class="trigger--pass" ${Math.random() > 0.5 ? 'checked' : ''}>
+                  <input type="checkbox" class="trigger--pass">
                   Pass
                 </label>
                 <label class="trigger-checkbox-label">
@@ -356,55 +320,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // ── Global Map Events ──
-  mapWrapper.addEventListener('mousemove', (e) => {
-    mousePos = getMousePercentages(e);
-    
-    if (isPlacementMode) {
-      renderMap(); // update ghost
-    } else if (dragState) {
-      if (dragState.type === 'node_move') {
-        const node = nodes.find(n => n.id === dragState.id);
-        if (node) {
-          node.x = mousePos.x;
-          node.y = mousePos.y;
-          renderMap();
-        }
-      } else if (dragState.type === 'edge_draw') {
-        dragState.x = mousePos.x;
-        dragState.y = mousePos.y;
-        renderMap();
-      }
-    }
-  });
-
-  mapWrapper.addEventListener('mousedown', (e) => {
-    if (isPlacementMode) {
-      // Place new node
-      const newNode = {
-        id: `wp${nextId++}`,
-        x: mousePos.x,
-        y: mousePos.y,
-        title: 'New Waypoint',
-        description: '',
-        gamemode: 'Unknown',
-        type: 'gps'
-      };
-      nodes.push(newNode);
-      selectItem('node', newNode.id);
-    } else {
-      // Clicked on empty map space
-      clearSelection();
-    }
-  });
-
-  window.addEventListener('mouseup', () => {
-    if (dragState) {
-      dragState = null;
-      renderMap();
-    }
-  });
-
   // ── UI Actions ──
   if (btnAddWaypoint) {
     btnAddWaypoint.addEventListener('click', (e) => {
@@ -412,8 +327,16 @@ document.addEventListener('DOMContentLoaded', () => {
       isPlacementMode = true;
       selectedType = null;
       selectedId = null;
+      _setPlacementCursor(true);
       updatePanel();
-      renderMap();
+      // Show placement hint in empty state
+      if (panelEmptyState) {
+        panelEmptyState.removeAttribute('hidden');
+        const p = panelEmptyState.querySelector('p');
+        if (p) p.textContent = 'Click anywhere on the map to drop a new waypoint.';
+      }
+      if (waypointEditor) waypointEditor.setAttribute('hidden', 'true');
+      if (edgeEditor) edgeEditor.setAttribute('hidden', 'true');
     });
   }
 
@@ -422,7 +345,10 @@ document.addEventListener('DOMContentLoaded', () => {
     editorTitle.addEventListener('input', () => {
       if (selectedType === 'node' && selectedId) {
         const node = nodes.find(n => n.id === selectedId);
-        if (node) node.title = editorTitle.value;
+        if (node) {
+          node.title = editorTitle.value;
+          mapModal.updateEditorNodeTitle(selectedId, node.title);
+        }
       }
     });
   }
@@ -436,19 +362,108 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  async function saveArg(status) {
+    const title = titleEl ? titleEl.textContent.trim() : 'Untitled WARG';
+    const description = descEl ? descEl.textContent.trim() : '';
+
+    const payload = {
+      title,
+      description,
+      status,
+      waypoints: nodes,
+      edges: edges
+    };
+
+    const method = currentArgId ? 'PUT' : 'POST';
+    const url = currentArgId ? `http://localhost:3000/api/args/${currentArgId}` : `http://localhost:3000/api/args`;
+
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        credentials: 'include'
+      });
+      
+      if (!res.ok) {
+        throw new Error('Failed to save ARG');
+      }
+      
+      const data = await res.json();
+      
+      if (!currentArgId && data.arg_id) {
+        currentArgId = data.arg_id;
+        window.history.pushState({}, '', `edit_warg.html?id=${currentArgId}`);
+      }
+      
+      return data;
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  function setLoadingState(btn, isLoading, originalText) {
+    if (!btn) return;
+    if (isLoading) {
+      btn.disabled = true;
+      btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;animation:spin 1s linear infinite;margin-right:8px;vertical-align:middle"><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/></svg><span style="vertical-align:middle">${originalText}</span>`;
+    } else {
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
+  }
+
   // ── Global Save Actions ──
   if (btnGlobalSave) {
-    btnGlobalSave.addEventListener('click', () => {
-      // Mock global save
-      openAlertModal("All changes have been successfully saved to the server.");
+    btnGlobalSave.addEventListener('click', async () => {
+      const origText = btnGlobalSave.textContent;
+      setLoadingState(btnGlobalSave, true, origText);
+      try {
+        await saveArg('unpublished');
+        const msg = isCreateMode && !currentArgId
+          ? 'Your new WARG has been saved as a draft.'
+          : 'All changes have been successfully saved to the server.';
+        openAlertModal(msg);
+      } catch (err) {
+        openAlertModal('Failed to save draft. Please try again.');
+      } finally {
+        setLoadingState(btnGlobalSave, false, origText);
+      }
+    });
+  }
+
+  // ── Publish Action ──
+  if (btnGlobalPublish) {
+    btnGlobalPublish.addEventListener('click', () => {
+      const wargTitle = (titleEl ? titleEl.textContent.trim() : '') || 'Untitled WARG';
+      if (nodes.length === 0) {
+        openAlertModal('Please add at least one waypoint before publishing your WARG.');
+        return;
+      }
+      openConfirmModal(
+        'Publish WARG',
+        `Publish "${wargTitle}"? It will become visible to all players.`,
+        async () => {
+          try {
+            await saveArg('published');
+            openAlertModal(`"${wargTitle}" has been published! Players can now discover and play it.`);
+            setTimeout(() => { window.location.href = 'studio.html'; }, 2000);
+          } catch (err) {
+            openAlertModal('Failed to publish WARG. Please try again.');
+          }
+        }
+      );
     });
   }
 
   if (btnRemoveWaypoint) {
     btnRemoveWaypoint.addEventListener('click', () => {
       openConfirmModal('Delete Node', 'Are you sure you want to delete this waypoint? All connected edges will also be removed.', () => {
+        mapModal.removeEditorNode(selectedId);
         nodes = nodes.filter(n => n.id !== selectedId);
         edges = edges.filter(e => e.from !== selectedId && e.to !== selectedId);
+        mapModal.updateEditorEdges(edges, nodes);
         clearSelection();
       });
     });
@@ -458,6 +473,7 @@ document.addEventListener('DOMContentLoaded', () => {
     btnRemoveEdge.addEventListener('click', () => {
       openConfirmModal('Delete Edge', 'Are you sure you want to delete this connection?', () => {
         edges = edges.filter(e => e.id !== selectedId);
+        mapModal.updateEditorEdges(edges, nodes);
         clearSelection();
       });
     });
@@ -465,24 +481,34 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ── Confirm Modal Logic ──
   function openConfirmModal(title, desc, callback) {
-    confirmModalTitle.textContent = title;
-    confirmModalDesc.textContent = desc;
+    if (confirmModalTitle) confirmModalTitle.textContent = title;
+    if (confirmModalDesc) confirmModalDesc.textContent = desc;
     confirmCallback = callback;
-    confirmModalOverlay.setAttribute('aria-hidden', 'false');
+    if (confirmModalOverlay) confirmModalOverlay.setAttribute('aria-hidden', 'false');
   }
 
   function closeConfirmModal() {
-    confirmModalOverlay.setAttribute('aria-hidden', 'true');
+    if (confirmModalOverlay) confirmModalOverlay.setAttribute('aria-hidden', 'true');
     confirmCallback = null;
   }
 
   if (btnCloseConfirmModal) btnCloseConfirmModal.addEventListener('click', closeConfirmModal);
   if (btnCancelConfirm) btnCancelConfirm.addEventListener('click', closeConfirmModal);
-  
+
   if (btnAcceptConfirm) {
-    btnAcceptConfirm.addEventListener('click', () => {
-      if (confirmCallback) confirmCallback();
-      closeConfirmModal();
+    btnAcceptConfirm.addEventListener('click', async () => {
+      if (confirmCallback) {
+        const origText = btnAcceptConfirm.textContent;
+        setLoadingState(btnAcceptConfirm, true, origText);
+        try {
+          await confirmCallback();
+        } finally {
+          setLoadingState(btnAcceptConfirm, false, origText);
+          closeConfirmModal();
+        }
+      } else {
+        closeConfirmModal();
+      }
     });
   }
 
@@ -498,34 +524,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (btnCloseAlertModal) btnCloseAlertModal.addEventListener('click', closeAlertModal);
   if (btnAcceptAlert) btnAcceptAlert.addEventListener('click', closeAlertModal);
-  
+
   if (alertModalOverlay) {
     alertModalOverlay.addEventListener('click', (e) => {
       if (e.target === alertModalOverlay) closeAlertModal();
     });
-  }
-
-  // ── Cycle Detection Utility ──
-  function hasPath(startId, targetId) {
-    if (startId === targetId) return true;
-    const visited = new Set();
-    const stack = [startId];
-    
-    while (stack.length > 0) {
-      const current = stack.pop();
-      if (current === targetId) return true;
-      
-      if (!visited.has(current)) {
-        visited.add(current);
-        const outgoingEdges = edges.filter(e => e.from === current);
-        outgoingEdges.forEach(e => {
-          if (!visited.has(e.to)) {
-            stack.push(e.to);
-          }
-        });
-      }
-    }
-    return false;
   }
 
   if (confirmModalOverlay) {
@@ -533,8 +536,4 @@ document.addEventListener('DOMContentLoaded', () => {
       if (e.target === confirmModalOverlay) closeConfirmModal();
     });
   }
-
-  // Initialize
-  clearSelection();
 });
-

@@ -11,6 +11,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (typeof GameCard === 'undefined' || typeof api === 'undefined') return;
 
+  // Show skeletons immediately
+  GameCard.renderSkeletons('row-published', 3);
+  GameCard.renderSkeletons('row-unpublished', 3);
+
   // ── Check auth ──
   const currentUser = await api.getCurrentUser();
 
@@ -65,7 +69,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const heroCard = document.querySelector('.studio-hero');
   if (heroCard) {
     heroCard.addEventListener('click', () => {
-      window.location.href = 'edit_warg.html';
+      window.location.href = 'create_warg.html';
     });
   }
 

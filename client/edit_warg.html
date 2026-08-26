@@ -105,6 +105,10 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
                 Save Changes
               </button>
+              <button class="btn btn--accent btn--large builder-btn-pill" id="btn-global-publish">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/></svg>
+                Publish WARG
+              </button>
             </div>
           </section>
         </div>
@@ -167,7 +171,44 @@
 </div>
 
 
+<!-- Alert Modal -->
+<div class="modal-overlay" id="alert-modal-overlay" aria-hidden="true">
+  <div class="modal">
+    <div class="modal__header">
+      <h3 class="modal__title">Notice</h3>
+      <button class="icon-btn" id="btn-close-alert-modal" aria-label="Close modal">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+    <div class="modal__body">
+      <p id="alert-modal-desc"></p>
+    </div>
+    <div class="modal__footer">
+      <button class="btn btn--primary" id="btn-accept-alert">OK</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm Modal -->
+<div class="modal-overlay" id="confirm-modal-overlay" aria-hidden="true">
+  <div class="modal">
+    <div class="modal__header">
+      <h3 class="modal__title" id="confirm-modal-title">Confirm</h3>
+      <button class="icon-btn" id="btn-close-confirm-modal" aria-label="Close modal">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+    <div class="modal__body">
+      <p id="confirm-modal-desc"></p>
+    </div>
+    <div class="modal__footer" style="display: flex; gap: 12px; justify-content: flex-end;">
+      <button class="btn btn--outline" id="btn-cancel-confirm">Cancel</button>
+      <button class="btn btn--primary btn--danger" id="btn-accept-confirm">Confirm</button>
+    </div>
+  </div>
+</div>
+
 <script src="scripts/home.js"></script> <!-- Includes navigation drawer logic -->
-<script src="scripts/edit_warg.js"></script>
+<script src="scripts/edit_warg.js" type="module"></script>
 </body>
 </html>

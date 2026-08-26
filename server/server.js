@@ -14,14 +14,30 @@ const userRoutes = require('./src/routes/userRoutes');
 const sessionRoutes = require('./src/routes/sessionRoutes');
 const authRoutes = require('./src/routes/authRoutes');
 const aiRoutes = require('./src/routes/aiRoutes');
+const commentRoutes = require('./src/routes/commentRoutes');
 const app = express();
 const server = http.createServer(app);
 
 // Setup Socket.io for live/co-op game modes
 const io = new Server(server, {
   cors: {
-    origin: '*', // Allow all origins for now. In production, restrict this to your frontend URL
-    methods: ['GET', 'POST']
+    origin: function (origin, callback) {
+      // In production, configure CLIENT_URL in your environment variables. 
+      // For multiple origins (e.g., local dev + prod), separate them with commas in your .env
+      const allowedOrigins = process.env.CLIENT_URL
+        ? process.env.CLIENT_URL.split(',').map(url => url.trim().replace(/\/$/, ''))
+        : [];
+
+      const normalizedOrigin = origin ? origin.trim().replace(/\/$/, '') : null;
+
+      if (!normalizedOrigin || allowedOrigins.includes(normalizedOrigin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Origin not allowed by CORS'));
+      }
+    },
+    methods: ['GET', 'POST'],
+    credentials: true
   }
 });
 
@@ -40,14 +56,24 @@ const sessionStoreOptions = new MySQLStore({
 
 // Middleware
 app.use(cors({
-  origin: [
-    process.env.CLIENT_URL || '*',
-    'http://localhost:5500',
-    'http://127.0.0.1:5500'
-  ],
+  origin: function (origin, callback) {
+    const allowedOrigins = process.env.CLIENT_URL
+      ? process.env.CLIENT_URL.split(',').map(url => url.trim().replace(/\/$/, ''))
+      : [];
+
+    const normalizedOrigin = origin ? origin.trim().replace(/\/$/, '') : null;
+
+    if (!normalizedOrigin || allowedOrigins.includes(normalizedOrigin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Origin not allowed by CORS'));
+    }
+  },
   credentials: true
 }));
 app.use(express.json());
+
+app.set('trust proxy', 1); // Trust first proxy (Render/Heroku/Vercel)
 
 // Session middleware (must come before passport)
 app.use(session({
@@ -57,7 +83,8 @@ app.use(session({
   saveUninitialized: false,
   cookie: {
     maxAge: 86400000, // 24 hours
-    secure: false,    // Set to true in production with HTTPS
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
     httpOnly: true
   }
 }));
@@ -77,6 +104,7 @@ app.use('/api/args', argRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/comments', commentRoutes);
 
 // Socket.io connection handling
 io.on('connection', (socket) => {
@@ -104,7 +132,7 @@ async function startServer() {
   } catch (error) {
     console.error('❌ Unable to connect to the database:', error.message);
     console.log('Starting server anyway (without DB connection)...');
-    
+
     server.listen(PORT, () => {
       console.log(`🚀 Server is running on port ${PORT} (No Database)`);
     });
