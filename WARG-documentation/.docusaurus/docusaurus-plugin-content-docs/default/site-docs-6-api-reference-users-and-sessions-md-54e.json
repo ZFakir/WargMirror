@@ -1,0 +1,27 @@
+{
+  "id": "api-reference/users-and-sessions",
+  "title": "Users & Sessions API",
+  "description": "Endpoints under /api/users and /api/sessions handle social graphs, library tracking, and active gameplay session initialization.",
+  "source": "@site/docs/6-api-reference/users-and-sessions.md",
+  "sourceDirName": "6-api-reference",
+  "slug": "/api-reference/users-and-sessions",
+  "permalink": "/docs/api-reference/users-and-sessions",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/docs/6-api-reference/users-and-sessions.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 3,
+  "frontMatter": {
+    "sidebar_position": 3
+  },
+  "sidebar": "tutorialSidebar",
+  "previous": {
+    "title": "ARG API",
+    "permalink": "/docs/api-reference/args"
+  },
+  "next": {
+    "title": "Client Views & Workflows",
+    "permalink": "/docs/frontend/client-views"
+  }
+}

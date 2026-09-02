@@ -8,6 +8,8 @@ import { FlagModal } from './components/FlagModal.js';
 import mapModal from './components/MapModal.js';
 
 document.addEventListener('DOMContentLoaded', () => {
+  const API_BASE = window.API_BASE_URL || 'https://wargmirror.onrender.com';
+  
   // Initialize the reusable Flag Modal
   const flagModal = new FlagModal();
   const btnFlagGame = document.getElementById('btn-flag-game');
@@ -23,7 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function loadArgAndInitMap() {
     try {
-      const res = await fetch(`http://localhost:3000/api/args/${argId}`, { credentials: 'include' });
+      const res = await fetch(`${API_BASE}/api/args/${argId}`, { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to load ARG');
       const argData = await res.json();
       
@@ -78,7 +80,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function loadComments() {
     try {
-      const response = await fetch(`http://localhost:3000/api/comments/arg/${argId}`, {
+      const response = await fetch(`${API_BASE}/api/comments/arg/${argId}`, {
         credentials: 'include'
       });
       if (!response.ok) throw new Error('Failed to load comments');
@@ -189,7 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!body.trim()) return;
     
     try {
-      const response = await fetch(`http://localhost:3000/api/comments/arg/${argId}`, {
+      const response = await fetch(`${API_BASE}/api/comments/arg/${argId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
