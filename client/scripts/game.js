@@ -133,7 +133,7 @@ document.addEventListener('DOMContentLoaded', () => {
               <span class="comment-item__time">${timeString}</span>
             </div>
             <p>${bodyHtml}</p>
-            ${!isReply ? `<button class="btn-reply" style="background: none; border: none; color: var(--color-brand); font-size: 12px; cursor: pointer; padding: 0; margin-top: 4px;">Reply</button>` : ''}
+            <button class="btn-reply" style="background: none; border: none; color: var(--color-brand); font-size: 12px; cursor: pointer; padding: 0; margin-top: 4px;">Reply</button>
           </div>
         `;
         
@@ -144,41 +144,43 @@ document.addEventListener('DOMContentLoaded', () => {
           }, { once: true });
         }
 
-        if (!isReply) {
-          const replyBtn = div.querySelector('.btn-reply');
-          replyBtn.addEventListener('click', () => {
-            const currentReply = document.querySelector('.reply-input-wrapper');
-            if (currentReply) currentReply.remove();
+        const replyBtn = div.querySelector('.btn-reply');
+        replyBtn.addEventListener('click', () => {
+          const currentReply = document.querySelector('.reply-input-wrapper');
+          if (currentReply) currentReply.remove();
 
-            const replyWrapper = document.createElement('div');
-            replyWrapper.className = 'compose-input-wrapper reply-input-wrapper';
-            replyWrapper.style.marginTop = '8px';
-            replyWrapper.innerHTML = `
-              <input type="text" class="input-field reply-input" placeholder="Write a reply..." />
-              <button class="btn btn--primary btn--sm btn-post-reply">Post</button>
-            `;
-            div.querySelector('.comment-item__content').appendChild(replyWrapper);
+          const replyWrapper = document.createElement('div');
+          replyWrapper.className = 'compose-input-wrapper reply-input-wrapper';
+          replyWrapper.style.marginTop = '8px';
+          replyWrapper.innerHTML = `
+            <input type="text" class="input-field reply-input" placeholder="Write a reply..." />
+            <button class="btn btn--primary btn--sm btn-post-reply">Post</button>
+          `;
+          div.querySelector('.comment-item__content').appendChild(replyWrapper);
 
-            const btnPostReply = replyWrapper.querySelector('.btn-post-reply');
-            const replyInput = replyWrapper.querySelector('.reply-input');
-            replyInput.focus();
+          const btnPostReply = replyWrapper.querySelector('.btn-post-reply');
+          const replyInput = replyWrapper.querySelector('.reply-input');
+          replyInput.focus();
 
-            btnPostReply.addEventListener('click', () => {
-              postComment(replyInput.value, comment.comment_id, false);
-            });
+          btnPostReply.addEventListener('click', () => {
+            postComment(replyInput.value, comment.comment_id, false);
           });
-        }
+        });
 
         return div;
       }
 
-      topLevelComments.forEach(comment => {
-        commentsList.appendChild(renderCommentNode(comment, false));
+      function appendCommentTree(comment, isReply = false) {
+        commentsList.appendChild(renderCommentNode(comment, isReply));
         if (comment.replies && comment.replies.length > 0) {
           comment.replies.forEach(reply => {
-            commentsList.appendChild(renderCommentNode(reply, true));
+            appendCommentTree(reply, true);
           });
         }
+      }
+
+      topLevelComments.forEach(comment => {
+        appendCommentTree(comment, false);
       });
 
     } catch (error) {
