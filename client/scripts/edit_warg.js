@@ -6,6 +6,8 @@
 import { MapModal } from './components/MapModal.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
+  const API_BASE = window.API_BASE_URL || 'https://wargmirror.onrender.com';
+  
   // ── Create vs Edit mode ──
   const isCreateMode = window.location.pathname.includes('create_warg');
   const urlParams = new URLSearchParams(window.location.search);
@@ -31,7 +33,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (!isCreateMode && currentArgId) {
     try {
-      const res = await fetch(`http://localhost:3000/api/args/${currentArgId}`, { credentials: 'include' });
+      const res = await fetch(`${API_BASE}/api/args/${currentArgId}`, { credentials: 'include' });
       if (res.ok) {
         const argData = await res.json();
         if (titleEl) titleEl.textContent = argData.title;
@@ -375,7 +377,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     const method = currentArgId ? 'PUT' : 'POST';
-    const url = currentArgId ? `http://localhost:3000/api/args/${currentArgId}` : `http://localhost:3000/api/args`;
+    const url = currentArgId ? `${API_BASE}/api/args/${currentArgId}` : `${API_BASE}/api/args`;
 
     try {
       const res = await fetch(url, {
