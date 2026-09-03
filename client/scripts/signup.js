@@ -91,7 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
       submitBtn.textContent = 'Processing...';
 
       try {
-        const response = await fetch(`${window.API_BASE_URL}/auth/signup`, {
+        const response = await fetch(`${window.API_BASE_URL || 'https://wargmirror.onrender.com'}/auth/signup`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
