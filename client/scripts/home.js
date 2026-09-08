@@ -250,17 +250,20 @@ async function initHomeData() {
       });
     } catch (_) { /* fallback handled below */ }
 
-    // Recently Played = ARGs with an active session, fall back to newest
+    // Recently Played = ARGs with an active session, no fallback
     var recentArgs = sessionArgIds.size > 0
       ? args.filter(function (a) { return sessionArgIds.has(a.id); })
-      : args.slice().sort(function (a, b) {
-          return new Date(b._raw.updated_at) - new Date(a._raw.updated_at);
-        }).slice(0, 10);
+      : [];
+
+    // Filter out locally dismissed ARGs
+    var dismissed = [];
+    try { dismissed = JSON.parse(localStorage.getItem('warg_dismissed_recent') || '[]'); } catch(_) {}
+    recentArgs = recentArgs.filter(function (a) { return dismissed.indexOf(a.id) === -1; });
 
     if (recentArgs.length === 0) {
       showRowEmpty('row-recent', 'No games played yet.');
     } else {
-      GameCard.renderRow('row-recent', recentArgs);
+      GameCard.renderRow('row-recent', recentArgs, { showRemove: true });
     }
   } else {
     // Guest: show "My Progress" prompt
@@ -277,15 +280,18 @@ async function initHomeData() {
     if (onlineList) onlineList.innerHTML = '<li style="padding:1rem;color:var(--text-muted);font-size:var(--font-size-sm);text-align:center;">Log in to see friends</li>';
     if (offlineList) offlineList.innerHTML = '';
 
-    // Guest recently played = newest ARGs
-    var newestArgs = args.slice().sort(function (a, b) {
-      return new Date(b._raw.created_at) - new Date(a._raw.created_at);
-    }).slice(0, 10);
+    // Guest recently played: none
+    var newestArgs = [];
+
+    // Filter out locally dismissed ARGs
+    var guestDismissed = [];
+    try { guestDismissed = JSON.parse(localStorage.getItem('warg_dismissed_recent') || '[]'); } catch(_) {}
+    newestArgs = newestArgs.filter(function (a) { return guestDismissed.indexOf(a.id) === -1; });
 
     if (newestArgs.length === 0) {
-      showRowEmpty('row-recent', 'No games available yet.');
+      showRowEmpty('row-recent', 'Log in to track your recent games.');
     } else {
-      GameCard.renderRow('row-recent', newestArgs);
+      GameCard.renderRow('row-recent', newestArgs, { showRemove: true });
     }
   }
 
@@ -310,6 +316,37 @@ async function initHomeData() {
   }
   // Init horizontal scroll for cards
   initCardScrolls();
+}
+
+/* ── Drag-to-scroll for card rows ── */
+function initCardScrolls() {
+  document.querySelectorAll('.card-row').forEach(row => {
+    let isDown = false;
+    let startX;
+    let scrollLeft;
+
+    row.addEventListener('mousedown', e => {
+      isDown = true;
+      row.classList.add('is-dragging');
+      startX = e.pageX - row.offsetLeft;
+      scrollLeft = row.scrollLeft;
+    });
+    row.addEventListener('mouseleave', () => {
+      isDown = false;
+      row.classList.remove('is-dragging');
+    });
+    row.addEventListener('mouseup', () => {
+      isDown = false;
+      row.classList.remove('is-dragging');
+    });
+    row.addEventListener('mousemove', e => {
+      if (!isDown) return;
+      e.preventDefault();
+      const x = e.pageX - row.offsetLeft;
+      const walk = (x - startX) * 1.5;
+      row.scrollLeft = scrollLeft - walk;
+    });
+  });
 }
 
 function renderFriends(friends) {
@@ -402,5 +439,28 @@ inviteBtn?.addEventListener('click', async () => {
     const orig = inviteBtn.textContent;
     inviteBtn.textContent = 'Copy failed';
     setTimeout(() => { inviteBtn.textContent = orig; }, 2000);
+  }
+});
+
+/* ── Handle removing from recent ── */
+document.addEventListener('warg:removed-recent', function(e) {
+  var argId = e.detail.argId;
+
+  // Persist to localStorage so the card stays hidden across reloads
+  try {
+    var dismissed = JSON.parse(localStorage.getItem('warg_dismissed_recent') || '[]');
+    if (dismissed.indexOf(argId) === -1) {
+      dismissed.push(argId);
+      localStorage.setItem('warg_dismissed_recent', JSON.stringify(dismissed));
+    }
+  } catch (_) {}
+
+  var card = document.querySelector('#row-recent .game-card[data-game-id="' + argId + '"]');
+  if (card) {
+    card.remove();
+    var row = document.getElementById('row-recent');
+    if (row && row.children.length === 0) {
+      showRowEmpty('row-recent', 'No games played yet.');
+    }
   }
 });

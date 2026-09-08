@@ -21,9 +21,9 @@ export class FlagModal {
       ${title}
     `;
     this.overlay.setAttribute('aria-hidden', 'false');
-    this.subjectInput.value = '';
+    this.reasonInput.value = 'inappropriate_content';
     this.descriptionInput.value = '';
-    this.subjectInput.focus();
+    this.reasonInput.focus();
   }
 
   initDOM() {
@@ -119,8 +119,8 @@ export class FlagModal {
         return;
       }
 
-      const origText = this.submitBtn.textContent;
-      this.submitBtn.textContent = 'Submitting...';
+      const origHTML = this.submitBtn.innerHTML;
+      this.submitBtn.innerHTML = '<span class="flag-modal__spinner"></span>';
       this.submitBtn.disabled = true;
 
       try {
@@ -131,19 +131,23 @@ export class FlagModal {
           await new Promise(r => setTimeout(r, 800));
         }
         
-        this.submitBtn.textContent = 'Reported!';
-        this.submitBtn.style.background = 'var(--color-success)';
+        this.submitBtn.innerHTML = `
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg> Reported!
+        `;
+        this.submitBtn.classList.add('btn--success-glass');
         
         setTimeout(() => {
           this.close();
-          this.submitBtn.textContent = origText;
-          this.submitBtn.style.background = '';
+          this.submitBtn.innerHTML = origHTML;
+          this.submitBtn.classList.remove('btn--success-glass');
           this.submitBtn.disabled = false;
         }, 1500);
       } catch (err) {
         console.error('Failed to submit flag', err);
         alert('Failed to submit report. Please try again.');
-        this.submitBtn.textContent = origText;
+        this.submitBtn.innerHTML = origHTML;
         this.submitBtn.disabled = false;
       }
     });

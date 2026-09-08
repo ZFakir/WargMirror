@@ -37,6 +37,17 @@ var api = (function () {
     return res.json();
   }
 
+  async function _delete(path) {
+    const res = await fetch(API_BASE + path, {
+      method: 'DELETE',
+      credentials: 'include'
+    });
+    if (!res.ok) {
+      throw Object.assign(new Error('API error'), { status: res.status, path });
+    }
+    return res.json();
+  }
+
   /* ── Data normaliser ────────────────────────────────────── */
   /**
    * Maps an API Arg object → GameCard-compatible shape.
@@ -87,6 +98,7 @@ var api = (function () {
       },
       likes:    arg.like_count    || 0,
       dislikes: arg.dislike_count || 0,
+      userVote: arg.user_vote     || null,
       rating:   rating,
       featured: false,
       // Keep raw fields for pages that need them
@@ -168,6 +180,10 @@ var api = (function () {
     return _post('/api/args/' + argId + '/flag', { reason, description, reporter_id: reporterId });
   }
 
+  async function removeRecentArg(argId, userId = 1) { // Defaulting user_id to 1 until auth is hooked up
+    return _delete('/api/sessions/' + userId + '/arg/' + argId);
+  }
+
   /* ── Public API ─────────────────────────────────────────── */
   return {
     getCurrentUser,
@@ -180,6 +196,7 @@ var api = (function () {
     normaliseArg,
     voteArg,
     flagArg,
+    removeRecentArg,
   };
 
 }());

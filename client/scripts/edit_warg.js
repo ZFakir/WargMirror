@@ -395,7 +395,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       
       if (!currentArgId && data.arg_id) {
         currentArgId = data.arg_id;
-        window.history.pushState({}, '', `edit_warg.html?id=${currentArgId}`);
+        window.history.pushState({}, '', `edit_warg?id=${currentArgId}`);
       }
       
       return data;

@@ -1,8 +1,8 @@
 /* ==========================================================================
-   Flag Modal Styles
+   Remove Modal Styles
    ========================================================================== */
 
-.flag-modal-overlay {
+.remove-modal-overlay {
   position: fixed;
   inset: 0;
   z-index: 1000;
@@ -17,17 +17,17 @@
   transition: opacity 0.2s, visibility 0.2s;
 }
 
-.flag-modal-overlay[aria-hidden="false"] {
+.remove-modal-overlay[aria-hidden="false"] {
   opacity: 1;
   visibility: visible;
 }
 
-.flag-modal {
-  background-color: var(--color-surface);
+.remove-modal {
+  background-color: #000000;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   width: 100%;
-  max-width: 500px;
+  max-width: 400px;
   max-height: 90vh;
   display: flex;
   flex-direction: column;
@@ -37,11 +37,11 @@
   transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.flag-modal-overlay[aria-hidden="false"] .flag-modal {
+.remove-modal-overlay[aria-hidden="false"] .remove-modal {
   transform: translateY(0) scale(1);
 }
 
-.flag-modal__header {
+.remove-modal__header {
   padding: var(--space-4);
   border-bottom: 1px solid var(--color-border);
   display: flex;
@@ -49,7 +49,7 @@
   justify-content: space-between;
 }
 
-.flag-modal__title {
+.remove-modal__title {
   margin: 0;
   font-size: var(--font-size-h3);
   font-weight: var(--font-weight-bold);
@@ -59,11 +59,7 @@
   gap: var(--space-2);
 }
 
-.flag-modal__title svg {
-  color: var(--color-accent);
-}
-
-.flag-modal__close-btn {
+.remove-modal__close-btn {
   background: transparent;
   border: none;
   color: var(--color-text-secondary);
@@ -75,12 +71,12 @@
   transition: all 0.2s;
 }
 
-.flag-modal__close-btn:hover {
+.remove-modal__close-btn:hover {
   background-color: rgba(255, 255, 255, 0.1);
   color: var(--color-text-primary);
 }
 
-.flag-modal__body {
+.remove-modal__body {
   padding: var(--space-4);
   overflow-y: auto;
   display: flex;
@@ -88,72 +84,17 @@
   gap: var(--space-4);
 }
 
-.flag-modal .form-group {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.flag-modal label {
-  font-size: var(--font-size-caption);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text-secondary);
-}
-
-.flag-modal input,
-.flag-modal textarea {
-  background: rgba(18, 16, 14, 0.6);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  padding: var(--space-3);
+.remove-modal__body p {
+  margin: 0;
   color: var(--color-text-primary);
-  font-family: inherit;
-  font-size: var(--font-size-body);
-  transition: border-color 0.2s;
+  line-height: 1.5;
 }
 
-.flag-modal textarea {
-  min-height: 120px;
-  resize: vertical;
-}
-
-.flag-modal input:focus,
-.flag-modal textarea:focus {
-  outline: none;
-  border-color: var(--color-accent);
-}
-
-.flag-modal__footer {
+.remove-modal__footer {
   padding: var(--space-4);
   border-top: 1px solid var(--color-border);
   display: flex;
   justify-content: flex-end;
   gap: var(--space-3);
-  background: rgba(10, 8, 7, 0.5);
-}
-
-/* ── Custom Button States ── */
-.flag-modal__spinner {
-  display: inline-block;
-  width: 16px;
-  height: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-radius: 50%;
-  border-top-color: #fff;
-  animation: flag-spin 0.8s linear infinite;
-}
-
-@keyframes flag-spin {
-  to { transform: rotate(360deg); }
-}
-
-.btn--success-glass {
-  background: rgba(46, 204, 113, 0.15) !important;
-  border-color: rgba(46, 204, 113, 0.3) !important;
-  color: #2ecc71 !important;
-  backdrop-filter: blur(8px);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  transition: all 0.3s ease;
+  background-color: transparent;
 }

@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="styles/tokens.css" />
   <link rel="stylesheet" href="styles/home.css" />
-  <link rel="stylesheet" href="styles/game.css" />
+  <link rel="stylesheet" href="styles/game.css?v=2" />
 </head>
 
 <body>
@@ -181,37 +181,24 @@
 
         <!-- Game Feedback & Discussion -->
         <div class="game-feedback-wrapper">
-          <div class="game-actions-bar">
+          <div class="game-actions-bar" style="display: flex; gap: 16px; align-items: center; margin-bottom: 24px;">
             <!-- Like Game -->
             <button class="icon-btn" id="btn-like-game" aria-label="Like game" title="Like">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
-                stroke-linejoin="round" aria-hidden="true">
-                <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z" />
-                <path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" />
-              </svg>
-              <span>Like</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
+              <span></span>
             </button>
 
             <!-- Dislike Game -->
             <button class="icon-btn" id="btn-dislike-game" aria-label="Dislike game" title="Dislike">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
-                stroke-linejoin="round" aria-hidden="true">
-                <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0-2-2.3H10z" />
-                <path d="M17 2h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-3" />
-              </svg>
-              <span>Dislike</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z"/><path d="M17 2h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/></svg>
+              <span></span>
             </button>
 
             <div style="flex-grow: 1;"></div>
 
             <!-- Flag/Report Game -->
             <button class="icon-btn" id="btn-flag-game" aria-label="Flag game for review" title="Report/Flag">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
-                stroke-linejoin="round" aria-hidden="true">
-                <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
-                <line x1="4" y1="22" x2="4" y2="15" />
-              </svg>
-              <span>Report</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
             </button>
           </div>
 
@@ -447,7 +434,9 @@
     </div>
   </div>
 
-  <script src="scripts/game.js" type="module"></script>
+  <script src="scripts/config.js?v=3"></script>
+  <script src="scripts/game.js?v=4" type="module"></script>
 </body>
 
 </html>
+

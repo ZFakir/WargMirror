@@ -23,3 +23,16 @@ exports.getActiveSessions = async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch active sessions' });
   }
 };
+
+exports.removeRecentSession = async (req, res) => {
+  try {
+    const { user_id, arg_id } = req.params;
+    await GameSession.destroy({
+      where: { user_id, arg_id, status: 'active' }
+    });
+    res.status(200).json({ message: 'Session removed from recent' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to remove recent session' });
+  }
+};

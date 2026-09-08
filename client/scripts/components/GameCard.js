@@ -147,6 +147,7 @@ var GameCard = (function () {
     var hideProgress  = options.hideProgress || false;
     var showPublish   = options.showPublish || false;
     var showUnpublish = options.showUnpublish || false;
+    var showRemove    = options.showRemove || false;
 
     var mode    = MODE[game.mode] || MODE.solo;
     var article = document.createElement('article');
@@ -162,12 +163,29 @@ var GameCard = (function () {
       ? '<img src="' + game.image + '" alt="' + game.title + '" loading="lazy" />'
       : '<span class="gc-cover__emoji" aria-hidden="true">' + (game.emoji || '🎮') + '</span>';
 
+    var localVotes = {};
+    try { localVotes = JSON.parse(localStorage.getItem('warg_votes') || '{}'); } catch(e) {}
+    var userVote = game.userVote || localVotes[game.id] || null;
+
     article.innerHTML = [
 
       /* ── Cover ── */
       '<div class="gc-cover" style="background:' + mode.bg + ';--card-glow:' + mode.glowColor + '">',
         coverMediaHTML,
         '<span class="gc-cover__badge ' + mode.badgeClass + '">' + mode.label + '</span>',
+        (showRemove ? 
+          '<button class="gc-cover__menu-btn" data-action="remove-menu" aria-label="Menu" aria-expanded="false">' +
+            '<svg style="pointer-events: none;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+              '<circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/>' +
+            '</svg>' +
+          '</button>' +
+          '<div class="gc-menu-dropdown" aria-hidden="true">' +
+            '<button class="gc-menu-item" data-action="remove-recent">' +
+              '<svg style="pointer-events: none;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>' +
+              'Remove from Recent' +
+            '</button>' +
+          '</div>'
+        : ''),
       '</div>',
 
       /* ── Body ── */
@@ -208,14 +226,14 @@ var GameCard = (function () {
               '<span class="gc-action__count">Unpublish WARG</span>' +
             '</button>'
           ) : (
-            '<button class="gc-action" data-action="like"' +
-            ' aria-label="Like" aria-pressed="false">' +
+            '<button class="gc-action' + (userVote === 'like' ? ' is-active' : '') + '" data-action="like"' +
+            ' aria-label="Like" aria-pressed="' + (userVote === 'like' ? 'true' : 'false') + '">' +
               ICONS.thumbUp +
               '<span class="gc-action__count">' + formatCount(game.likes) + '</span>' +
             '</button>' +
 
-            '<button class="gc-action" data-action="dislike"' +
-            ' aria-label="Dislike" aria-pressed="false">' +
+            '<button class="gc-action' + (userVote === 'dislike' ? ' is-active' : '') + '" data-action="dislike"' +
+            ' aria-label="Dislike" aria-pressed="' + (userVote === 'dislike' ? 'true' : 'false') + '">' +
               ICONS.thumbDown +
               '<span class="gc-action__count">' + formatCount(game.dislikes) + '</span>' +
             '</button>' +
@@ -223,12 +241,7 @@ var GameCard = (function () {
             '<button class="gc-action gc-action--flag" data-action="flag"' +
             ' aria-label="Flag content" aria-pressed="false">' +
               ICONS.flag +
-            '</button>' +
-
-            '<div class="gc-rating" aria-label="Rating: ' + game.rating + ' out of 5">' +
-              ICONS.star +
-              '<span>' + game.rating.toFixed(1) + '</span>' +
-            '</div>'
+            '</button>'
           )),
 
         '</div>', /* gc-actions */
@@ -253,6 +266,7 @@ var GameCard = (function () {
         _onCardOpen(article);
         return;
       }
+      e.preventDefault();
       e.stopPropagation();
 
       var action = btn.dataset.action;
@@ -270,6 +284,47 @@ var GameCard = (function () {
 
       var argId = article.dataset.gameId;
 
+      if (action === 'remove-menu') {
+        var dropdown = article.querySelector('.gc-menu-dropdown');
+        var isOpen = dropdown.classList.contains('is-open');
+        
+        // Close all others first
+        document.querySelectorAll('.gc-menu-dropdown.is-open').forEach(function(el) {
+          el.classList.remove('is-open');
+          el.setAttribute('aria-hidden', 'true');
+          var sib = el.previousElementSibling;
+          if (sib) sib.setAttribute('aria-expanded', 'false');
+        });
+
+        if (!isOpen) {
+          dropdown.classList.add('is-open');
+          dropdown.setAttribute('aria-hidden', 'false');
+          btn.setAttribute('aria-expanded', 'true');
+        }
+        return;
+      }
+
+      if (action === 'remove-recent') {
+        var menuDropdown = article.querySelector('.gc-menu-dropdown');
+        if (menuDropdown) {
+          menuDropdown.classList.remove('is-open');
+          menuDropdown.setAttribute('aria-hidden', 'true');
+        }
+        
+        if (typeof window.RemoveModal !== 'undefined') {
+          if (!window._gameCardRemoveModal) window._gameCardRemoveModal = new window.RemoveModal();
+          window._gameCardRemoveModal.open(argId, article.querySelector('.gc-title').textContent);
+        } else {
+          import('./RemoveModal.js?v=1').then(module => {
+            if (!window._gameCardRemoveModal) window._gameCardRemoveModal = new module.RemoveModal();
+            window._gameCardRemoveModal.open(argId, article.querySelector('.gc-title').textContent);
+          }).catch(err => {
+            console.error('[GameCard] Failed to load RemoveModal:', err);
+          });
+        }
+        return;
+      }
+
       if (action === 'flag') {
         if (typeof window.FlagModal !== 'undefined') {
           // Use a singleton flag modal instance for GameCard
@@ -277,7 +332,7 @@ var GameCard = (function () {
           window._gameCardFlagModal.open(argId, 'Report Game');
         } else {
           // Dynamically import the module (relative to the HTML page loading it)
-          import('./scripts/components/FlagModal.js?v=2').then(module => {
+          import('./FlagModal.js?v=2').then(module => {
             if (!window._gameCardFlagModal) window._gameCardFlagModal = new module.FlagModal();
             window._gameCardFlagModal.open(argId, 'Report Game');
           }).catch(err => {
@@ -288,24 +343,57 @@ var GameCard = (function () {
       }
 
       var isPressed = btn.getAttribute('aria-pressed') === 'true';
+      
+      var likeCountSpan = article.querySelector('[data-action="like"] .gc-action__count');
+      var dislikeCountSpan = article.querySelector('[data-action="dislike"] .gc-action__count');
+      
+      var parseCount = function(span) { return span ? parseInt(span.textContent.replace(/,/g, ''), 10) || 0 : 0; };
+      var currentLikes = parseCount(likeCountSpan);
+      var currentDislikes = parseCount(dislikeCountSpan);
 
       btn.setAttribute('aria-pressed', String(!isPressed));
       btn.classList.toggle('is-active', !isPressed);
 
-      /* Mutual exclusion: liking removes dislike state and vice-versa */
-      if (action === 'like' && !isPressed) {
-        var dislike = article.querySelector('[data-action="dislike"]');
-        if (dislike && dislike.getAttribute('aria-pressed') === 'true') {
-          dislike.setAttribute('aria-pressed', 'false');
-          dislike.classList.remove('is-active');
+      /* Mutual exclusion: liking removes dislike state and vice-versa. Also update optimistic counts. */
+      if (action === 'like') {
+        currentLikes += isPressed ? -1 : 1;
+        if (!isPressed) {
+          var dislike = article.querySelector('[data-action="dislike"]');
+          if (dislike && dislike.getAttribute('aria-pressed') === 'true') {
+            dislike.setAttribute('aria-pressed', 'false');
+            dislike.classList.remove('is-active');
+            currentDislikes--;
+          }
         }
-      } else if (action === 'dislike' && !isPressed) {
-        var like = article.querySelector('[data-action="like"]');
-        if (like && like.getAttribute('aria-pressed') === 'true') {
-          like.setAttribute('aria-pressed', 'false');
-          like.classList.remove('is-active');
+      } else if (action === 'dislike') {
+        currentDislikes += isPressed ? -1 : 1;
+        if (!isPressed) {
+          var like = article.querySelector('[data-action="like"]');
+          if (like && like.getAttribute('aria-pressed') === 'true') {
+            like.setAttribute('aria-pressed', 'false');
+            like.classList.remove('is-active');
+            currentLikes--;
+          }
         }
       }
+      
+      if (likeCountSpan) likeCountSpan.textContent = formatCount(currentLikes);
+      if (dislikeCountSpan) dislikeCountSpan.textContent = formatCount(currentDislikes);
+
+      // Persist to localStorage optimistically
+      try {
+        var votes = JSON.parse(localStorage.getItem('warg_votes') || '{}');
+        var likeBtn = article.querySelector('[data-action="like"]');
+        var dislikeBtn = article.querySelector('[data-action="dislike"]');
+        
+        var newVote = null;
+        if (likeBtn && likeBtn.getAttribute('aria-pressed') === 'true') newVote = 'like';
+        else if (dislikeBtn && dislikeBtn.getAttribute('aria-pressed') === 'true') newVote = 'dislike';
+        
+        if (newVote) votes[argId] = newVote;
+        else delete votes[argId];
+        localStorage.setItem('warg_votes', JSON.stringify(votes));
+      } catch (e) {}
 
       // Fire API call
       if (typeof api !== 'undefined' && api.voteArg) {
@@ -336,7 +424,7 @@ var GameCard = (function () {
     var title = article.querySelector('.gc-title');
     var gameId = article.dataset.gameId;
     console.log('[WARG] Open game:', title ? title.textContent.trim() : gameId);
-    if (window.location.pathname.includes('studio.html')) {
+    if (window.location.pathname.includes('studio')) {
       window.location.href = 'edit_warg.html?id=' + gameId;
     } else {
       window.location.href = 'game.html?id=' + gameId;
@@ -382,6 +470,19 @@ var GameCard = (function () {
       '</div>';
     }
     container.innerHTML = skeletons;
+  }
+
+  /* ── Global menu closer ── */
+  if (typeof window !== 'undefined') {
+    window.addEventListener('click', function(e) {
+      if (e.target.closest('[data-action="remove-menu"]')) return;
+      document.querySelectorAll('.gc-menu-dropdown.is-open').forEach(function(el) {
+        el.classList.remove('is-open');
+        el.setAttribute('aria-hidden', 'true');
+        var btn = el.previousElementSibling;
+        if (btn) btn.setAttribute('aria-expanded', 'false');
+      });
+    });
   }
 
   /* ── Public API ─────────────────────────────────────── */
