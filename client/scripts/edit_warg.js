@@ -427,7 +427,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           ? 'Your new WARG has been saved as a draft.'
           : 'All changes have been successfully saved to the server.';
         openAlertModal(msg);
-      } catch (err) {
+      } catch {
         openAlertModal('Failed to save draft. Please try again.');
       } finally {
         setLoadingState(btnGlobalSave, false, origText);
@@ -451,7 +451,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             await saveArg('published');
             openAlertModal(`"${wargTitle}" has been published! Players can now discover and play it.`);
             setTimeout(() => { window.location.href = 'studio.html'; }, 2000);
-          } catch (err) {
+          } catch {
             openAlertModal('Failed to publish WARG. Please try again.');
           }
         }

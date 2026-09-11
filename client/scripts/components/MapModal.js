@@ -118,7 +118,7 @@ export class MapModal {
           });
 
           // Mouse up for ending edge on empty space
-          this.map.on('mouseup', (e) => {
+          this.map.on('mouseup', () => {
             this.enableAllDragging();
             if (this._editorCallbacks.onMapMouseUp) {
               this._editorCallbacks.onMapMouseUp();

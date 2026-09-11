@@ -10,7 +10,8 @@
  *   GameCard.renderRow('row-recent', WARG_GAMES.recent);
  */
 
-/* eslint-disable no-var */
+
+// eslint-disable-next-line no-unused-vars
 var GameCard = (function () {
 
   /* ── Mode configuration ─────────────────────────────── */
@@ -164,7 +165,7 @@ var GameCard = (function () {
       : '<span class="gc-cover__emoji" aria-hidden="true">' + (game.emoji || '🎮') + '</span>';
 
     var localVotes = {};
-    try { localVotes = JSON.parse(localStorage.getItem('warg_votes') || '{}'); } catch(e) {}
+    try { localVotes = JSON.parse(localStorage.getItem('warg_votes') || '{}'); } catch { /* ignore */ }
     var userVote = game.userVote || localVotes[game.id] || null;
 
     article.innerHTML = [
@@ -393,7 +394,7 @@ var GameCard = (function () {
         if (newVote) votes[argId] = newVote;
         else delete votes[argId];
         localStorage.setItem('warg_votes', JSON.stringify(votes));
-      } catch (e) {}
+      } catch { /* ignore */ }
 
       // Fire API call
       if (typeof api !== 'undefined' && api.voteArg) {

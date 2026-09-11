@@ -127,7 +127,7 @@ window.addEventListener('resize', () => {
 const navItems = document.querySelectorAll('.nav-item');
 
 navItems.forEach(item => {
-  item.addEventListener('click', e => {
+  item.addEventListener('click', () => {
     // Close sidebar drawer after nav on mobile
     if (isMobile()) closeSidebar();
 
@@ -231,7 +231,7 @@ async function initHomeData() {
       if (statPoints) statPoints.textContent = (profile.total_points || 0).toLocaleString();
       var statDist = document.querySelector('[data-stat="distance"]');
       if (statDist) statDist.textContent = Math.round((profile.distance_walked_m || 0) / 1000) + ' km';
-    } catch (_) { /* profile stats are non-critical */ }
+    } catch { /* profile stats are non-critical */ }
 
     // Fetch and render friends
     try {
@@ -248,7 +248,7 @@ async function initHomeData() {
       sessions.forEach(function (s) {
         if (s.Arg && s.Arg.arg_id) sessionArgIds.add(String(s.Arg.arg_id));
       });
-    } catch (_) { /* fallback handled below */ }
+    } catch { /* fallback handled below */ }
 
     // Recently Played = ARGs with an active session, no fallback
     var recentArgs = sessionArgIds.size > 0
@@ -257,7 +257,7 @@ async function initHomeData() {
 
     // Filter out locally dismissed ARGs
     var dismissed = [];
-    try { dismissed = JSON.parse(localStorage.getItem('warg_dismissed_recent') || '[]'); } catch(_) {}
+    try { dismissed = JSON.parse(localStorage.getItem('warg_dismissed_recent') || '[]'); } catch { /* ignore */ }
     recentArgs = recentArgs.filter(function (a) { return dismissed.indexOf(a.id) === -1; });
 
     if (recentArgs.length === 0) {
@@ -285,7 +285,7 @@ async function initHomeData() {
 
     // Filter out locally dismissed ARGs
     var guestDismissed = [];
-    try { guestDismissed = JSON.parse(localStorage.getItem('warg_dismissed_recent') || '[]'); } catch(_) {}
+    try { guestDismissed = JSON.parse(localStorage.getItem('warg_dismissed_recent') || '[]'); } catch { /* ignore */ }
     newestArgs = newestArgs.filter(function (a) { return guestDismissed.indexOf(a.id) === -1; });
 
     if (newestArgs.length === 0) {
@@ -453,7 +453,7 @@ document.addEventListener('warg:removed-recent', function(e) {
       dismissed.push(argId);
       localStorage.setItem('warg_dismissed_recent', JSON.stringify(dismissed));
     }
-  } catch (_) {}
+  } catch { /* ignore */ }
 
   var card = document.querySelector('#row-recent .game-card[data-game-id="' + argId + '"]');
   if (card) {

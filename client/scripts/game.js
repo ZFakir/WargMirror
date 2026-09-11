@@ -68,7 +68,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (userVote === 'dislike' && btnDislike) {
             btnDislike.classList.add('is-active');
         }
-      } catch(e) {}
+      } catch { /* ignore */ }
 
       mapModal.init({ nodes });
     } catch (err) {
@@ -119,7 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (newVote) localVotes[argId] = newVote;
       else delete localVotes[argId];
       localStorage.setItem('warg_votes', JSON.stringify(localVotes));
-    } catch(e) {}
+    } catch { /* ignore */ }
     
     try {
       const res = await fetch(`${API_BASE}/api/args/${argId}/vote`, {

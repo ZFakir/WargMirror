@@ -100,7 +100,8 @@ document.addEventListener('DOMContentLoaded', () => {
           body: JSON.stringify({
             username,
             email,
-            password
+            password,
+            avatar: currentAvatarUrl
           })
         });
 

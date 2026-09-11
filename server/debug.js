@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 console.log('1. Loading express');
 const express = require('express');
 console.log('2. Loading MySQLStore');

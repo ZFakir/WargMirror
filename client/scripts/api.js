@@ -9,10 +9,11 @@
  *   const user = await api.getCurrentUser(); // null for guests
  */
 
-/* eslint-disable no-var */
+
 // Use the globally configured API_BASE_URL (from config.js) or fallback
 var API_BASE = window.API_BASE_URL || 'https://wargmirror.onrender.com';
 
+// eslint-disable-next-line no-unused-vars
 var api = (function () {
 
   /* ── Generic fetch wrapper ──────────────────────────────── */
@@ -67,7 +68,7 @@ var api = (function () {
 
     // Build initials from username (up to 2 chars)
     var initials = username
-      .split(/[\s_\-]+/)
+      .split(/[\s_-]+/)
       .slice(0, 2)
       .map(function (w) { return w[0] || ''; })
       .join('')
