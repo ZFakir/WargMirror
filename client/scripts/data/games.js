@@ -20,7 +20,7 @@
  * }
  */
 
-/* eslint-disable no-var */
+// eslint-disable-next-line no-unused-vars
 var WARG_GAMES = {
 
   recent: [

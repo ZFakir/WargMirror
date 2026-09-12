@@ -31,7 +31,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // ── Fetch creator's library ──
-  let library = [];
+  let library;
   try {
     library = await api.getUserLibrary(currentUser.user_id);
   } catch (err) {

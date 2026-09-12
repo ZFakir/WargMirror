@@ -10,7 +10,7 @@ router.get('/google', passport.authenticate('google', {
 
 // Google redirects back here after the user grants/denies permission
 router.get('/google/callback', (req, res, next) => {
-  passport.authenticate('google', (err, user, info) => {
+  passport.authenticate('google', (err, user) => {
     // Use CLIENT_PAGES_URL for redirects (includes /client path for local dev).
     // Falls back to CLIENT_URL if not set.
     const clientUrl = process.env.CLIENT_PAGES_URL || process.env.CLIENT_URL || '';

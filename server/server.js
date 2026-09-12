@@ -5,7 +5,7 @@ const cors = require('cors');
 const session = require('express-session');
 const MySQLStore = require('express-mysql-session')(session);
 require('dotenv').config();
-
+const path = require('path');
 const sequelize = require('./src/config/database');
 const passport = require('./src/config/passport');
 const { sequelize: db } = require('./src/models');
@@ -71,6 +71,7 @@ app.use(cors({
   credentials: true
 }));
 app.use(express.json());
+app.use('/client', express.static(path.join(__dirname, '../client')));
 
 app.set('trust proxy', 1); // Trust first proxy (Render/Heroku/Vercel)
 

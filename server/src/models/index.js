@@ -76,6 +76,7 @@ LocationEvent.belongsTo(User, { foreignKey: 'user_id' });
 TrustEvent.belongsTo(User, { foreignKey: 'user_id' });
 ArgVote.belongsTo(User, { foreignKey: 'user_id' });
 ArgVote.belongsTo(Arg, { foreignKey: 'arg_id' });
+Arg.hasMany(ArgVote, { foreignKey: 'arg_id' });
 
 // Badges (Many-to-Many with User)
 User.belongsToMany(Badge, { through: UserBadge, foreignKey: 'user_id' });
