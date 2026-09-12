@@ -14,8 +14,11 @@ const userRoutes = require('./src/routes/userRoutes');
 const sessionRoutes = require('./src/routes/sessionRoutes');
 const authRoutes = require('./src/routes/authRoutes');
 const commentRoutes = require('./src/routes/commentRoutes');
+const gameRoutes = require('./src/routes/gameRoutes');
 const app = express();
 const server = http.createServer(app);
+server.keepAliveTimeout = 65000; // 65 seconds
+server.headersTimeout = 66000; // 66 seconds
 
 // Setup Socket.io for live/co-op game modes
 const io = new Server(server, {
@@ -103,6 +106,7 @@ app.use('/api/args', argRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/comments', commentRoutes);
+app.use('/api/game', gameRoutes);
 
 // Socket.io connection handling
 io.on('connection', (socket) => {

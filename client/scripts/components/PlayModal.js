@@ -13,6 +13,7 @@ export class PlayModal {
     this.closeBtn = document.getElementById('btn-play-modal-close');
     this.controlsContainer = document.getElementById('play-modal-controls');
     this.canvas = document.getElementById('play-canvas');
+    this.canvasWrapper = this.canvas ? this.canvas.parentElement : null;
 
     if (!this.overlay) return; // Not initialized
 
@@ -47,6 +48,10 @@ export class PlayModal {
     this.titleEl.textContent = title || 'Unknown Waypoint';
     this.descriptionEl.textContent = description || '';
     
+    if (this.canvasWrapper) {
+      this.canvasWrapper.style.display = 'none';
+    }
+
     this.resetReadMore();
 
     this.overlay.setAttribute('aria-hidden', 'false');
@@ -64,6 +69,9 @@ export class PlayModal {
   }
 
   close() {
+    if (document.activeElement && this.overlay.contains(document.activeElement)) {
+      document.activeElement.blur();
+    }
     this.overlay.setAttribute('aria-hidden', 'true');
     document.body.style.overflow = '';
   }
@@ -103,9 +111,44 @@ export class PlayModal {
   }
 
   /**
+   * Render feedback toast in the modal
+   */
+  showFeedback(outcome, autoClose = true) {
+    const feedbackEl = document.createElement('div');
+    feedbackEl.style = `
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: ${outcome === 'pass' ? 'var(--color-green)' : 'var(--color-red)'};
+      color: var(--color-bg-base);
+      padding: 1rem 2rem;
+      border-radius: var(--radius-md);
+      font-weight: bold;
+      font-size: 1.2rem;
+      z-index: 1000;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    `;
+    feedbackEl.textContent = outcome === 'pass' ? 'Success!' : 'Failed';
+    this.controlsContainer.appendChild(feedbackEl);
+    
+    setTimeout(() => {
+      if (feedbackEl.parentNode) {
+        feedbackEl.remove();
+      }
+      if (autoClose) {
+        this.close();
+      }
+    }, 2000);
+  }
+
+  /**
    * Returns the canvas element or its context for game rendering
    */
   getCanvas() {
+    if (this.canvasWrapper) {
+      this.canvasWrapper.style.display = 'flex'; // or whatever its default was
+    }
     return this.canvas;
   }
 }

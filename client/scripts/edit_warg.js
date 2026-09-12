@@ -26,7 +26,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const map = {
       'gps_proximity': { type: 'gps', label: 'GPS Location' },
       'ar_object_scan': { type: 'ar', label: 'AR Object Scan' },
-      'qr_barcode': { type: 'barcode', label: 'Barcode Game' }
+      'qr_barcode': { type: 'barcode', label: 'Barcode Game' },
+      'text_answer': { type: 'text_answer', label: 'QnA / MCQ' }
     };
     return map[gameType] || { type: 'gps', label: 'GPS Location' };
   };
@@ -46,8 +47,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             const nodeId = `wp${nextId++}`;
             idMap[wp.waypoint_id] = nodeId;
             
-            let mg = wp.Minigames && wp.Minigames.length > 0 ? wp.Minigames[0] : { game_type: 'gps_proximity' };
-            const mappedType = mapBackendGameTypeToFrontend(mg.game_type);
+            const nodeGames = [];
+            if (wp.Minigames && wp.Minigames.length > 0) {
+              wp.Minigames.forEach(mg => {
+                const mappedType = mapBackendGameTypeToFrontend(mg.game_type);
+                nodeGames.push({
+                  type: mappedType.type,
+                  gamemode: mappedType.label,
+                  minigame_config: mg.config_json || null
+                });
+              });
+            }
 
             nodes.push({
               id: nodeId,
@@ -56,8 +66,7 @@ document.addEventListener('DOMContentLoaded', async () => {
               lng: wp.location.coordinates[0],
               title: wp.title,
               description: wp.description,
-              type: mappedType.type,
-              gamemode: mappedType.label
+              games: nodeGames
             });
           });
         }
@@ -79,9 +88,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   } else if (!isCreateMode) {
     // Demo data for visual testing if no ID provided in edit mode
     nodes = [
-      { id: 'wp1', lat: -26.19233, lng: 28.02987, title: 'The Great Hall', description: 'Find the plaque near the entrance.', gamemode: 'GPS Location', type: 'gps' },
-      { id: 'wp2', lat: -26.19075, lng: 28.03215, title: 'Library Archway', description: 'Scan the historic archway to reveal the hidden message.', gamemode: 'AR Object Scan', type: 'ar' },
-      { id: 'wp3', lat: -26.19320, lng: 28.02790, title: 'Coffee Shop Secret', description: 'Scan the special barcode on the cup.', gamemode: 'Barcode Game', type: 'barcode' }
+      { id: 'wp1', lat: -26.19233, lng: 28.02987, title: 'The Great Hall', description: 'Find the plaque near the entrance.', games: [{ gamemode: 'GPS Location', type: 'gps' }] },
+      { id: 'wp2', lat: -26.19075, lng: 28.03215, title: 'Library Archway', description: 'Scan the historic archway to reveal the hidden message.', games: [{ gamemode: 'AR Object Scan', type: 'ar' }] },
+      { id: 'wp3', lat: -26.19320, lng: 28.02790, title: 'Coffee Shop Secret', description: 'Scan the special barcode on the cup.', games: [{ gamemode: 'Barcode Game', type: 'barcode' }] }
     ];
     edges = [
       { id: 'e1', from: 'wp1', to: 'wp2', triggers: [] },
@@ -282,14 +291,85 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const gamesList = document.getElementById('editor-games-list');
         if (gamesList) {
-          gamesList.innerHTML = `
-            <div class="sub-card" role="button" tabindex="0">
-              <span class="sub-card__text">${node.gamemode}</span>
-              <button class="icon-btn sub-card__action" aria-label="More options">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
-              </button>
-            </div>
-          `;
+          if (node.games && node.games.length > 0) {
+            let html = '';
+            node.games.forEach((game, index) => {
+              html += `
+                <div class="sub-card" style="position: relative;" tabindex="0">
+                  <span class="sub-card__text">${game.gamemode}</span>
+                  <button class="icon-btn sub-card__action btn-game-options" data-index="${index}" aria-label="More options">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
+                  </button>
+                  <div class="sub-card__dropdown game-options-dropdown" id="game-dropdown-${index}">
+                    <button class="dropdown-item btn-edit-game" data-index="${index}">Edit Game</button>
+                    <button class="dropdown-item dropdown-item--danger btn-delete-game" data-index="${index}">Delete Game</button>
+                  </div>
+                </div>
+              `;
+            });
+            gamesList.innerHTML = html;
+
+            // Wire up dropdown logic
+            const optionBtns = gamesList.querySelectorAll('.btn-game-options');
+            optionBtns.forEach(btn => {
+              btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const index = btn.getAttribute('data-index');
+                const dropdown = document.getElementById(`game-dropdown-${index}`);
+                
+                // close others
+                gamesList.querySelectorAll('.game-options-dropdown.show').forEach(d => {
+                  if (d !== dropdown) d.classList.remove('show');
+                });
+                
+                dropdown.classList.toggle('show');
+              });
+            });
+
+            // Close dropdown when clicking outside
+            document.addEventListener('click', function closeDropdown(e) {
+              gamesList.querySelectorAll('.game-options-dropdown.show').forEach(d => {
+                if (!d.contains(e.target) && !e.target.closest('.btn-game-options')) {
+                  d.classList.remove('show');
+                }
+              });
+            });
+
+            const editBtns = gamesList.querySelectorAll('.btn-edit-game');
+            editBtns.forEach(btn => {
+              btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const index = btn.getAttribute('data-index');
+                const dropdown = document.getElementById(`game-dropdown-${index}`);
+                dropdown.classList.remove('show');
+                
+                const game = node.games[index];
+                if (game.gamemode === 'QnA / MCQ') {
+                  openQnaModal(game.minigame_config, index);
+                } else {
+                  openAlertModal('Editor for this game type is coming soon.');
+                }
+              });
+            });
+
+            const deleteBtns = gamesList.querySelectorAll('.btn-delete-game');
+            deleteBtns.forEach(btn => {
+              btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const index = btn.getAttribute('data-index');
+                const dropdown = document.getElementById(`game-dropdown-${index}`);
+                dropdown.classList.remove('show');
+                
+                openConfirmModal('Delete Game', 'Are you sure you want to remove this game from the waypoint?', () => {
+                  node.games.splice(index, 1);
+                  updatePanel();
+                });
+              });
+            });
+
+          } else {
+            gamesList.innerHTML = ''; // No game attached yet
+          }
         }
       }
     } else if (selectedType === 'edge') {
@@ -302,21 +382,29 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const transitionList = document.getElementById('transition-games-list');
         if (transitionList && fromNode) {
-          transitionList.innerHTML = `
-            <div class="transition-game-card">
-              <div class="transition-game-card__title">${fromNode.gamemode}</div>
-              <div class="transition-game-card__controls">
-                <label class="trigger-checkbox-label">
-                  <input type="checkbox" class="trigger--pass">
-                  Pass
-                </label>
-                <label class="trigger-checkbox-label">
-                  <input type="checkbox" class="trigger--fail">
-                  Fail
-                </label>
-              </div>
-            </div>
-          `;
+          if (fromNode.games && fromNode.games.length > 0) {
+            let html = '';
+            fromNode.games.forEach(game => {
+              html += `
+                <div class="transition-game-card">
+                  <div class="transition-game-card__title">${game.gamemode}</div>
+                  <div class="transition-game-card__controls">
+                    <label class="trigger-checkbox-label">
+                      <input type="checkbox" class="trigger--pass">
+                      Pass
+                    </label>
+                    <label class="trigger-checkbox-label">
+                      <input type="checkbox" class="trigger--fail">
+                      Fail
+                    </label>
+                  </div>
+                </div>
+              `;
+            });
+            transitionList.innerHTML = html;
+          } else {
+            transitionList.innerHTML = '';
+          }
         }
       }
     }
@@ -538,4 +626,196 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (e.target === confirmModalOverlay) closeConfirmModal();
     });
   }
+  // ── QnA / MCQ Modal Logic ──
+  const btnAddGame = document.getElementById('btn-add-game');
+  const qnaModalOverlay = document.getElementById('qna-modal-overlay');
+  const btnCloseQnaModal = document.getElementById('btn-close-qna-modal');
+  const btnCancelQna = document.getElementById('btn-cancel-qna');
+  const btnSaveQna = document.getElementById('btn-save-qna');
+  const btnAddQnaOption = document.getElementById('btn-add-qna-option');
+  const qnaOptionsList = document.getElementById('qna-options-list');
+  const qnaQuestion = document.getElementById('qna-question');
+
+  let qnaOptionsData = [];
+
+  function getLetter(index) {
+    return String.fromCharCode(65 + index) + '.';
+  }
+
+  function renderQnaOptions() {
+    if (!qnaOptionsList) return;
+    qnaOptionsList.innerHTML = '';
+    qnaOptionsData.forEach((opt, idx) => {
+      const row = document.createElement('div');
+      row.className = 'qna-option-row';
+      
+      const letter = document.createElement('div');
+      letter.className = 'qna-option-letter';
+      letter.textContent = getLetter(idx);
+      
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'qna-option-input';
+      input.placeholder = `Option ${getLetter(idx).replace('.','')}`;
+      input.value = opt.text;
+      input.addEventListener('input', (e) => {
+        opt.text = e.target.value;
+      });
+
+      const radio = document.createElement('input');
+      radio.type = 'radio';
+      radio.name = 'qna-correct-answer';
+      radio.className = 'qna-option-radio';
+      radio.checked = opt.isCorrect;
+      radio.addEventListener('change', () => {
+        qnaOptionsData.forEach(o => o.isCorrect = false);
+        opt.isCorrect = true;
+      });
+
+      const btnDel = document.createElement('button');
+      btnDel.className = 'icon-btn qna-option-delete';
+      btnDel.title = 'Delete Option';
+      btnDel.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`;
+      btnDel.addEventListener('click', () => {
+        qnaOptionsData.splice(idx, 1);
+        renderQnaOptions();
+      });
+
+      row.appendChild(letter);
+      row.appendChild(input);
+      row.appendChild(radio);
+      row.appendChild(btnDel);
+      qnaOptionsList.appendChild(row);
+    });
+  }
+
+  let currentEditGameIndex = null;
+
+  function openQnaModal(existingConfig = null, editIndex = null) {
+    currentEditGameIndex = editIndex;
+    if (existingConfig && existingConfig.is_mcq) {
+      qnaQuestion.value = existingConfig.question || '';
+      qnaOptionsData = (existingConfig.options || []).map((text, idx) => ({
+        text,
+        isCorrect: idx === existingConfig.correct_index
+      }));
+    } else {
+      qnaQuestion.value = '';
+      qnaOptionsData = [{ text: '', isCorrect: true }];
+    }
+    renderQnaOptions();
+    if (qnaModalOverlay) qnaModalOverlay.setAttribute('aria-hidden', 'false');
+  }
+
+  function closeQnaModal() {
+    if (qnaModalOverlay) qnaModalOverlay.setAttribute('aria-hidden', 'true');
+    currentEditGameIndex = null;
+  }
+
+  const gameSelectorModalOverlay = document.getElementById('game-selector-modal-overlay');
+  const btnCloseGameSelectorModal = document.getElementById('btn-close-game-selector-modal');
+  const gameTypeBtns = document.querySelectorAll('.game-type-btn');
+
+  function openGameSelectorModal() {
+    if (gameSelectorModalOverlay) gameSelectorModalOverlay.setAttribute('aria-hidden', 'false');
+  }
+
+  function closeGameSelectorModal() {
+    if (gameSelectorModalOverlay) gameSelectorModalOverlay.setAttribute('aria-hidden', 'true');
+  }
+
+  if (btnCloseGameSelectorModal) btnCloseGameSelectorModal.addEventListener('click', closeGameSelectorModal);
+  if (gameSelectorModalOverlay) {
+    gameSelectorModalOverlay.addEventListener('click', (e) => {
+      if (e.target === gameSelectorModalOverlay) closeGameSelectorModal();
+    });
+  }
+
+  gameTypeBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (btn.disabled) return;
+      const gameType = btn.getAttribute('data-game-type');
+      closeGameSelectorModal();
+      if (gameType === 'qna') {
+        openQnaModal(null, null); // Always new game when adding from selector
+      }
+    });
+  });
+
+  if (btnAddGame) {
+    btnAddGame.addEventListener('click', () => {
+      openGameSelectorModal();
+    });
+  }
+
+  if (btnCloseQnaModal) btnCloseQnaModal.addEventListener('click', closeQnaModal);
+  if (btnCancelQna) btnCancelQna.addEventListener('click', closeQnaModal);
+
+  if (btnAddQnaOption) {
+    btnAddQnaOption.addEventListener('click', () => {
+      qnaOptionsData.push({ text: '', isCorrect: false });
+      renderQnaOptions();
+    });
+  }
+
+  if (btnSaveQna) {
+    btnSaveQna.addEventListener('click', () => {
+      const node = nodes.find(n => n.id === selectedId);
+      if (!node) return;
+
+      const questionText = qnaQuestion.value.trim();
+      if (!questionText) {
+        openAlertModal('Please enter a question.');
+        return;
+      }
+      
+      if (qnaOptionsData.length < 2) {
+        openAlertModal('Please provide at least 2 options.');
+        return;
+      }
+
+      const emptyOption = qnaOptionsData.find(o => !o.text.trim());
+      if (emptyOption) {
+        openAlertModal('Please fill out all option fields.');
+        return;
+      }
+
+      let correctIndex = qnaOptionsData.findIndex(o => o.isCorrect);
+      if (correctIndex === -1) {
+        openAlertModal('Please select a correct answer.');
+        return;
+      }
+
+      const configJson = {
+        question: questionText,
+        is_mcq: true,
+        options: qnaOptionsData.map(o => o.text.trim()),
+        correct_index: correctIndex
+      };
+
+      const newGame = {
+        gamemode: 'QnA / MCQ',
+        type: 'text_answer',
+        minigame_config: configJson
+      };
+
+      if (!node.games) node.games = [];
+
+      if (currentEditGameIndex !== null && currentEditGameIndex !== undefined) {
+        node.games[currentEditGameIndex] = newGame;
+      } else {
+        node.games.push(newGame);
+      }
+
+      updatePanel(); 
+      closeQnaModal();
+    });
+  }
+
+  if (qnaModalOverlay) {
+    qnaModalOverlay.addEventListener('click', (e) => {
+      if (e.target === qnaModalOverlay) closeQnaModal();
+    });
+  }
+
 });

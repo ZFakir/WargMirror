@@ -144,6 +144,9 @@ export class MapModal {
         MapModal.MAP_CONFIG.center = [options.nodes[0].lat, options.nodes[0].lng];
       }
     }
+    if (options.edges) {
+      this.EDGES = options.edges;
+    }
 
     // 1. & 2. Inject CSS and wait for them to load
     await Promise.all([
@@ -281,12 +284,31 @@ export class MapModal {
                   <span>tap a marker to open the brief</span>
                 </div>
               </div>
+              <!-- SVG overlay for edges -->
+              <svg id="editor-edges-svg" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:500;"
+                   xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <marker id="ed-arrow" markerWidth="10" markerHeight="10" refX="16" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+                    <polyline points="0,1 5,5 0,9" fill="none" stroke="rgba(153,172,255,0.8)" stroke-width="2"/>
+                  </marker>
+                  <marker id="ed-arrow-mid" markerWidth="10" markerHeight="10" refX="2.5" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+                    <polyline points="0,1 5,5 0,9" fill="none" stroke="rgba(153,172,255,0.8)" stroke-width="2"/>
+                  </marker>
+                  <marker id="ed-arrow-selected" markerWidth="10" markerHeight="10" refX="16" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+                    <polyline points="0,1 5,5 0,9" fill="none" stroke="#fff" stroke-width="3"/>
+                  </marker>
+                  <marker id="ed-arrow-mid-selected" markerWidth="10" markerHeight="10" refX="2.5" refY="5" orient="auto" markerUnits="userSpaceOnUse">
+                    <polyline points="0,1 5,5 0,9" fill="none" stroke="#fff" stroke-width="3"/>
+                  </marker>
+                </defs>
+              </svg>
             </div>
           </div>
         </div>
     `;
 
     target.innerHTML = html;
+    this._edgesSvg = document.getElementById('editor-edges-svg');
   }
 
   bindEvents() {
@@ -380,13 +402,21 @@ export class MapModal {
             const node = this.NODES.find(n => n.id === nodeId);
             if (node) {
               document.dispatchEvent(new CustomEvent('warg:play-node', { detail: node }));
-              this.close();
+              this.map.closePopup();
             }
           });
         }
       });
 
       this.renderList();
+      
+      // Also render edges and keep them updated on zoom/pan
+      if (this.EDGES && this.EDGES.length > 0) {
+        this.updateEditorEdges(this.EDGES, this.NODES);
+        this.map.on('move zoom zoomend resize', () => {
+          this._redrawEdgeSvg();
+        });
+      }
     }
 
     this.isMapRendered = true;
@@ -398,6 +428,25 @@ export class MapModal {
 
   enableAllDragging() {
     Object.values(this.markerLookup).forEach(m => m.dragging && m.dragging.enable());
+  }
+
+  updatePlayerLocation(lat, lng, accuracy) {
+    if (!this.map) return;
+    
+    if (!this.playerMarker) {
+      const icon = L.divIcon({
+        className: '',
+        html: `<div style="width:16px;height:16px;background:var(--color-accent);border:2px solid #fff;border-radius:50%;box-shadow:0 0 10px var(--color-accent-glow);"></div>`,
+        iconSize: [16, 16],
+        iconAnchor: [8, 8]
+      });
+      this.playerMarker = L.marker([lat, lng], { icon, interactive: false, zIndexOffset: 1000 }).addTo(this.map);
+      this.playerRadius = L.circle([lat, lng], { radius: accuracy, color: 'var(--color-accent)', weight: 1, fillOpacity: 0.1, interactive: false }).addTo(this.map);
+    } else {
+      this.playerMarker.setLatLng([lat, lng]);
+      this.playerRadius.setLatLng([lat, lng]);
+      this.playerRadius.setRadius(accuracy);
+    }
   }
 
   /* ─── Editor Mode API ─── */
@@ -832,6 +881,23 @@ export class MapModal {
     const done = this.NODES.filter(n => n.status === 'completed').length;
     document.getElementById('map-progressCount').textContent = `${done} / ${this.NODES.length}`;
     document.getElementById('map-progressFill').style.width = `${(done / this.NODES.length) * 100}%`;
+  }
+
+  updateNodeStatus(nodeId, newStatus) {
+    const node = this.NODES.find(n => n.id === nodeId);
+    if (node) {
+      node.status = newStatus;
+      
+      // Update marker icon
+      const marker = this.markerLookup[nodeId];
+      if (marker) {
+        marker.setIcon(this.iconFor(node));
+        marker.bindPopup(this.popupHTML(node)); // rebind popup to update UI
+      }
+      
+      // Update list
+      this.renderList();
+    }
   }
 
   isFullscreen() {
