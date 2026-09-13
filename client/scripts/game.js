@@ -19,9 +19,15 @@ document.addEventListener('DOMContentLoaded', () => {
       flagModal.open('Issue with this WARG');
     });
   }
-
+  // Get the ARG ID from the URL parameters
   const urlParams = new URLSearchParams(window.location.search);
-  const argId = urlParams.get('id') || 1;
+  const argId = urlParams.get('id');
+
+  if (!argId) {
+    alert('No WARG ID provided. Redirecting to catalogue.');
+    window.location.href = 'catalogue.html';
+    return;
+  }
 
   let gameState = null;
 
@@ -79,6 +85,21 @@ document.addEventListener('DOMContentLoaded', () => {
         document.title = argData.title ? `WARG – ${argData.title}` : 'WARG – Discover Games';
       }
 
+      const btnLike = document.getElementById('btn-like-game');
+      const btnDislike = document.getElementById('btn-dislike-game');
+      if (btnLike) btnLike.querySelector('span').textContent = `(${argData.like_count || 0})`;
+      if (btnDislike) btnDislike.querySelector('span').textContent = `(${argData.dislike_count || 0})`;
+
+      try {
+        const localVotes = JSON.parse(localStorage.getItem('warg_votes') || '{}');
+        const userVote = argData.user_vote || localVotes[argId] || null;
+        if (userVote === 'like' && btnLike) {
+            btnLike.classList.add('is-active');
+        } else if (userVote === 'dislike' && btnDislike) {
+            btnDislike.classList.add('is-active');
+        }
+      } catch { /* ignore */ }
+
       mapModal.init({ nodes, edges: (gameState.edges || []).map(e => ({
         id: (e.edge_id || e.id || '').toString(),
         from: (e.from_waypoint_id || e.from).toString(),
@@ -100,6 +121,83 @@ document.addEventListener('DOMContentLoaded', () => {
       mapModal.init(); // Fallback to hardcoded nodes
     }
   }
+
+  const btnLike = document.getElementById('btn-like-game');
+  const btnDislike = document.getElementById('btn-dislike-game');
+
+  async function handleVote(action) {
+    const activeBtn = action === 'like' ? btnLike : btnDislike;
+    
+    // Optimistic UI updates
+    const parseCount = span => span ? parseInt(span.textContent.replace(/[^0-9-]/g, ''), 10) || 0 : 0;
+    
+    let currentLikes = parseCount(btnLike ? btnLike.querySelector('span') : null);
+    let currentDislikes = parseCount(btnDislike ? btnDislike.querySelector('span') : null);
+    
+    const isPressed = activeBtn && activeBtn.classList.contains('is-active');
+    
+    if (activeBtn) activeBtn.classList.toggle('is-active', !isPressed);
+    
+    if (action === 'like') {
+      currentLikes += isPressed ? -1 : 1;
+      if (!isPressed && btnDislike && btnDislike.classList.contains('is-active')) {
+        btnDislike.classList.remove('is-active');
+        currentDislikes--;
+      }
+    } else {
+      currentDislikes += isPressed ? -1 : 1;
+      if (!isPressed && btnLike && btnLike.classList.contains('is-active')) {
+        btnLike.classList.remove('is-active');
+        currentLikes--;
+      }
+    }
+    
+    if (btnLike) btnLike.querySelector('span').textContent = `(${currentLikes})`;
+    if (btnDislike) btnDislike.querySelector('span').textContent = `(${currentDislikes})`;
+    
+    try {
+      const localVotes = JSON.parse(localStorage.getItem('warg_votes') || '{}');
+      let newVote = null;
+      if (btnLike && btnLike.classList.contains('is-active')) newVote = 'like';
+      else if (btnDislike && btnDislike.classList.contains('is-active')) newVote = 'dislike';
+      
+      if (newVote) localVotes[argId] = newVote;
+      else delete localVotes[argId];
+      localStorage.setItem('warg_votes', JSON.stringify(localVotes));
+    } catch { /* ignore */ }
+    
+    try {
+      const res = await fetch(`${API_BASE}/api/args/${argId}/vote`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ vote: action, user_id: 1 }),
+        credentials: 'include'
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          if (btnLike) btnLike.querySelector('span').textContent = `(${data.like_count})`;
+          if (btnDislike) btnDislike.querySelector('span').textContent = `(${data.dislike_count})`;
+          
+          if (action === 'like') {
+            if (btnLike) btnLike.classList.toggle('is-active', data.action === 'voted');
+            if (btnDislike) btnDislike.classList.remove('is-active');
+          } else {
+            if (btnDislike) btnDislike.classList.toggle('is-active', data.action === 'voted');
+            if (btnLike) btnLike.classList.remove('is-active');
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Failed to vote:', err);
+    }
+  }
+
+  if (btnLike) btnLike.addEventListener('click', () => handleVote('like'));
+  if (btnDislike) btnDislike.addEventListener('click', () => handleVote('dislike'));
+
+
 
   loadGameStateAndInitMap();
 
@@ -324,7 +422,7 @@ document.addEventListener('DOMContentLoaded', () => {
               <span class="comment-item__time">${timeString}</span>
             </div>
             <p>${bodyHtml}</p>
-            ${!isReply ? `<button class="btn-reply" style="background: none; border: none; color: var(--color-brand); font-size: 12px; cursor: pointer; padding: 0; margin-top: 4px;">Reply</button>` : ''}
+            <button class="btn-reply" style="background: none; border: none; color: var(--color-brand); font-size: 12px; cursor: pointer; padding: 0; margin-top: 4px;">Reply</button>
           </div>
         `;
 
@@ -333,32 +431,49 @@ document.addEventListener('DOMContentLoaded', () => {
           spoilerSpan.addEventListener('click', () => spoilerSpan.classList.add('is-revealed'), { once: true });
         }
 
-        if (!isReply) {
-          const replyBtn = div.querySelector('.btn-reply');
-          replyBtn.addEventListener('click', () => {
-            const currentReply = document.querySelector('.reply-input-wrapper');
-            if (currentReply) currentReply.remove();
+        const replyBtn = div.querySelector('.btn-reply');
+        replyBtn.addEventListener('click', () => {
+          const currentReply = document.querySelector('.reply-input-wrapper');
+          if (currentReply) currentReply.remove();
 
-            const replyWrapper = document.createElement('div');
-            replyWrapper.className = 'compose-input-wrapper reply-input-wrapper';
-            replyWrapper.style.marginTop = '8px';
-            replyWrapper.innerHTML = `
-              <input type="text" class="input-field reply-input" placeholder="Write a reply..." />
-              <button class="btn btn--primary btn--sm btn-post-reply">Post</button>
-            `;
-            div.querySelector('.comment-item__content').appendChild(replyWrapper);
+          const replyWrapper = document.createElement('div');
+          replyWrapper.className = 'compose-input-wrapper reply-input-wrapper';
+          replyWrapper.style.marginTop = '8px';
+          replyWrapper.innerHTML = `
+            <input type="text" class="input-field reply-input" placeholder="Write a reply..." />
+            <button class="btn btn--primary btn--sm btn-post-reply">Post</button>
+          `;
+          div.querySelector('.comment-item__content').appendChild(replyWrapper);
 
-            replyWrapper.querySelector('.btn-post-reply').addEventListener('click', () => {
-              postComment(replyWrapper.querySelector('.reply-input').value, comment.comment_id, false);
-            });
+          const btnPostReply = replyWrapper.querySelector('.btn-post-reply');
+          const replyInput = replyWrapper.querySelector('.reply-input');
+          replyInput.focus();
+
+          btnPostReply.addEventListener('click', () => {
+            postComment(replyInput.value, comment.comment_id, false, btnPostReply);
           });
-        }
+        });
+
         return div;
       }
 
+      function appendCommentTree(comment, parentElement, isReply = false) {
+        const node = renderCommentNode(comment, isReply);
+        parentElement.appendChild(node);
+        
+        if (comment.replies && comment.replies.length > 0) {
+          const repliesContainer = document.createElement('div');
+          repliesContainer.className = 'comment-replies';
+          node.querySelector('.comment-item__content').appendChild(repliesContainer);
+          
+          comment.replies.forEach(reply => {
+            appendCommentTree(reply, repliesContainer, true);
+          });
+        }
+      }
+
       topLevelComments.forEach(comment => {
-        commentsList.appendChild(renderCommentNode(comment, false));
-        if (comment.replies) comment.replies.forEach(reply => commentsList.appendChild(renderCommentNode(reply, true)));
+        appendCommentTree(comment, commentsList, false);
       });
     } catch (error) {
       console.error(error);
@@ -366,8 +481,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  async function postComment(body, parentId = null, isSpoiler = false) {
+  async function postComment(body, parentId = null, isSpoiler = false, btnElement = null) {
     if (!body.trim()) return;
+    
+    let originalBtnHTML = '';
+    if (btnElement) {
+      originalBtnHTML = btnElement.innerHTML;
+      btnElement.disabled = true;
+      btnElement.innerHTML = '<div style="display:inline-block;width:14px;height:14px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;animation:spin 1s linear infinite;vertical-align:middle;"></div>';
+    }
+    
     try {
       const response = await fetch(`${API_BASE}/api/comments/arg/${argId}`, {
         method: 'POST',
@@ -376,19 +499,42 @@ document.addEventListener('DOMContentLoaded', () => {
         body: JSON.stringify({ body, parent_id: parentId, is_spoiler: isSpoiler })
       });
 
-      if (!response.ok) return alert(response.status === 401 ? "You must be logged in to post a comment." : "Failed to post comment");
+      if (!response.ok) {
+        if (btnElement) {
+          btnElement.disabled = false;
+          btnElement.innerHTML = originalBtnHTML;
+        }
+        if (response.status === 401) {
+          alert("You must be logged in to post a comment.");
+        } else {
+          alert("Failed to post comment");
+        }
+        return;
+      }
+
       commentInput.value = '';
       if (checkIsSpoiler) checkIsSpoiler.checked = false;
-      loadComments();
+      
+      // Wait for comments to reload before removing the spinner
+      await loadComments();
+      
+      if (btnElement && document.body.contains(btnElement)) {
+        btnElement.disabled = false;
+        btnElement.innerHTML = originalBtnHTML;
+      }
     } catch (error) {
       console.error(error);
+      if (btnElement && document.body.contains(btnElement)) {
+        btnElement.disabled = false;
+        btnElement.innerHTML = originalBtnHTML;
+      }
       alert("Error posting comment");
     }
   }
 
   if (btnPostComment) {
     btnPostComment.addEventListener('click', () => {
-      postComment(commentInput.value, null, checkIsSpoiler ? checkIsSpoiler.checked : false);
+      postComment(commentInput.value, null, checkIsSpoiler ? checkIsSpoiler.checked : false, btnPostComment);
     });
   }
 

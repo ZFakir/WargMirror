@@ -1,0 +1,93 @@
+{
+  "docusaurus-plugin-content-docs": {
+    "default": {
+      "path": "/docs",
+      "versions": [
+        {
+          "name": "current",
+          "label": "Next",
+          "isLast": true,
+          "path": "/docs",
+          "mainDocId": "overview/methodology",
+          "docs": [
+            {
+              "id": "api-reference/args",
+              "path": "/docs/api-reference/args",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "api-reference/auth",
+              "path": "/docs/api-reference/auth",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "api-reference/users-and-sessions",
+              "path": "/docs/api-reference/users-and-sessions",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "architecture-and-design/design-principles",
+              "path": "/docs/architecture-and-design/design-principles",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "architecture-and-design/implementation-details",
+              "path": "/docs/architecture-and-design/implementation-details",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "database/schema",
+              "path": "/docs/database/schema",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "deployment/deployment-guide",
+              "path": "/docs/deployment/deployment-guide",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "frontend/client-views",
+              "path": "/docs/frontend/client-views",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "frontend/system-flows",
+              "path": "/docs/frontend/system-flows",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "intro",
+              "path": "/docs/intro",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "overview/meetings",
+              "path": "/docs/overview/meetings",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "overview/methodology",
+              "path": "/docs/overview/methodology",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "policies/git-policy",
+              "path": "/docs/policies/git-policy",
+              "sidebar": "tutorialSidebar"
+            }
+          ],
+          "draftIds": [],
+          "sidebars": {
+            "tutorialSidebar": {
+              "link": {
+                "path": "/docs/overview/methodology",
+                "label": "overview/methodology"
+              }
+            }
+          }
+        }
+      ],
+      "breadcrumbs": true
+    }
+  }
+}

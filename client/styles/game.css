@@ -263,6 +263,50 @@
   color: var(--color-accent);
 }
 
+.game-actions-bar .icon-btn {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-weight: var(--font-weight-medium);
+  background: transparent;
+  border: none;
+  transition: color var(--duration-fast) var(--ease-out), background var(--duration-fast) var(--ease-out), transform var(--duration-fast) var(--ease-spring);
+}
+
+.game-actions-bar .icon-btn:hover {
+  background: var(--color-brand-subtle);
+  color: var(--color-text-primary);
+}
+
+.game-actions-bar .icon-btn:active {
+  transform: scale(0.88);
+}
+
+.game-actions-bar .icon-btn:focus-visible {
+  outline: 1px solid var(--color-accent);
+}
+
+.game-actions-bar .icon-btn.is-active[id="btn-like-game"] {
+  color: var(--color-accent);
+}
+
+.game-actions-bar .icon-btn.is-active[id="btn-dislike-game"] {
+  color: #FF6B6B;
+}
+
+.game-actions-bar .icon-btn[id="btn-flag-game"] {
+  margin-inline-start: auto; /* push to the right */
+  color: rgba(255,255,255,0.18);
+}
+
+.game-actions-bar .icon-btn[id="btn-flag-game"]:hover {
+  color: var(--color-warning);
+}
+
 /* ── Play Menu Modal ── */
 .modal-overlay {
   position: fixed;
@@ -510,6 +554,16 @@
   font-size: var(--text-sm);
   color: var(--color-text-secondary);
   line-height: 1.5;
+}
+
+.comment-replies {
+  margin-top: var(--spacing-sm);
+  margin-left: 20px;
+  padding-left: var(--spacing-md);
+  border-left: 2px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
 }
 
 .game-discussion__compose {

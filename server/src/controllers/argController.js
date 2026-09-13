@@ -2,11 +2,23 @@ const { sequelize, Arg, User, Waypoint, WaypointEdge, Minigame, ArgVote, Flag } 
 
 exports.getAllArgs = async (req, res) => {
   try {
+    const user_id = req.user ? req.user.user_id : 1;
     const args = await Arg.findAll({
       where: { status: 'published' },
-      include: [{ model: User, as: 'Creator', attributes: ['username', 'avatar'] }]
+      include: [
+        { model: User, as: 'Creator', attributes: ['username', 'avatar'] },
+        { model: ArgVote, attributes: ['vote'], where: { user_id }, required: false }
+      ]
     });
-    res.json(args);
+    
+    const mappedArgs = args.map(arg => {
+      const argJSON = arg.toJSON();
+      argJSON.user_vote = argJSON.ArgVotes && argJSON.ArgVotes.length > 0 ? argJSON.ArgVotes[0].vote : null;
+      delete argJSON.ArgVotes;
+      return argJSON;
+    });
+
+    res.json(mappedArgs);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to fetch ARGs' });
@@ -15,6 +27,7 @@ exports.getAllArgs = async (req, res) => {
 
 exports.getArgById = async (req, res) => {
   try {
+    const user_id = req.user ? req.user.user_id : 1;
     const arg = await Arg.findByPk(req.params.id, {
       include: [
         { model: User, as: 'Creator', attributes: ['username', 'avatar'] },
@@ -23,11 +36,17 @@ exports.getArgById = async (req, res) => {
           attributes: ['waypoint_id', 'title', 'location', 'description'],
           include: [{ model: Minigame }]
         },
-        { model: WaypointEdge }
+        { model: WaypointEdge },
+        { model: ArgVote, attributes: ['vote'], where: { user_id }, required: false }
       ]
     });
     if (!arg) return res.status(404).json({ error: 'ARG not found' });
-    res.json(arg);
+    
+    const argJSON = arg.toJSON();
+    argJSON.user_vote = argJSON.ArgVotes && argJSON.ArgVotes.length > 0 ? argJSON.ArgVotes[0].vote : null;
+    delete argJSON.ArgVotes;
+
+    res.json(argJSON);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to fetch ARG' });

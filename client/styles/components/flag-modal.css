@@ -131,3 +131,29 @@
   gap: var(--space-3);
   background: rgba(10, 8, 7, 0.5);
 }
+
+/* ── Custom Button States ── */
+.flag-modal__spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: #fff;
+  animation: flag-spin 0.8s linear infinite;
+}
+
+@keyframes flag-spin {
+  to { transform: rotate(360deg); }
+}
+
+.btn--success-glass {
+  background: rgba(46, 204, 113, 0.15) !important;
+  border-color: rgba(46, 204, 113, 0.3) !important;
+  color: #2ecc71 !important;
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.3s ease;
+}
