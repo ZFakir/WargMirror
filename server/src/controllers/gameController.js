@@ -1,4 +1,4 @@
-const { sequelize, Arg, Waypoint, WaypointEdge, Minigame, GameSession, WaypointProgress, MinigameAttempt, LocationEvent } = require('../models');
+const { sequelize, Waypoint, WaypointEdge, Minigame, GameSession, WaypointProgress, MinigameAttempt, LocationEvent } = require('../models');
 
 // Helper to evaluate branching conditions
 const evaluateConditions = async (user_id, conditions) => {
@@ -179,7 +179,7 @@ exports.submitMinigame = async (req, res) => {
     }
 
     // Upsert MinigameAttempt
-    const [attempt] = await MinigameAttempt.upsert({
+    await MinigameAttempt.upsert({
       user_id,
       game_id,
       outcome,
