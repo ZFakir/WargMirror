@@ -141,7 +141,7 @@ exports.updateArg = async (req, res) => {
         await Waypoint.update({
           title: wp.title || 'Waypoint',
           description: wp.description || '',
-          location: sequelize.fn('ST_GeomFromText', `POINT(${wp.lng} ${wp.lat})`, 4326)
+          location: sequelize.fn('ST_GeomFromText', `POINT(${wp.lat} ${wp.lng})`, 4326)
         }, { where: { waypoint_id: wp.waypoint_id }, transaction });
         
         idMap[wp.id] = wp.waypoint_id;
@@ -163,7 +163,7 @@ exports.updateArg = async (req, res) => {
           arg_id: arg.arg_id,
           title: wp.title || 'Waypoint',
           description: wp.description || '',
-          location: sequelize.fn('ST_GeomFromText', `POINT(${wp.lng} ${wp.lat})`, 4326)
+          location: sequelize.fn('ST_GeomFromText', `POINT(${wp.lat} ${wp.lng})`, 4326)
         }, { transaction });
         
         idMap[wp.id] = dbWp.waypoint_id;

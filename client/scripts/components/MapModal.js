@@ -25,20 +25,20 @@ export class MapModal {
     this._editorMode = false;
     this._editorCallbacks = {};
     this._selectedNodeId = null;
-    
+
     // Core data
     this.NODES = [
-      { id:'great-hall', name:'Cipher at the Great Hall', lat:-26.19233, lng:28.02987, type:'solo', status:'completed', desc:'Solve cryptographic puzzles hidden in the architecture of Wits’ Great Hall.', progress:100, progLabel:'5 / 5 waypoints' },
-      { id:'east-campus', name:'Symmetry Hunt — East Campus', lat:-26.19075, lng:28.03215, type:'solo', status:'completed', desc:'Find and photograph pairs of architecturally mirrored structures.', progress:100, progLabel:'Completed' },
-      { id:'shadow-tracer', name:'Shadow Tracer', lat:-26.18975, lng:28.02870, type:'coop', status:'current', desc:'A team of up to 4 players follows shadow clues cast by campus landmarks at set times of day.', progress:29, progLabel:'2 / 7 waypoints' },
-      { id:'braamfontein', name:'Then & Now — Braamfontein', lat:-26.19420, lng:28.03310, type:'solo', status:'locked', desc:'Match historical photographs of Braamfontein to their present-day locations.', progress:0, progLabel:'Not started' },
-      { id:'senate-house', name:'Point Domination — Senate House', lat:-26.19011, lng:28.02958, type:'pvp', status:'locked', desc:'Capture and hold zones around Senate House. The team with the most control time wins.', progress:0, progLabel:'Not started' },
-      { id:'plaque-hunter', name:'Plaque Hunter: Origins', lat:-26.19320, lng:28.02790, type:'solo', status:'locked', desc:'Discover 9 commemorative plaques across campus and unlock the story behind each.', progress:0, progLabel:'0 / 9 plaques' },
-      { id:'west-campus', name:'AR Photo-Bombs — West Campus', lat:-26.19520, lng:28.02690, type:'pvp', status:'locked', desc:'Plant AR tags on opponents’ selfies before they notice. Most successful tags wins.', progress:0, progLabel:'Not started' },
-      { id:'humanities', name:'Landmark Relay — Humanities', lat:-26.18890, lng:28.03080, type:'coop', status:'locked', desc:'Teams of 3 race to collect digital tokens from 10 Humanities faculty landmarks.', progress:0, progLabel:'0 / 10 tokens' },
+      { id: 'great-hall', name: 'Cipher at the Great Hall', lat: -26.19233, lng: 28.02987, type: 'solo', status: 'completed', desc: 'Solve cryptographic puzzles hidden in the architecture of Wits’ Great Hall.', progress: 100, progLabel: '5 / 5 waypoints' },
+      { id: 'east-campus', name: 'Symmetry Hunt — East Campus', lat: -26.19075, lng: 28.03215, type: 'solo', status: 'completed', desc: 'Find and photograph pairs of architecturally mirrored structures.', progress: 100, progLabel: 'Completed' },
+      { id: 'shadow-tracer', name: 'Shadow Tracer', lat: -26.18975, lng: 28.02870, type: 'coop', status: 'current', desc: 'A team of up to 4 players follows shadow clues cast by campus landmarks at set times of day.', progress: 29, progLabel: '2 / 7 waypoints' },
+      { id: 'braamfontein', name: 'Then & Now — Braamfontein', lat: -26.19420, lng: 28.03310, type: 'solo', status: 'locked', desc: 'Match historical photographs of Braamfontein to their present-day locations.', progress: 0, progLabel: 'Not started' },
+      { id: 'senate-house', name: 'Point Domination — Senate House', lat: -26.19011, lng: 28.02958, type: 'pvp', status: 'locked', desc: 'Capture and hold zones around Senate House. The team with the most control time wins.', progress: 0, progLabel: 'Not started' },
+      { id: 'plaque-hunter', name: 'Plaque Hunter: Origins', lat: -26.19320, lng: 28.02790, type: 'solo', status: 'locked', desc: 'Discover 9 commemorative plaques across campus and unlock the story behind each.', progress: 0, progLabel: '0 / 9 plaques' },
+      { id: 'west-campus', name: 'AR Photo-Bombs — West Campus', lat: -26.19520, lng: 28.02690, type: 'pvp', status: 'locked', desc: 'Plant AR tags on opponents’ selfies before they notice. Most successful tags wins.', progress: 0, progLabel: 'Not started' },
+      { id: 'humanities', name: 'Landmark Relay — Humanities', lat: -26.18890, lng: 28.03080, type: 'coop', status: 'locked', desc: 'Teams of 3 race to collect digital tokens from 10 Humanities faculty landmarks.', progress: 0, progLabel: '0 / 10 tokens' },
     ];
-    this.BADGE_LABEL = { solo:'Solo', coop:'Co-op', pvp:'PvP' };
-    
+    this.BADGE_LABEL = { solo: 'Solo', coop: 'Co-op', pvp: 'PvP' };
+
     this.clockInterval = null;
   }
 
@@ -137,7 +137,7 @@ export class MapModal {
    */
   async init(options = {}) {
     if (this.isInitialized) return;
-    
+
     if (options.nodes) {
       this.NODES = options.nodes;
       if (options.nodes.length > 0) {
@@ -164,10 +164,10 @@ export class MapModal {
     this.container = document.querySelector('.map-modal');
     this.fullscreenBtn = document.getElementById('btn-map-fullscreen');
     this.listEl = document.getElementById('map-nodeList');
-    
+
     // 6. Bind events
     this.bindEvents();
-    
+
     this.startClock();
 
     // Init map rendering immediately
@@ -175,6 +175,8 @@ export class MapModal {
       this.initMapAndNodes();
       if (this.map) {
         this.map.invalidateSize();
+        // Second invalidateSize after layout has fully settled
+        setTimeout(() => this.map.invalidateSize(), 300);
       }
     }, 50);
 
@@ -187,7 +189,7 @@ export class MapModal {
         resolve();
         return;
       }
-      
+
       const script = document.createElement('script');
       script.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';
       script.onload = () => resolve();
@@ -256,7 +258,7 @@ export class MapModal {
             </svg>
           </button>
 
-          <div class="wrap">
+          <div class="wrap" style="height:100%;display:flex;">
             <aside class="fieldlog">
               <div class="fieldlog__head">
                 <div class="fieldlog__eyebrow">Signal Active</div>
@@ -273,8 +275,8 @@ export class MapModal {
               </div>
             </aside>
 
-            <div class="maparea">
-              <div id="map-modal-leaflet"></div>
+            <div class="maparea" style="position:relative;flex:1;min-width:0;height:100%;">
+              <div id="map-modal-leaflet" style="width:100%;height:100%;"></div>
               <div class="scan-overlay"></div>
               <div class="scan-sweep"></div>
               <div class="hud">
@@ -315,7 +317,7 @@ export class MapModal {
     if (this.fullscreenBtn) {
       this.fullscreenBtn.addEventListener('click', () => this.toggleFullscreen());
     }
-    
+
     // Close fullscreen on Escape key
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && this.isFullscreen()) {
@@ -347,9 +349,10 @@ export class MapModal {
    * Uses the relationship: 1° latitude ≈ 111 320 m; 1° longitude ≈ 111 320 · cos(lat) m.
    */
   _geodesicBounds(center, radiusMeters) {
-    const [lat, lng] = center;
+    const lat = Number(center[0]);
+    const lng = Number(center[1]);
     const METERS_PER_DEG_LAT = 111320;
-    const METERS_PER_DEG_LNG = 111320 * Math.cos(lat * Math.PI / 180);
+    const METERS_PER_DEG_LNG = 111320 * Math.cos((lat * Math.PI) / 180);
 
     const dLat = radiusMeters / METERS_PER_DEG_LAT;
     const dLng = radiusMeters / METERS_PER_DEG_LNG;
@@ -409,7 +412,7 @@ export class MapModal {
       });
 
       this.renderList();
-      
+
       // Also render edges and keep them updated on zoom/pan
       if (this.EDGES && this.EDGES.length > 0) {
         this.updateEditorEdges(this.EDGES, this.NODES);
@@ -432,7 +435,7 @@ export class MapModal {
 
   updatePlayerLocation(lat, lng, accuracy) {
     if (!this.map) return;
-    
+
     if (!this.playerMarker) {
       const icon = L.divIcon({
         className: '',
@@ -628,11 +631,11 @@ export class MapModal {
     // Re-project each edge
     edges.forEach(edge => {
       const fromNode = nodes.find(n => n.id === edge.from);
-      const toNode   = nodes.find(n => n.id === edge.to);
+      const toNode = nodes.find(n => n.id === edge.to);
       if (!fromNode || !toNode) return;
 
       const fp = this.map.latLngToContainerPoint([fromNode.lat, fromNode.lng]);
-      const tp = this.map.latLngToContainerPoint([toNode.lat,   toNode.lng]);
+      const tp = this.map.latLngToContainerPoint([toNode.lat, toNode.lng]);
       const mx = (fp.x + tp.x) / 2;
       const my = (fp.y + tp.y) / 2;
 
@@ -647,7 +650,7 @@ export class MapModal {
       hitbox.setAttribute('x2', tp.x); hitbox.setAttribute('y2', tp.y);
       hitbox.setAttribute('stroke', 'transparent');
       hitbox.setAttribute('stroke-width', '15');
-      
+
       // Selected edge styling
       const isSelected = this._selectedEdgeId === edge.id;
       const color = isSelected ? '#fff' : 'rgba(153,172,255,0.75)';
@@ -658,7 +661,7 @@ export class MapModal {
       // Half 1 → mid with mid-arrow
       const l1 = document.createElementNS(ns, 'line');
       l1.setAttribute('x1', fp.x); l1.setAttribute('y1', fp.y);
-      l1.setAttribute('x2', mx);   l1.setAttribute('y2', my);
+      l1.setAttribute('x2', mx); l1.setAttribute('y2', my);
       l1.setAttribute('stroke', color);
       l1.setAttribute('stroke-width', width);
       l1.setAttribute('stroke-dasharray', '6 4');
@@ -666,7 +669,7 @@ export class MapModal {
 
       // Half 2 → end with end-arrow
       const l2 = document.createElementNS(ns, 'line');
-      l2.setAttribute('x1', mx);   l2.setAttribute('y1', my);
+      l2.setAttribute('x1', mx); l2.setAttribute('y1', my);
       l2.setAttribute('x2', tp.x); l2.setAttribute('y2', tp.y);
       l2.setAttribute('stroke', color);
       l2.setAttribute('stroke-width', width);
@@ -676,7 +679,7 @@ export class MapModal {
       g.appendChild(hitbox);
       g.appendChild(l1);
       g.appendChild(l2);
-      
+
       // Edge click
       g.addEventListener('click', (e) => {
         L.DomEvent.stopPropagation(e);
@@ -698,14 +701,14 @@ export class MapModal {
         const g = document.createElementNS(ns, 'g');
         const l1 = document.createElementNS(ns, 'line');
         l1.setAttribute('x1', fp.x); l1.setAttribute('y1', fp.y);
-        l1.setAttribute('x2', mx);   l1.setAttribute('y2', my);
+        l1.setAttribute('x2', mx); l1.setAttribute('y2', my);
         l1.setAttribute('stroke', 'rgba(153,172,255,0.4)');
         l1.setAttribute('stroke-width', '2');
         l1.setAttribute('stroke-dasharray', '4 4');
         l1.setAttribute('marker-end', 'url(#ed-arrow-mid)');
 
         const l2 = document.createElementNS(ns, 'line');
-        l2.setAttribute('x1', mx);   l2.setAttribute('y1', my);
+        l2.setAttribute('x1', mx); l2.setAttribute('y1', my);
         l2.setAttribute('x2', tp.x); l2.setAttribute('y2', tp.y);
         l2.setAttribute('stroke', 'rgba(153,172,255,0.4)');
         l2.setAttribute('stroke-width', '2');
@@ -869,15 +872,15 @@ export class MapModal {
           <div class="node-row__name">${node.name}</div>
           <div class="node-row__meta">${node.status === 'locked' ? 'Locked' : node.progLabel}</div>
         </div>`;
-      
+
       row.addEventListener('click', () => {
         this.map.flyTo([node.lat, node.lng], MapModal.MAP_CONFIG.startZoom, { duration: 0.6 });
         this.markerLookup[node.id].openPopup();
       });
-      
+
       this.listEl.appendChild(row);
     });
-    
+
     const done = this.NODES.filter(n => n.status === 'completed').length;
     document.getElementById('map-progressCount').textContent = `${done} / ${this.NODES.length}`;
     document.getElementById('map-progressFill').style.width = `${(done / this.NODES.length) * 100}%`;
@@ -887,14 +890,14 @@ export class MapModal {
     const node = this.NODES.find(n => n.id === nodeId);
     if (node) {
       node.status = newStatus;
-      
+
       // Update marker icon
       const marker = this.markerLookup[nodeId];
       if (marker) {
         marker.setIcon(this.iconFor(node));
         marker.bindPopup(this.popupHTML(node)); // rebind popup to update UI
       }
-      
+
       // Update list
       this.renderList();
     }
@@ -906,15 +909,15 @@ export class MapModal {
 
   toggleFullscreen() {
     if (!this.container) return;
-    
+
     this.container.classList.toggle('is-fullscreen');
-    
+
     if (this.isFullscreen()) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
     }
-    
+
     // Resize map to fit new dimensions and re-align the mask
     if (this.map) {
       setTimeout(() => {

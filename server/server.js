@@ -142,3 +142,4 @@ async function startServer() {
 }
 
 startServer();
+// Trigger nodemon
