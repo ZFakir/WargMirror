@@ -79,9 +79,10 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       // Wait for an ARG fetch just to get title
+      let argData = {};
       const argRes = await fetch(`${API_BASE}/api/args/${argId}`, { credentials: 'include' });
       if (argRes.ok) {
-        const argData = await argRes.json();
+        argData = await argRes.json();
         document.title = argData.title ? `WARG – ${argData.title}` : 'WARG – Discover Games';
       }
 
