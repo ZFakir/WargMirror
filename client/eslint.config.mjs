@@ -3,5 +3,21 @@ import globals from "globals";
 import { defineConfig } from "eslint/config";
 
 export default defineConfig([
-  { files: ["**/*.{js,mjs,cjs}"], plugins: { js }, extends: ["js/recommended"], languageOptions: { globals: globals.browser } },
+  js.configs.recommended,
+  { 
+    files: ["**/*.{js,mjs,cjs}"],
+    languageOptions: { 
+      globals: {
+        ...globals.browser,
+        api: "readonly",
+        GameCard: "readonly",
+        L: "readonly",
+        FlagModal: "readonly",
+        WARG_GAMES: "readonly",
+        GAMES: "readonly",
+        playModal: "readonly",
+        mapModal: "readonly"
+      }
+    }
+  }
 ]);
