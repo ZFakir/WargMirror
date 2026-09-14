@@ -26,7 +26,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     const map = {
       'gps_proximity': { type: 'gps', label: 'GPS Location' },
       'ar_object_scan': { type: 'ar', label: 'AR Object Scan' },
-      'qr_barcode': { type: 'barcode', label: 'Barcode Game' }
+      'qr_barcode': { type: 'barcode', label: 'Barcode Game' },
+      'shape_match': { type: 'shape_match', label: 'Shape Match' },
+      'colour_match': { type: 'colour_match', label: 'Colour Match' },
+      'texture_match': { type: 'texture_match', label: 'Texture Match' },
+      'sift_match': { type: 'sift_match', label: 'Then & Now (SIFT)' },
+      'symmetry_finder': { type: 'symmetry_finder', label: 'Symmetry Finder' },
+      'photo_submit': { type: 'photo_submit', label: 'Photo Submit' },
+      'text_answer': { type: 'text_answer', label: 'Text Answer' }
     };
     return map[gameType] || { type: 'gps', label: 'GPS Location' };
   };
@@ -52,6 +59,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             nodes.push({
               id: nodeId,
               waypoint_id: wp.waypoint_id,
+              minigame_id: mg.minigame_id,
+              reference_url: mg.config?.reference_image_url || null,
               lat: wp.location.coordinates[1],
               lng: wp.location.coordinates[0],
               title: wp.title,
@@ -282,14 +291,83 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const gamesList = document.getElementById('editor-games-list');
         if (gamesList) {
+          const isCVGame = ['shape_match', 'colour_match', 'texture_match', 'sift_match', 'symmetry_finder'].includes(node.type);
           gamesList.innerHTML = `
-            <div class="sub-card" role="button" tabindex="0">
-              <span class="sub-card__text">${node.gamemode}</span>
-              <button class="icon-btn sub-card__action" aria-label="More options">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
-              </button>
+            <div class="sub-card" style="flex-direction: column; align-items: stretch; padding: 12px; gap: 8px; cursor: default;">
+              <select id="gamemode-select" style="width: 100%; padding: 8px; border-radius: 4px; background: var(--surface); color: var(--text-1); border: 1px solid var(--border); outline: none;">
+                <option value="gps" ${node.type === 'gps' ? 'selected' : ''}>GPS Location</option>
+                <option value="ar" ${node.type === 'ar' ? 'selected' : ''}>AR Object Scan</option>
+                <option value="barcode" ${node.type === 'barcode' ? 'selected' : ''}>Barcode Game</option>
+                <option value="shape_match" ${node.type === 'shape_match' ? 'selected' : ''}>Shape Match</option>
+                <option value="colour_match" ${node.type === 'colour_match' ? 'selected' : ''}>Colour Match</option>
+                <option value="texture_match" ${node.type === 'texture_match' ? 'selected' : ''}>Texture Match</option>
+                <option value="sift_match" ${node.type === 'sift_match' ? 'selected' : ''}>Then & Now (SIFT)</option>
+                <option value="symmetry_finder" ${node.type === 'symmetry_finder' ? 'selected' : ''}>Symmetry Finder</option>
+              </select>
+              ${isCVGame ? `
+                <button class="btn btn--outline" id="btn-set-reference" style="width: 100%; margin-top: 8px;">
+                  Set Reference Photo
+                </button>
+                ${node.reference_url ? `<img src="${node.reference_url}" style="width: 100%; max-height: 120px; object-fit: cover; border-radius: 4px; margin-top: 8px; border: 1px solid var(--border);" />` : ''}
+              ` : ''}
             </div>
           `;
+
+          const selectEl = document.getElementById('gamemode-select');
+          if (selectEl) {
+            selectEl.addEventListener('change', (e) => {
+              node.type = e.target.value;
+              node.gamemode = e.target.options[e.target.selectedIndex].text;
+              updatePanel();
+            });
+          }
+
+          const btnSetRef = document.getElementById('btn-set-reference');
+          if (btnSetRef) {
+            btnSetRef.addEventListener('click', async () => {
+              const origText = btnSetRef.textContent;
+              setLoadingState(btnSetRef, true, origText);
+              
+              if (!currentArgId || !node.minigame_id) {
+                try {
+                  await saveArg('draft');
+                } catch (err) {
+                  openAlertModal('Failed to automatically save WARG before setting reference photo.');
+                  setLoadingState(btnSetRef, false, origText);
+                  return;
+                }
+              }
+              
+              setLoadingState(btnSetRef, false, origText);
+
+              const input = document.createElement('input');
+              input.type = 'file';
+              input.accept = 'image/*';
+              input.onchange = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                setLoadingState(btnSetRef, true, origText);
+                try {
+                  const formData = new FormData();
+                  formData.append('image', file);
+                  const res = await fetch(`${API_BASE}/api/minigames/${node.minigame_id}/reference`, {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'include'
+                  });
+                  if (!res.ok) throw new Error('Upload failed');
+                  await res.json();
+                  node.reference_url = `${API_BASE}/api/minigames/${node.minigame_id}/reference/image?ts=${Date.now()}`;
+                  updatePanel();
+                } catch (err) {
+                  openAlertModal('Failed to upload reference photo.');
+                } finally {
+                  setLoadingState(btnSetRef, false, origText);
+                }
+              };
+              input.click();
+            });
+          }
         }
       }
     } else if (selectedType === 'edge') {
@@ -396,6 +474,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (!currentArgId && data.arg_id) {
         currentArgId = data.arg_id;
         window.history.pushState({}, '', `edit_warg?id=${currentArgId}`);
+      }
+      
+      // Update nodes with their DB IDs
+      if (data.idMap || data.minigameMap) {
+        nodes.forEach(n => {
+          if (data.idMap && data.idMap[n.id]) n.waypoint_id = data.idMap[n.id];
+          if (data.minigameMap && data.minigameMap[n.id]) n.minigame_id = data.minigameMap[n.id];
+        });
       }
       
       return data;

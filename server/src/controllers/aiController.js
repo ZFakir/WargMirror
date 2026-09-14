@@ -33,19 +33,16 @@ const evaluateShape = async (req, res) => {
 
 const evaluateColour = async (req, res) => {
   try {
-    if (!req.files || !req.files.image) {
-      return res.status(400).json({ error: 'Missing required file: image' });
-    }
-    if (!req.body.target_colour) {
-      return res.status(400).json({ error: 'Missing required field: target_colour' });
+    if (!req.files || !req.files.image || !req.files.reference_image) {
+      return res.status(400).json({ error: 'Missing required files: image and reference_image' });
     }
 
     const imageFile = req.files.image[0];
-    const targetColour = req.body.target_colour;
+    const referenceImageFile = req.files.reference_image[0];
 
     const formData = new FormData();
     formData.append('image', new Blob([imageFile.buffer], { type: imageFile.mimetype }), imageFile.originalname);
-    formData.append('target_colour', targetColour);
+    formData.append('reference_image', new Blob([referenceImageFile.buffer], { type: referenceImageFile.mimetype }), referenceImageFile.originalname);
 
     const response = await fetch(`${AI_SERVICE_URL}/api/v1/hsv-match`, {
       method: 'POST',

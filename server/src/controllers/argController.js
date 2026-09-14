@@ -57,9 +57,21 @@ const mapFrontendTypeToGameType = (type) => {
   const map = {
     'gps': 'gps_proximity',
     'ar': 'ar_object_scan',
-    'barcode': 'qr_barcode'
+    'barcode': 'qr_barcode',
+    'shape_match': 'shape_match',
+    'colour_match': 'colour_match',
+    'texture_match': 'texture_match',
+    'sift_match': 'sift_match',
+    'symmetry_finder': 'symmetry_finder',
+    'photo_submit': 'photo_submit',
+    'text_answer': 'text_answer'
   };
   return map[type] || 'gps_proximity';
+};
+
+const sanitizeStatus = (status) => {
+  const valid = ['unpublished', 'published', 'retired'];
+  return valid.includes(status) ? status : 'unpublished';
 };
 
 exports.createArg = async (req, res) => {
@@ -72,10 +84,11 @@ exports.createArg = async (req, res) => {
       creator_id, 
       title: title || 'Untitled WARG', 
       description: description || '', 
-      status: status || 'unpublished' 
+      status: sanitizeStatus(status)
     }, { transaction });
 
     const idMap = {};
+    const minigameMap = {};
     for (const wp of waypoints) {
       const dbWp = await Waypoint.create({
         arg_id: newArg.arg_id,
@@ -86,10 +99,11 @@ exports.createArg = async (req, res) => {
       
       idMap[wp.id] = dbWp.waypoint_id;
 
-      await Minigame.create({
+      const mg = await Minigame.create({
         waypoint_id: dbWp.waypoint_id,
         game_type: mapFrontendTypeToGameType(wp.type)
       }, { transaction });
+      minigameMap[wp.id] = mg.game_id;
     }
 
     for (const edge of edges) {
@@ -105,11 +119,11 @@ exports.createArg = async (req, res) => {
     }
 
     await transaction.commit();
-    res.status(201).json(newArg);
+    res.status(201).json({ ...newArg.toJSON(), idMap, minigameMap });
   } catch (error) {
     await transaction.rollback();
     console.error(error);
-    res.status(500).json({ error: 'Failed to create ARG' });
+    res.status(500).json({ error: 'Failed to create ARG', detail: error.message });
   }
 };
 
@@ -134,7 +148,7 @@ exports.updateArg = async (req, res) => {
     await arg.update({ 
       title: title || arg.title, 
       description: description || arg.description, 
-      status: status || arg.status 
+      status: sanitizeStatus(status || arg.status)
     }, { transaction });
 
     // Delete missing waypoints
@@ -148,6 +162,7 @@ exports.updateArg = async (req, res) => {
     }
 
     const idMap = {};
+    const minigameMap = {};
     for (const wp of waypoints) {
       if (wp.waypoint_id) {
         // Update existing
@@ -162,11 +177,13 @@ exports.updateArg = async (req, res) => {
         const mg = await Minigame.findOne({ where: { waypoint_id: wp.waypoint_id }, transaction });
         if (mg) {
           await mg.update({ game_type: mapFrontendTypeToGameType(wp.type) }, { transaction });
+          minigameMap[wp.id] = mg.game_id;
         } else {
-          await Minigame.create({
+          const newMg = await Minigame.create({
             waypoint_id: wp.waypoint_id,
             game_type: mapFrontendTypeToGameType(wp.type)
           }, { transaction });
+          minigameMap[wp.id] = newMg.game_id;
         }
       } else {
         // Create new
@@ -179,10 +196,11 @@ exports.updateArg = async (req, res) => {
         
         idMap[wp.id] = dbWp.waypoint_id;
 
-        await Minigame.create({
+        const mg = await Minigame.create({
           waypoint_id: dbWp.waypoint_id,
           game_type: mapFrontendTypeToGameType(wp.type)
         }, { transaction });
+        minigameMap[wp.id] = mg.game_id;
       }
     }
 
@@ -203,7 +221,7 @@ exports.updateArg = async (req, res) => {
     }
 
     await transaction.commit();
-    res.json(arg);
+    res.json({ ...arg.toJSON(), idMap, minigameMap });
   } catch (error) {
     await transaction.rollback();
     console.error(error);

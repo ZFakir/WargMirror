@@ -47,7 +47,8 @@ document.addEventListener('DOMContentLoaded', () => {
             type: 'solo',
             status: index === 0 ? 'current' : 'locked', // First waypoint current, rest locked
             progress: 0,
-            progLabel: 'Not started'
+            progLabel: 'Not started',
+            minigames: wp.Minigames || []
           });
         });
       }
@@ -155,15 +156,91 @@ document.addEventListener('DOMContentLoaded', () => {
   loadArgAndInitMap();
 
   // Listen for the 'Play' event from the Map Modal
-  document.addEventListener('warg:play-node', (e) => {
+  document.addEventListener('warg:play-node', async (e) => {
     const node = e.detail;
     // Launch the game's actual Play Modal using the node's data
     playModal.open(node.name, node.desc);
     
-    const actionBtn = document.createElement('button');
-    actionBtn.className = 'btn btn--primary';
-    actionBtn.textContent = 'Scan Barcode';
-    playModal.setControls(actionBtn);
+    const cvGameTypes = ['shape_match', 'colour_match', 'texture_match', 'sift_match', 'symmetry_finder'];
+    
+    // Check if the node has a CV minigame
+    let cvMinigame = null;
+    if (node.minigames && node.minigames.length > 0) {
+      cvMinigame = node.minigames.find(mg => cvGameTypes.includes(mg.game_type));
+    }
+
+    if (cvMinigame) {
+      playModal.setContent('<div id="camera-container" class="camera-container" style="position:relative; width:100%; height:100%;"></div>');
+      const container = document.getElementById('camera-container');
+      
+      try {
+        const refData = await api.getMinigameReference(cvMinigame.game_id);
+        const { CameraCapture } = await import('./components/CameraCapture.js');
+        
+        const camera = new CameraCapture(container, cvMinigame.game_type, refData);
+        
+        // Setup UI
+        const captureBtn = document.createElement('button');
+        captureBtn.className = 'btn-capture';
+        
+        const controlsDiv = document.createElement('div');
+        controlsDiv.className = 'camera-controls';
+        controlsDiv.appendChild(captureBtn);
+        container.appendChild(controlsDiv);
+        
+        const feedbackDiv = document.createElement('div');
+        feedbackDiv.className = 'camera-feedback';
+        feedbackDiv.textContent = 'Aligning...';
+        container.appendChild(feedbackDiv);
+        
+        camera.onScoreUpdate = (score) => {
+          feedbackDiv.textContent = `Match: ${Math.round(score)}%`;
+          if (score > 80) captureBtn.style.borderColor = 'var(--color-success)';
+          else captureBtn.style.borderColor = 'var(--color-brand)';
+        };
+        
+        await camera.start();
+        
+        captureBtn.addEventListener('click', async () => {
+          const blob = await camera.snap();
+          feedbackDiv.textContent = 'Analyzing...';
+          try {
+            const result = await api.submitMinigameAttempt(cvMinigame.game_id, blob);
+            
+            // Show result overlay
+            const overlay = document.createElement('div');
+            overlay.className = `camera-result-overlay ${result.passed ? 'pass' : 'fail'}`;
+            overlay.innerHTML = `
+              <h2>${result.passed ? 'Match Found!' : 'Not Quite...'}</h2>
+              <p>Score: ${Math.round(result.confidence_score * 100)}%</p>
+              <p>+${result.points_awarded} Points</p>
+              <p>${result.message || ''}</p>
+            `;
+            container.appendChild(overlay);
+            
+          } catch (err) {
+            console.error(err);
+            feedbackDiv.textContent = 'Error: ' + err.message;
+          }
+        });
+        
+        // Clean up when modal closes
+        const originalClose = playModal.close.bind(playModal);
+        playModal.close = () => {
+          camera.stop();
+          originalClose();
+        };
+        
+      } catch (err) {
+        console.error(err);
+        playModal.setContent('<p>Error initializing camera minigame.</p>');
+      }
+    } else {
+      const actionBtn = document.createElement('button');
+      actionBtn.className = 'btn btn--primary';
+      actionBtn.textContent = 'Scan Barcode';
+      playModal.setControls(actionBtn);
+    }
   });
 
   // Comments System Logic

@@ -15,6 +15,7 @@ const sessionRoutes = require('./src/routes/sessionRoutes');
 const authRoutes = require('./src/routes/authRoutes');
 const aiRoutes = require('./src/routes/aiRoutes');
 const commentRoutes = require('./src/routes/commentRoutes');
+const minigameRoutes = require('./src/routes/minigameRoutes');
 const app = express();
 const server = http.createServer(app);
 
@@ -106,6 +107,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/comments', commentRoutes);
+app.use('/api/minigames', minigameRoutes);
 
 // Socket.io connection handling
 io.on('connection', (socket) => {

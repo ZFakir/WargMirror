@@ -18,7 +18,8 @@ router.post('/sam-extract', upload.fields([
 ]), aiController.evaluateShape);
 
 router.post('/hsv-match', upload.fields([
-  { name: 'image', maxCount: 1 }
+  { name: 'image', maxCount: 1 },
+  { name: 'reference_image', maxCount: 1 }
 ]), aiController.evaluateColour);
 
 router.post('/texture-match', upload.fields([
