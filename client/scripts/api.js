@@ -183,7 +183,9 @@ var api = (function () {
 
   async function removeRecentArg(argId, userId = 1) { // Defaulting user_id to 1 until auth is hooked up
     return _delete('/api/sessions/' + userId + '/arg/' + argId);
-    async function getMinigameReference(gameId) {
+  }
+
+  async function getMinigameReference(gameId) {
       const res = await fetch(API_BASE + '/api/minigames/' + gameId + '/reference', { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch reference');
 
@@ -224,24 +226,24 @@ var api = (function () {
         throw new Error(errText || 'Failed to upload reference');
       }
       return res.json();
-    }
+  }
 
-    /* ── Public API ─────────────────────────────────────────── */
-    return {
-      getCurrentUser,
-      getArgs,
-      getArgById,
-      getUserProfile,
-      getUserLibrary,
-      getActiveSessions,
-      getFriends,
-      normaliseArg,
-      voteArg,
-      flagArg,
-      removeRecentArg,
-      getMinigameReference,
-      submitMinigameAttempt,
-      uploadMinigameReference
-    };
+  /* ── Public API ─────────────────────────────────────────── */
+  return {
+    getCurrentUser,
+    getArgs,
+    getArgById,
+    getUserProfile,
+    getUserLibrary,
+    getActiveSessions,
+    getFriends,
+    normaliseArg,
+    voteArg,
+    flagArg,
+    removeRecentArg,
+    getMinigameReference,
+    submitMinigameAttempt,
+    uploadMinigameReference
+  };
 
-  } ());
+}());
