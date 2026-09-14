@@ -1442,9 +1442,14 @@
   .btn-primary {
     background: var(--color-accent);
     color: var(--color-text-on-accent);
+    cursor: pointer;
   }
-  .btn-primary:hover {
+  .btn-primary:hover:not(:disabled) {
     filter: brightness(1.1);
+  }
+  .btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
   }
   .btn-secondary {
     background: transparent;
@@ -1454,6 +1459,28 @@
   .btn-secondary:hover {
     background: var(--color-brand-subtle);
     color: var(--color-text-primary);
+  }
+
+  /* Toast Notification */
+  .toast {
+    position: fixed;
+    bottom: var(--space-4);
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--color-accent);
+    color: var(--color-text-on-accent);
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-lg);
+    font-weight: var(--font-weight-semibold);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    opacity: 0;
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
+    z-index: 1100;
+    pointer-events: none;
+  }
+  .toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
   }
 }
 

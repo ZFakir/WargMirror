@@ -495,6 +495,16 @@ feedbackModal?.addEventListener('click', e => {
   if (e.target === feedbackModal) closeFeedbackModal();
 });
 
+function showToast(message) {
+  const toast = document.getElementById('toast');
+  if (!toast) return;
+  toast.textContent = message;
+  toast.classList.add('show');
+  setTimeout(() => {
+    toast.classList.remove('show');
+  }, 3000);
+}
+
 feedbackForm?.addEventListener('submit', async e => {
   e.preventDefault();
   
@@ -510,10 +520,10 @@ feedbackForm?.addEventListener('submit', async e => {
     await api.submitFeedback(data);
     
     closeFeedbackModal();
-    alert('Thank you for your feedback!');
+    showToast('Thank you for your feedback!');
   } catch (error) {
     console.error('Failed to submit feedback:', error);
-    alert('Failed to submit feedback. Please try again later.');
+    showToast('Failed to submit feedback. Please try again.');
   } finally {
     submitBtn.disabled = false;
     submitBtn.textContent = originalText;
