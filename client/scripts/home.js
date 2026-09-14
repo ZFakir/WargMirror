@@ -464,3 +464,58 @@ document.addEventListener('warg:removed-recent', function(e) {
     }
   }
 });
+
+/* ── Feedback Modal ── */
+const feedbackModal = document.getElementById('feedback-modal');
+const btnFeedback = document.getElementById('btn-feedback');
+const btnCloseFeedback = document.getElementById('btn-close-feedback');
+const btnCancelFeedback = document.getElementById('btn-cancel-feedback');
+const feedbackForm = document.getElementById('feedback-form');
+
+function openFeedbackModal() {
+  if (feedbackModal) {
+    feedbackModal.classList.add('is-open');
+    feedbackModal.setAttribute('aria-hidden', 'false');
+  }
+}
+
+function closeFeedbackModal() {
+  if (feedbackModal) {
+    feedbackModal.classList.remove('is-open');
+    feedbackModal.setAttribute('aria-hidden', 'true');
+    if (feedbackForm) feedbackForm.reset();
+  }
+}
+
+btnFeedback?.addEventListener('click', openFeedbackModal);
+btnCloseFeedback?.addEventListener('click', closeFeedbackModal);
+btnCancelFeedback?.addEventListener('click', closeFeedbackModal);
+
+feedbackModal?.addEventListener('click', e => {
+  if (e.target === feedbackModal) closeFeedbackModal();
+});
+
+feedbackForm?.addEventListener('submit', async e => {
+  e.preventDefault();
+  
+  const submitBtn = feedbackForm.querySelector('button[type="submit"]');
+  const originalText = submitBtn.textContent;
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Submitting...';
+
+  try {
+    const formData = new FormData(feedbackForm);
+    const data = Object.fromEntries(formData);
+    
+    await api.submitFeedback(data);
+    
+    closeFeedbackModal();
+    alert('Thank you for your feedback!');
+  } catch (error) {
+    console.error('Failed to submit feedback:', error);
+    alert('Failed to submit feedback. Please try again later.');
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = originalText;
+  }
+});
