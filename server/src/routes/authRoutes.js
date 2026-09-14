@@ -71,22 +71,10 @@ router.get('/me', (req, res) => {
       username: req.user.username,
       email: req.user.email,
       role: req.user.role,
-      avatar: req.user.avatar
+      profile_picture: req.user.profile_picture_url || null
     });
   }
-  res.status(401).json({ error: 'Not authenticated' });
-});
-
-// Logout — destroy session and redirect to login
-router.get('/logout', (req, res) => {
-  req.logout((err) => {
-    if (err) {
-      return res.status(500).json({ error: 'Failed to logout' });
-    }
-    req.session.destroy(() => {
-      res.redirect((process.env.CLIENT_PAGES_URL || process.env.CLIENT_URL || '') + '/login.html');
-    });
-  });
+  return res.status(401).json({ error: 'Not authenticated' });
 });
 
 module.exports = router;
