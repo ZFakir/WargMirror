@@ -101,13 +101,18 @@ app.get('/', (req, res) => {
   res.json({ message: 'WARG Platform Backend is running!' });
 });
 
+const requireAuth = (req, res, next) => {
+  if (req.isAuthenticated()) return next();
+  res.status(401).json({ error: 'Unauthorized' });
+};
+
 // Mount API Routes
 app.use('/auth', authRoutes);
 app.use('/api/args', argRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/comments', commentRoutes);
-app.use('/api/game', gameRoutes);
+app.use('/api/game', requireAuth, gameRoutes);
 
 // Socket.io connection handling
 io.on('connection', (socket) => {

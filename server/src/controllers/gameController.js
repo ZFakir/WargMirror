@@ -20,7 +20,7 @@ const evaluateConditions = async (user_id, conditions) => {
 exports.startGameSession = async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
-    const user_id = req.user ? req.user.user_id : (req.body.user_id || 1);
+    const user_id = req.user.user_id;
     const arg_id = req.params.argId;
 
     let session = await GameSession.findOne({ where: { user_id, arg_id }, transaction });
@@ -100,7 +100,7 @@ exports.getGameState = async (req, res) => {
 // Arrive at a waypoint (Geofence check)
 exports.arriveAtWaypoint = async (req, res) => {
   try {
-    const user_id = req.user ? req.user.user_id : (req.body.user_id || 1);
+    const user_id = req.user.user_id;
     const waypoint_id = req.params.waypointId;
     const { lat, lng, accuracy_m } = req.body;
 
@@ -141,7 +141,7 @@ exports.arriveAtWaypoint = async (req, res) => {
 exports.submitMinigame = async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
-    const user_id = req.user ? req.user.user_id : (req.body.user_id || 1);
+    const user_id = req.user.user_id;
     const arg_id = req.params.argId;
     const waypoint_id = req.params.waypointId;
     const { game_id, submission } = req.body;
@@ -247,7 +247,7 @@ exports.submitMinigame = async (req, res) => {
 // Abandon Session
 exports.abandonSession = async (req, res) => {
   try {
-    const user_id = req.user ? req.user.user_id : (req.body.user_id || 1);
+    const user_id = req.user.user_id;
     const arg_id = req.params.argId;
 
     await GameSession.update({ status: 'abandoned' }, {

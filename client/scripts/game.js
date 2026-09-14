@@ -297,7 +297,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="spinner" style="margin: 0 auto 1rem; width: 40px; height: 40px; border: 4px solid var(--color-bg-elevated); border-top: 4px solid var(--color-brand); border-radius: 50%; animation: spin 1s linear infinite;"></div>
                 <p>Verifying...</p>
               </div>
-              <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
             `;
 
             // On Submit
