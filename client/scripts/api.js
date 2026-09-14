@@ -9,9 +9,15 @@
  *   const user = await api.getCurrentUser(); // null for guests
  */
 
-
-// Use the globally configured API_BASE_URL (from config.js) or fallback
-var API_BASE = window.API_BASE_URL || 'https://wargmirror.onrender.com';
+// Auto-detect local development environment
+if (!window.API_BASE_URL) {
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    window.API_BASE_URL = 'http://localhost:3000';
+  } else {
+    window.API_BASE_URL = 'https://wargmirror.onrender.com';
+  }
+}
+var API_BASE = window.API_BASE_URL;
 
 // eslint-disable-next-line no-unused-vars
 var api = (function () {

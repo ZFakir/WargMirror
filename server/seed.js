@@ -219,12 +219,12 @@ async function seed() {
     // ==============================================================
     console.log('🔗 Seeding waypoint edges...');
     await q(`
-      INSERT INTO waypoint_edges (arg_id, from_waypoint_id, to_waypoint_id) VALUES
-        (1, 1, 2),
-        (1, 2, 3),
-        (1, 3, 4),
-        (2, 5, 6),
-        (2, 6, 7)
+      INSERT INTO waypoint_edges (arg_id, from_waypoint_id, to_waypoint_id, conditions_json) VALUES
+        (1, 1, 2, NULL),
+        (1, 2, 3, '[{"game_id": 2, "outcome": "pass"}]'),
+        (1, 3, 4, NULL),
+        (2, 5, 6, NULL),
+        (2, 6, 7, NULL)
     `);
     console.log('   Edges created.\n');
 

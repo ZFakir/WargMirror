@@ -10,7 +10,7 @@ exports.getAllArgs = async (req, res) => {
         { model: ArgVote, attributes: ['vote'], where: { user_id }, required: false }
       ]
     });
-    
+
     const mappedArgs = args.map(arg => {
       const argJSON = arg.toJSON();
       argJSON.user_vote = argJSON.ArgVotes && argJSON.ArgVotes.length > 0 ? argJSON.ArgVotes[0].vote : null;
@@ -31,8 +31,8 @@ exports.getArgById = async (req, res) => {
     const arg = await Arg.findByPk(req.params.id, {
       include: [
         { model: User, as: 'Creator', attributes: ['username', 'avatar'] },
-        { 
-          model: Waypoint, 
+        {
+          model: Waypoint,
           attributes: ['waypoint_id', 'title', 'location', 'description'],
           include: [{ model: Minigame }]
         },
@@ -41,7 +41,7 @@ exports.getArgById = async (req, res) => {
       ]
     });
     if (!arg) return res.status(404).json({ error: 'ARG not found' });
-    
+
     const argJSON = arg.toJSON();
     argJSON.user_vote = argJSON.ArgVotes && argJSON.ArgVotes.length > 0 ? argJSON.ArgVotes[0].vote : null;
     delete argJSON.ArgVotes;
@@ -65,6 +65,7 @@ const mapFrontendTypeToGameType = (type) => {
     'symmetry_finder': 'symmetry_finder',
     'photo_submit': 'photo_submit',
     'text_answer': 'text_answer'
+    'text_answer': 'text_answer' // Map QnA
   };
   return map[type] || 'gps_proximity';
 };
@@ -79,11 +80,11 @@ exports.createArg = async (req, res) => {
   try {
     const creator_id = req.user ? req.user.user_id : (req.body.creator_id || 1);
     const { title, description, status, waypoints = [], edges = [] } = req.body;
-    
-    const newArg = await Arg.create({ 
-      creator_id, 
-      title: title || 'Untitled WARG', 
-      description: description || '', 
+
+    const newArg = await Arg.create({
+      creator_id,
+      title: title || 'Untitled WARG',
+      description: description || '',
       status: sanitizeStatus(status)
     }, { transaction });
 
@@ -96,7 +97,7 @@ exports.createArg = async (req, res) => {
         description: wp.description || '',
         location: sequelize.fn('ST_GeomFromText', `POINT(${wp.lng} ${wp.lat})`, 4326)
       }, { transaction });
-      
+
       idMap[wp.id] = dbWp.waypoint_id;
 
       const mg = await Minigame.create({
@@ -104,6 +105,15 @@ exports.createArg = async (req, res) => {
         game_type: mapFrontendTypeToGameType(wp.type)
       }, { transaction });
       minigameMap[wp.id] = mg.game_id;
+      if (wp.games && Array.isArray(wp.games)) {
+        for (const game of wp.games) {
+          await Minigame.create({
+            waypoint_id: dbWp.waypoint_id,
+            game_type: mapFrontendTypeToGameType(game.type),
+            config_json: game.minigame_config || null
+          }, { transaction });
+        }
+      }
     }
 
     for (const edge of edges) {
@@ -132,7 +142,7 @@ exports.updateArg = async (req, res) => {
   try {
     const arg_id = req.params.id;
     const { title, description, status, waypoints = [], edges = [] } = req.body;
-    
+
     const arg = await Arg.findByPk(arg_id);
     if (!arg) {
       await transaction.rollback();
@@ -141,13 +151,13 @@ exports.updateArg = async (req, res) => {
 
     const creator_id = req.user ? req.user.user_id : (req.body.creator_id || 1);
     if (arg.creator_id !== creator_id) {
-       await transaction.rollback();
-       return res.status(403).json({ error: 'Not authorized' });
+      await transaction.rollback();
+      return res.status(403).json({ error: 'Not authorized' });
     }
 
-    await arg.update({ 
-      title: title || arg.title, 
-      description: description || arg.description, 
+    await arg.update({
+      title: title || arg.title,
+      description: description || arg.description,
       status: sanitizeStatus(status || arg.status)
     }, { transaction });
 
@@ -169,9 +179,9 @@ exports.updateArg = async (req, res) => {
         await Waypoint.update({
           title: wp.title || 'Waypoint',
           description: wp.description || '',
-          location: sequelize.fn('ST_GeomFromText', `POINT(${wp.lng} ${wp.lat})`, 4326)
+          location: sequelize.fn('ST_GeomFromText', `POINT(${wp.lat} ${wp.lng})`, 4326)
         }, { where: { waypoint_id: wp.waypoint_id }, transaction });
-        
+
         idMap[wp.id] = wp.waypoint_id;
 
         const mg = await Minigame.findOne({ where: { waypoint_id: wp.waypoint_id }, transaction });
@@ -184,106 +194,125 @@ exports.updateArg = async (req, res) => {
             game_type: mapFrontendTypeToGameType(wp.type)
           }, { transaction });
           minigameMap[wp.id] = newMg.game_id;
+          // Replace all minigames for this waypoint
+          await Minigame.destroy({ where: { waypoint_id: wp.waypoint_id }, transaction });
+          if (wp.games && Array.isArray(wp.games)) {
+            for (const game of wp.games) {
+              await Minigame.create({
+                waypoint_id: wp.waypoint_id,
+                game_type: mapFrontendTypeToGameType(game.type),
+                config_json: game.minigame_config || null
+              }, { transaction });
+            }
+          }
+        } else {
+          // Create new
+          const dbWp = await Waypoint.create({
+            arg_id: arg.arg_id,
+            title: wp.title || 'Waypoint',
+            description: wp.description || '',
+            location: sequelize.fn('ST_GeomFromText', `POINT(${wp.lat} ${wp.lng})`, 4326)
+          }, { transaction });
+
+          idMap[wp.id] = dbWp.waypoint_id;
+
+          const mg = await Minigame.create({
+            waypoint_id: dbWp.waypoint_id,
+            game_type: mapFrontendTypeToGameType(wp.type)
+          }, { transaction });
+          minigameMap[wp.id] = mg.game_id;
+          if (wp.games && Array.isArray(wp.games)) {
+            for (const game of wp.games) {
+              await Minigame.create({
+                waypoint_id: dbWp.waypoint_id,
+                game_type: mapFrontendTypeToGameType(game.type),
+                config_json: game.minigame_config || null
+              }, { transaction });
+            }
+          }
+        }
+      }
+
+      // Replace edges
+      await WaypointEdge.destroy({ where: { arg_id }, transaction });
+
+      for (const edge of edges) {
+        const fromId = idMap[edge.from] || edge.from_waypoint_id;
+        const toId = idMap[edge.to] || edge.to_waypoint_id;
+
+        if (fromId && toId) {
+          await WaypointEdge.create({
+            arg_id: arg.arg_id,
+            from_waypoint_id: fromId,
+            to_waypoint_id: toId
+          }, { transaction });
+        }
+      }
+
+      await transaction.commit();
+      res.json({ ...arg.toJSON(), idMap, minigameMap });
+    } catch (error) {
+      await transaction.rollback();
+      console.error(error);
+      res.status(500).json({ error: 'Failed to update ARG' });
+    }
+  };
+
+  exports.voteArg = async (req, res) => {
+    try {
+      const { vote, user_id } = req.body;
+      const arg_id = req.params.id;
+
+      if (!user_id || !vote) {
+        return res.status(400).json({ error: 'Missing user_id or vote' });
+      }
+
+      const existingVote = await ArgVote.findOne({ where: { arg_id, user_id } });
+
+      let action = 'voted';
+      if (existingVote) {
+        if (existingVote.vote === vote) {
+          await existingVote.destroy();
+          action = 'unvoted';
+        } else {
+          existingVote.vote = vote;
+          await existingVote.save();
         }
       } else {
-        // Create new
-        const dbWp = await Waypoint.create({
-          arg_id: arg.arg_id,
-          title: wp.title || 'Waypoint',
-          description: wp.description || '',
-          location: sequelize.fn('ST_GeomFromText', `POINT(${wp.lng} ${wp.lat})`, 4326)
-        }, { transaction });
-        
-        idMap[wp.id] = dbWp.waypoint_id;
-
-        const mg = await Minigame.create({
-          waypoint_id: dbWp.waypoint_id,
-          game_type: mapFrontendTypeToGameType(wp.type)
-        }, { transaction });
-        minigameMap[wp.id] = mg.game_id;
+        await ArgVote.create({ arg_id, user_id, vote });
       }
-    }
 
-    // Replace edges
-    await WaypointEdge.destroy({ where: { arg_id }, transaction });
-    
-    for (const edge of edges) {
-      const fromId = idMap[edge.from] || edge.from_waypoint_id;
-      const toId = idMap[edge.to] || edge.to_waypoint_id;
-      
-      if (fromId && toId) {
-        await WaypointEdge.create({
-          arg_id: arg.arg_id,
-          from_waypoint_id: fromId,
-          to_waypoint_id: toId
-        }, { transaction });
+      const like_count = await ArgVote.count({ where: { arg_id, vote: 'like' } });
+      const dislike_count = await ArgVote.count({ where: { arg_id, vote: 'dislike' } });
+
+      await Arg.update({ like_count, dislike_count }, { where: { arg_id } });
+
+      res.json({ success: true, action, like_count, dislike_count });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: 'Failed to vote' });
+    }
+  };
+
+  exports.flagArg = async (req, res) => {
+    try {
+      const { reporter_id, reason, description } = req.body;
+      const arg_id = req.params.id;
+
+      if (!reporter_id || !reason) {
+        return res.status(400).json({ error: 'Missing reporter_id or reason' });
       }
+
+      const flag = await Flag.create({
+        arg_id,
+        reporter_id,
+        reason,
+        description
+      });
+
+      res.status(201).json(flag);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: 'Failed to flag ARG' });
     }
-
-    await transaction.commit();
-    res.json({ ...arg.toJSON(), idMap, minigameMap });
-  } catch (error) {
-    await transaction.rollback();
-    console.error(error);
-    res.status(500).json({ error: 'Failed to update ARG' });
-  }
-};
-
-exports.voteArg = async (req, res) => {
-  try {
-    const { vote, user_id } = req.body;
-    const arg_id = req.params.id;
-
-    if (!user_id || !vote) {
-      return res.status(400).json({ error: 'Missing user_id or vote' });
-    }
-
-    const existingVote = await ArgVote.findOne({ where: { arg_id, user_id } });
-    
-    let action = 'voted';
-    if (existingVote) {
-      if (existingVote.vote === vote) {
-        await existingVote.destroy();
-        action = 'unvoted';
-      } else {
-        existingVote.vote = vote;
-        await existingVote.save();
-      }
-    } else {
-      await ArgVote.create({ arg_id, user_id, vote });
-    }
-
-    const like_count = await ArgVote.count({ where: { arg_id, vote: 'like' } });
-    const dislike_count = await ArgVote.count({ where: { arg_id, vote: 'dislike' } });
-    
-    await Arg.update({ like_count, dislike_count }, { where: { arg_id } });
-
-    res.json({ success: true, action, like_count, dislike_count });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Failed to vote' });
-  }
-};
-
-exports.flagArg = async (req, res) => {
-  try {
-    const { reporter_id, reason, description } = req.body;
-    const arg_id = req.params.id;
-
-    if (!reporter_id || !reason) {
-      return res.status(400).json({ error: 'Missing reporter_id or reason' });
-    }
-
-    const flag = await Flag.create({
-      arg_id,
-      reporter_id,
-      reason,
-      description
-    });
-
-    res.status(201).json(flag);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Failed to flag ARG' });
-  }
-};
+  };
