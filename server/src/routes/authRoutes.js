@@ -80,6 +80,20 @@ router.post('/login', (req, res, next) => {
   })(req, res, next);
 });
 
+// Logout
+router.get('/logout', (req, res, next) => {
+  req.logout((err) => {
+    if (err) {
+      console.error('❌ Logout Error:', err);
+      return res.status(500).json({ error: 'Failed to log out' });
+    }
+    req.session.destroy(() => {
+      res.clearCookie('connect.sid');
+      return res.json({ message: 'Logged out successfully' });
+    });
+  });
+});
+
 // Get the currently authenticated user
 router.get('/me', (req, res) => {
   if (req.isAuthenticated()) {

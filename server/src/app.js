@@ -92,6 +92,16 @@ function createApp() {
   app.use('/api/comments', commentRoutes);
   app.use('/api/feedback', feedbackRoutes);
 
+  const gameRoutes = require('./routes/gameRoutes');
+  const requireAuth = (req, res, next) => {
+    if (req.isAuthenticated()) return next();
+    res.status(401).json({ error: 'Unauthorized' });
+  };
+  app.use('/api/game', requireAuth, gameRoutes);
+
+  const path = require('path');
+  app.use('/client', express.static(path.join(__dirname, '../../client')));
+
   return app;
 }
 
