@@ -19,6 +19,7 @@ const Badge = require('./Badge');
 const UserBadge = require('./UserBadge');
 const Flag = require('./Flag');
 const Comment = require('./Comment');
+const UserFeedback = require('./UserFeedback');
 
 // Define Associations
 
@@ -104,6 +105,10 @@ Arg.hasMany(Comment, { foreignKey: 'arg_id' });
 Comment.hasMany(Comment, { as: 'replies', foreignKey: 'parent_id' });
 Comment.belongsTo(Comment, { as: 'parent', foreignKey: 'parent_id' });
 
+// User Feedback
+UserFeedback.belongsTo(User, { foreignKey: 'user_id' });
+User.hasMany(UserFeedback, { foreignKey: 'user_id' });
+
 module.exports = {
   sequelize,
   User,
@@ -124,5 +129,6 @@ module.exports = {
   Badge,
   UserBadge,
   Flag,
-  Comment
+  Comment,
+  UserFeedback
 };

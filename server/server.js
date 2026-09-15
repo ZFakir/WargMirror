@@ -1,14 +1,12 @@
-const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
-const cors = require('cors');
-const session = require('express-session');
-const MySQLStore = require('express-mysql-session')(session);
 require('dotenv').config();
-const path = require('path');
+
 const sequelize = require('./src/config/database');
-const passport = require('./src/config/passport');
 const { sequelize: db } = require('./src/models');
+const createApp = require('./src/app');
+
+const app = createApp();
 const argRoutes = require('./src/routes/argRoutes');
 const userRoutes = require('./src/routes/userRoutes');
 const sessionRoutes = require('./src/routes/sessionRoutes');
@@ -24,18 +22,18 @@ server.headersTimeout = 66000; // 66 seconds
 const io = new Server(server, {
   cors: {
     origin: function (origin, callback) {
-      // In production, configure CLIENT_URL in your environment variables. 
+      // In production, configure CLIENT_URL in your environment variables.
       // For multiple origins (e.g., local dev + prod), separate them with commas in your .env
-      const allowedOrigins = process.env.CLIENT_URL 
-        ? process.env.CLIENT_URL.split(',').map(url => url.trim().replace(/\/$/, '')) 
+      const allowedOrigins = process.env.CLIENT_URL
+        ? process.env.CLIENT_URL.split(',').map(url => url.trim().replace(/\/$/, ''))
         : [];
-      
+
       const normalizedOrigin = origin ? origin.trim().replace(/\/$/, '') : null;
 
       if (!normalizedOrigin || allowedOrigins.includes(normalizedOrigin)) {
         callback(null, true);
       } else {
-        callback(new Error('Origin not allowed by CORS')); 
+        callback(new Error('Origin not allowed by CORS'));
       }
     },
     methods: ['GET', 'POST'],
@@ -59,10 +57,10 @@ const sessionStoreOptions = new MySQLStore({
 // Middleware
 app.use(cors({
   origin: function (origin, callback) {
-    const allowedOrigins = process.env.CLIENT_URL 
-      ? process.env.CLIENT_URL.split(',').map(url => url.trim().replace(/\/$/, '')) 
+    const allowedOrigins = process.env.CLIENT_URL
+      ? process.env.CLIENT_URL.split(',').map(url => url.trim().replace(/\/$/, ''))
       : [];
-    
+
     const normalizedOrigin = origin ? origin.trim().replace(/\/$/, '') : null;
 
     if (!normalizedOrigin || allowedOrigins.includes(normalizedOrigin)) {
@@ -86,7 +84,7 @@ app.use(session({
   saveUninitialized: false,
   cookie: {
     maxAge: 86400000, // 24 hours
-    secure: process.env.NODE_ENV === 'production',    
+    secure: process.env.NODE_ENV === 'production',
     sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
     httpOnly: true
   }

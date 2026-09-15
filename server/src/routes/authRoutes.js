@@ -4,16 +4,33 @@ const router = express.Router();
 const authController = require('../controllers/authController');
 
 // Redirect to Google's consent screen
-router.get('/google', passport.authenticate('google', {
+router.get('/google', (req, res, next) => {
+  // Store the requesting origin in the session so we know where to redirect back to
+  if (req.headers.referer) {
+    const refererUrl = new URL(req.headers.referer);
+    req.session.oauthReturnTo = refererUrl.origin;
+  }
+  next();
+}, passport.authenticate('google', {
   scope: ['profile', 'email']
 }));
 
 // Google redirects back here after the user grants/denies permission
 router.get('/google/callback', (req, res, next) => {
   passport.authenticate('google', (err, user) => {
-    // Use CLIENT_PAGES_URL for redirects (includes /client path for local dev).
-    // Falls back to CLIENT_URL if not set.
-    const clientUrl = process.env.CLIENT_PAGES_URL || process.env.CLIENT_URL || '';
+    // Determine redirect URL:
+    // 1. Where they initiated the login from (saved in session)
+    // 2. The explicit CLIENT_PAGES_URL (if configured)
+    // 3. The default CLIENT_URL
+    let clientUrl = req.session.oauthReturnTo || process.env.CLIENT_PAGES_URL || process.env.CLIENT_URL || '';
+    
+    // If CLIENT_URL is a comma-separated list, take the first one
+    if (clientUrl && clientUrl.includes(',')) {
+      clientUrl = clientUrl.split(',')[0].trim();
+    }
+    
+    // Clean up session
+    delete req.session.oauthReturnTo;
 
     // Database or other server error
     if (err) {
