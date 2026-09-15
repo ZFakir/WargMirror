@@ -7,7 +7,16 @@ const { sequelize: db } = require('./src/models');
 const createApp = require('./src/app');
 
 const app = createApp();
+const argRoutes = require('./src/routes/argRoutes');
+const userRoutes = require('./src/routes/userRoutes');
+const sessionRoutes = require('./src/routes/sessionRoutes');
+const authRoutes = require('./src/routes/authRoutes');
+const commentRoutes = require('./src/routes/commentRoutes');
+const gameRoutes = require('./src/routes/gameRoutes');
+const app = express();
 const server = http.createServer(app);
+server.keepAliveTimeout = 65000; // 65 seconds
+server.headersTimeout = 66000; // 66 seconds
 
 // Setup Socket.io for live/co-op game modes
 const io = new Server(server, {
@@ -31,6 +40,77 @@ const io = new Server(server, {
     credentials: true
   }
 });
+
+// Build MySQL session store from DATABASE_URL
+const dbUrl = new URL(process.env.DATABASE_URL);
+const sessionStoreOptions = new MySQLStore({
+  host: dbUrl.hostname,
+  port: dbUrl.port || 3306,
+  user: dbUrl.username,
+  password: dbUrl.password,
+  database: dbUrl.pathname.slice(1), // remove leading "/"
+  ssl: { rejectUnauthorized: false },
+  createDatabaseTable: true,
+  expiration: 86400000 // 24 hours
+});
+
+// Middleware
+app.use(cors({
+  origin: function (origin, callback) {
+    const allowedOrigins = process.env.CLIENT_URL
+      ? process.env.CLIENT_URL.split(',').map(url => url.trim().replace(/\/$/, ''))
+      : [];
+
+    const normalizedOrigin = origin ? origin.trim().replace(/\/$/, '') : null;
+
+    if (!normalizedOrigin || allowedOrigins.includes(normalizedOrigin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Origin not allowed by CORS'));
+    }
+  },
+  credentials: true
+}));
+app.use(express.json());
+app.use('/client', express.static(path.join(__dirname, '../client')));
+
+app.set('trust proxy', 1); // Trust first proxy (Render/Heroku/Vercel)
+
+// Session middleware (must come before passport)
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'warg-dev-secret',
+  store: sessionStoreOptions,
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    maxAge: 86400000, // 24 hours
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    httpOnly: true
+  }
+}));
+
+// Passport middleware
+app.use(passport.initialize());
+app.use(passport.session());
+
+// Basic Route
+app.get('/', (req, res) => {
+  res.json({ message: 'WARG Platform Backend is running!' });
+});
+
+const requireAuth = (req, res, next) => {
+  if (req.isAuthenticated()) return next();
+  res.status(401).json({ error: 'Unauthorized' });
+};
+
+// Mount API Routes
+app.use('/auth', authRoutes);
+app.use('/api/args', argRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/sessions', sessionRoutes);
+app.use('/api/comments', commentRoutes);
+app.use('/api/game', requireAuth, gameRoutes);
 
 // Socket.io connection handling
 io.on('connection', (socket) => {
@@ -66,3 +146,4 @@ async function startServer() {
 }
 
 startServer();
+// Trigger nodemon

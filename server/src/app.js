@@ -9,6 +9,7 @@ const userRoutes = require('./routes/userRoutes');
 const sessionRoutes = require('./routes/sessionRoutes');
 const authRoutes = require('./routes/authRoutes');
 const commentRoutes = require('./routes/commentRoutes');
+const feedbackRoutes = require('./routes/feedbackRoutes');
 
 /**
  * Builds and returns a configured Express app WITHOUT starting an HTTP
@@ -30,8 +31,9 @@ function createApp() {
       : [];
 
     const normalizedOrigin = origin ? origin.trim().replace(/\/$/, '') : null;
+    const isLocalDevelopment = process.env.NODE_ENV !== 'production' && normalizedOrigin && normalizedOrigin.startsWith('http://localhost');
 
-    if (!normalizedOrigin || allowedOrigins.includes(normalizedOrigin)) {
+    if (!normalizedOrigin || allowedOrigins.includes(normalizedOrigin) || isLocalDevelopment) {
       callback(null, true);
     } else {
       callback(new Error('Origin not allowed by CORS'));
@@ -88,6 +90,7 @@ function createApp() {
   app.use('/api/users', userRoutes);
   app.use('/api/sessions', sessionRoutes);
   app.use('/api/comments', commentRoutes);
+  app.use('/api/feedback', feedbackRoutes);
 
   return app;
 }
