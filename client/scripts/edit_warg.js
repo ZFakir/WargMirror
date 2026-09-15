@@ -73,11 +73,25 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (argData.WaypointEdges) {
           argData.WaypointEdges.forEach(edge => {
+            let triggers = [];
+            let conditions = edge.conditions_json;
+            if (typeof conditions === 'string') {
+              try { conditions = JSON.parse(conditions); } catch(e) {}
+            }
+            if (conditions && Array.isArray(conditions)) {
+              const fromWpData = (argData.Waypoints || []).find(w => w.waypoint_id === edge.from_waypoint_id);
+              if (fromWpData && fromWpData.Minigames) {
+                 triggers = conditions.map(cond => {
+                   const index = fromWpData.Minigames.findIndex(mg => mg.game_id === cond.game_id);
+                   return { game_index: index, outcome: cond.outcome };
+                 }).filter(t => t.game_index !== -1);
+              }
+            }
             edges.push({
               id: `e${nextEdgeId++}`,
               from: idMap[edge.from_waypoint_id],
               to: idMap[edge.to_waypoint_id],
-              triggers: []
+              triggers
             });
           });
         }
@@ -384,17 +398,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (transitionList && fromNode) {
           if (fromNode.games && fromNode.games.length > 0) {
             let html = '';
-            fromNode.games.forEach(game => {
+            fromNode.games.forEach((game, index) => {
+              const passChecked = edge.triggers.some(t => t.game_index === index && t.outcome === 'pass') ? 'checked' : '';
+              const failChecked = edge.triggers.some(t => t.game_index === index && t.outcome === 'fail') ? 'checked' : '';
               html += `
                 <div class="transition-game-card">
                   <div class="transition-game-card__title">${game.gamemode}</div>
                   <div class="transition-game-card__controls">
                     <label class="trigger-checkbox-label">
-                      <input type="checkbox" class="trigger--pass">
+                      <input type="checkbox" class="trigger--pass" data-game-index="${index}" ${passChecked}>
                       Pass
                     </label>
                     <label class="trigger-checkbox-label">
-                      <input type="checkbox" class="trigger--fail">
+                      <input type="checkbox" class="trigger--fail" data-game-index="${index}" ${failChecked}>
                       Fail
                     </label>
                   </div>
@@ -402,6 +418,18 @@ document.addEventListener('DOMContentLoaded', async () => {
               `;
             });
             transitionList.innerHTML = html;
+            
+            transitionList.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+              cb.addEventListener('change', (e) => {
+                 const tType = e.target.classList.contains('trigger--pass') ? 'pass' : 'fail';
+                 const gIdx = parseInt(e.target.getAttribute('data-game-index'), 10);
+                 if (e.target.checked) {
+                   edge.triggers.push({ game_index: gIdx, outcome: tType });
+                 } else {
+                   edge.triggers = edge.triggers.filter(t => !(t.game_index === gIdx && t.outcome === tType));
+                 }
+              });
+            });
           } else {
             transitionList.innerHTML = '';
           }

@@ -1,8 +1,12 @@
 const { sequelize, Waypoint, WaypointEdge, Minigame, GameSession, WaypointProgress, MinigameAttempt, LocationEvent } = require('../models');
 
 // Helper to evaluate branching conditions
-const evaluateConditions = async (user_id, conditions) => {
-  if (!conditions || conditions.length === 0) return true; // Unconditional edge
+const evaluateConditions = async (user_id, rawConditions) => {
+  let conditions = rawConditions;
+  if (typeof conditions === 'string') {
+    try { conditions = JSON.parse(conditions); } catch (e) {}
+  }
+  if (!conditions || !Array.isArray(conditions) || conditions.length === 0) return true; // Unconditional edge
   
   for (const cond of conditions) {
     const attempt = await MinigameAttempt.findOne({
