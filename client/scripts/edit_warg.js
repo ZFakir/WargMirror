@@ -76,7 +76,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             let triggers = [];
             let conditions = edge.conditions_json;
             if (typeof conditions === 'string') {
-              try { conditions = JSON.parse(conditions); } catch(e) {}
+              try { conditions = JSON.parse(conditions); } catch { /* ignore parse error */ }
             }
             if (conditions && Array.isArray(conditions)) {
               const fromWpData = (argData.Waypoints || []).find(w => w.waypoint_id === edge.from_waypoint_id);

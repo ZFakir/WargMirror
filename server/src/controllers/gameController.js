@@ -4,19 +4,14 @@ const { sequelize, Waypoint, WaypointEdge, Minigame, GameSession, WaypointProgre
 const evaluateConditions = async (user_id, rawConditions, transaction = null) => {
   let conditions = rawConditions;
   if (typeof conditions === 'string') {
-    try { conditions = JSON.parse(conditions); } catch (e) {}
+    try { conditions = JSON.parse(conditions); } catch { /* ignore parse error */ }
   }
-  
-  console.log(`[evaluateConditions] rawConditions:`, rawConditions);
-  console.log(`[evaluateConditions] parsed conditions:`, conditions);
 
   if (!conditions || !Array.isArray(conditions) || conditions.length === 0) {
-    console.log(`[evaluateConditions] Unconditional edge (true)`);
     return true; // Unconditional edge
   }
   
   for (const cond of conditions) {
-    console.log(`[evaluateConditions] Checking condition:`, cond);
     const findOpts = {
       where: { user_id, game_id: cond.game_id },
       order: [['attempted_at', 'DESC']]
@@ -24,18 +19,10 @@ const evaluateConditions = async (user_id, rawConditions, transaction = null) =>
     if (transaction) findOpts.transaction = transaction;
     const attempt = await MinigameAttempt.findOne(findOpts);
     
-    if (attempt) {
-      console.log(`[evaluateConditions] Found attempt for game ${cond.game_id}: outcome=${attempt.outcome}`);
-    } else {
-      console.log(`[evaluateConditions] No attempt found for game ${cond.game_id}`);
-    }
-
     if (!attempt || attempt.outcome !== cond.outcome) {
-      console.log(`[evaluateConditions] Condition NOT met for game ${cond.game_id} (expected ${cond.outcome})`);
       return false; // Condition not met
     }
   }
-  console.log(`[evaluateConditions] All conditions MET`);
   return true;
 };
 
@@ -210,8 +197,6 @@ exports.submitMinigame = async (req, res) => {
       score: outcome === 'pass' ? 1.0 : 0.0,
       attempted_at: new Date()
     }, { transaction });
-    
-    console.log(`[submitMinigame] Upserted attempt for game_id=${game_id}, outcome=${outcome}`);
 
     let unlockedNodes = [];
 
