@@ -57,7 +57,8 @@ const mapFrontendTypeToGameType = (type) => {
   const map = {
     'gps': 'gps_proximity',
     'ar': 'ar_object_scan',
-    'barcode': 'qr_barcode'
+    'barcode': 'qr_barcode',
+    'text_answer': 'text_answer' // Map QnA
   };
   return map[type] || 'gps_proximity';
 };
@@ -76,30 +77,50 @@ exports.createArg = async (req, res) => {
     }, { transaction });
 
     const idMap = {};
+    const wpObjMap = {};
     for (const wp of waypoints) {
       const dbWp = await Waypoint.create({
         arg_id: newArg.arg_id,
         title: wp.title || 'Waypoint',
         description: wp.description || '',
-        location: sequelize.fn('ST_GeomFromText', `POINT(${wp.lng} ${wp.lat})`, 4326)
+        location: sequelize.fn('ST_GeomFromText', `POINT(${wp.lat} ${wp.lng})`, 4326)
       }, { transaction });
       
       idMap[wp.id] = dbWp.waypoint_id;
+      wpObjMap[wp.id] = { gameIds: [] };
 
-      await Minigame.create({
-        waypoint_id: dbWp.waypoint_id,
-        game_type: mapFrontendTypeToGameType(wp.type)
-      }, { transaction });
+      if (wp.games && Array.isArray(wp.games)) {
+        for (let i = 0; i < wp.games.length; i++) {
+          const game = wp.games[i];
+          const mg = await Minigame.create({
+            waypoint_id: dbWp.waypoint_id,
+            game_type: mapFrontendTypeToGameType(game.type),
+            config_json: game.minigame_config || null
+          }, { transaction });
+          wpObjMap[wp.id].gameIds[i] = mg.game_id;
+        }
+      }
     }
 
     for (const edge of edges) {
       const fromId = idMap[edge.from];
       const toId = idMap[edge.to];
       if (fromId && toId) {
+        let conditions_json = null;
+        if (edge.triggers && edge.triggers.length > 0) {
+          const fromWp = wpObjMap[edge.from];
+          if (fromWp) {
+            conditions_json = edge.triggers.map(t => ({
+              game_id: fromWp.gameIds[t.game_index],
+              outcome: t.outcome
+            })).filter(c => c.game_id);
+          }
+        }
         await WaypointEdge.create({
           arg_id: newArg.arg_id,
           from_waypoint_id: fromId,
-          to_waypoint_id: toId
+          to_waypoint_id: toId,
+          conditions_json
         }, { transaction });
       }
     }
@@ -148,25 +169,31 @@ exports.updateArg = async (req, res) => {
     }
 
     const idMap = {};
+    const wpObjMap = {};
     for (const wp of waypoints) {
       if (wp.waypoint_id) {
         // Update existing
         await Waypoint.update({
           title: wp.title || 'Waypoint',
           description: wp.description || '',
-          location: sequelize.fn('ST_GeomFromText', `POINT(${wp.lng} ${wp.lat})`, 4326)
+          location: sequelize.fn('ST_GeomFromText', `POINT(${wp.lat} ${wp.lng})`, 4326)
         }, { where: { waypoint_id: wp.waypoint_id }, transaction });
         
         idMap[wp.id] = wp.waypoint_id;
+        wpObjMap[wp.id] = { gameIds: [] };
 
-        const mg = await Minigame.findOne({ where: { waypoint_id: wp.waypoint_id }, transaction });
-        if (mg) {
-          await mg.update({ game_type: mapFrontendTypeToGameType(wp.type) }, { transaction });
-        } else {
-          await Minigame.create({
-            waypoint_id: wp.waypoint_id,
-            game_type: mapFrontendTypeToGameType(wp.type)
-          }, { transaction });
+        // Replace all minigames for this waypoint
+        await Minigame.destroy({ where: { waypoint_id: wp.waypoint_id }, transaction });
+        if (wp.games && Array.isArray(wp.games)) {
+          for (let i = 0; i < wp.games.length; i++) {
+            const game = wp.games[i];
+            const mg = await Minigame.create({
+              waypoint_id: wp.waypoint_id,
+              game_type: mapFrontendTypeToGameType(game.type),
+              config_json: game.minigame_config || null
+            }, { transaction });
+            wpObjMap[wp.id].gameIds[i] = mg.game_id;
+          }
         }
       } else {
         // Create new
@@ -174,15 +201,23 @@ exports.updateArg = async (req, res) => {
           arg_id: arg.arg_id,
           title: wp.title || 'Waypoint',
           description: wp.description || '',
-          location: sequelize.fn('ST_GeomFromText', `POINT(${wp.lng} ${wp.lat})`, 4326)
+          location: sequelize.fn('ST_GeomFromText', `POINT(${wp.lat} ${wp.lng})`, 4326)
         }, { transaction });
         
         idMap[wp.id] = dbWp.waypoint_id;
+        wpObjMap[wp.id] = { gameIds: [] };
 
-        await Minigame.create({
-          waypoint_id: dbWp.waypoint_id,
-          game_type: mapFrontendTypeToGameType(wp.type)
-        }, { transaction });
+        if (wp.games && Array.isArray(wp.games)) {
+          for (let i = 0; i < wp.games.length; i++) {
+            const game = wp.games[i];
+            const mg = await Minigame.create({
+              waypoint_id: dbWp.waypoint_id,
+              game_type: mapFrontendTypeToGameType(game.type),
+              config_json: game.minigame_config || null
+            }, { transaction });
+            wpObjMap[wp.id].gameIds[i] = mg.game_id;
+          }
+        }
       }
     }
 
@@ -194,10 +229,21 @@ exports.updateArg = async (req, res) => {
       const toId = idMap[edge.to] || edge.to_waypoint_id;
       
       if (fromId && toId) {
+        let conditions_json = null;
+        if (edge.triggers && edge.triggers.length > 0) {
+          const fromWp = wpObjMap[edge.from] || wpObjMap[edge.from_waypoint_id];
+          if (fromWp) {
+            conditions_json = edge.triggers.map(t => ({
+              game_id: fromWp.gameIds[t.game_index],
+              outcome: t.outcome
+            })).filter(c => c.game_id);
+          }
+        }
         await WaypointEdge.create({
           arg_id: arg.arg_id,
           from_waypoint_id: fromId,
-          to_waypoint_id: toId
+          to_waypoint_id: toId,
+          conditions_json
         }, { transaction });
       }
     }
