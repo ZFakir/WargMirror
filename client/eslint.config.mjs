@@ -20,5 +20,20 @@ export default defineConfig([
       }
     }
   },
-  { files: ["tests/**/*.js", "playwright.config.ts", "playwright.config.js"], languageOptions: { globals: { ...globals.node, test: "readonly", expect: "readonly", describe: "readonly", it: "readonly", page: "readonly" } }, rules: { "no-unused-vars": "off" } }
+  {
+    files: ["playwright.config.js", "playwright.config.ts", "tests/**/*.js"],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+        test: "readonly",
+        expect: "readonly",
+        describe: "readonly",
+        it: "readonly",
+        page: "readonly"
+      }
+    },
+    rules: {
+      "no-unused-vars": "off"
+    }
+  }
 ]);
