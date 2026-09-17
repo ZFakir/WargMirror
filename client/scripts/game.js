@@ -419,14 +419,31 @@ document.addEventListener('DOMContentLoaded', () => {
                   } else {
                     mapModal.updateNodeStatus(node.id, 'completed');
                   }
-                }
-              } catch (err) {
-                console.error(err);
-                alert("Error submitting minigame.");
-                gameWrapper.innerHTML = originalContent;
-                renderMinigame(index);
-              }
-            });
+                  if (result.can_retry && result.outcome === 'fail') {
+                    setTimeout(() => {
+                      renderMinigame(index);
+                    }, 2000);
+                  } else if (result.outcome === 'pass' || result.outcome === 'fail') {
+                    if (result.unlockedNodes) {
+                      result.unlockedNodes.forEach(unlockedId => {
+                        mapModal.updateNodeStatus(unlockedId.toString(), 'unlocked');
+                      });
+                    }
+
+                    if (!isLastGame) {
+                      setTimeout(() => {
+                        renderMinigame(index + 1);
+                      }, 2000);
+                    } else {
+                      mapModal.updateNodeStatus(node.id, 'completed');
+                    }
+                  } catch (err) {
+                    console.error(err);
+                    alert("Error submitting minigame.");
+                    gameWrapper.innerHTML = originalContent;
+                    renderMinigame(index);
+                  }
+                });
           };
 
           renderMinigame(0);

@@ -394,8 +394,18 @@ document.addEventListener('DOMContentLoaded', async () => {
               let html = '';
               node.games.forEach((game, index) => {
                 html += `
-                <div class="sub-card" style="position: relative;" tabindex="0">
-                  <span class="sub-card__text">${game.gamemode}</span>
+          if (node.games && node.games.length > 0) {
+            let html = '';
+            node.games.forEach((game, index) => {
+              const config = game.minigame_config || {};
+              const unlimitedChecked = config.allow_multiple_attempts ? 'checked' : '';
+              html += `
+                  < div class="sub-card" style = "position: relative;" tabindex = "0" >
+                  <div><span class="sub-card__text">${game.gamemode}</span></div>
+                  <label style="display: inline-block; font-size: 11px; margin-top: 4px; cursor: pointer; color: var(--color-text-muted);">
+                    <input type="checkbox" class="unlimited-attempts-checkbox" data-index="${index}" ${unlimitedChecked}>
+                    Unlimited attempts
+                  </label>
                   <button class="icon-btn sub-card__action btn-game-options" data-index="${index}" aria-label="More options">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
                   </button>
@@ -403,8 +413,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <button class="dropdown-item btn-edit-game" data-index="${index}">Edit Game</button>
                     <button class="dropdown-item dropdown-item--danger btn-delete-game" data-index="${index}">Delete Game</button>
                   </div>
-                </div>
-              `;
+                </div >
+                  `;
               });
               gamesList.innerHTML = html;
 
@@ -414,7 +424,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 btn.addEventListener('click', (e) => {
                   e.stopPropagation();
                   const index = btn.getAttribute('data-index');
-                  const dropdown = document.getElementById(`game-dropdown-${index}`);
+                  const dropdown = document.getElementById(`game - dropdown - ${ index } `);
 
                   // close others
                   gamesList.querySelectorAll('.game-options-dropdown.show').forEach(d => {
@@ -427,6 +437,26 @@ document.addEventListener('DOMContentLoaded', async () => {
 
               // Close dropdown when clicking outside
               document.addEventListener('click', function closeDropdown(e) {
+            // Unlimited attempts checkbox logic
+            gamesList.querySelectorAll('.unlimited-attempts-checkbox').forEach(cb => {
+              cb.addEventListener('change', (e) => {
+                const cbIndex = e.target.getAttribute('data-index');
+                if (!node.games[cbIndex].minigame_config) {
+                  node.games[cbIndex].minigame_config = {};
+                }
+                node.games[cbIndex].minigame_config.allow_multiple_attempts = e.target.checked;
+              });
+            });
+
+            // Wire up dropdown logic
+            const optionBtns = gamesList.querySelectorAll('.btn-game-options');
+            optionBtns.forEach(btn => {
+              btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const index = btn.getAttribute('data-index');
+                const dropdown = document.getElementById(`game - dropdown - ${ index } `);
+                
+                // close others
                 gamesList.querySelectorAll('.game-options-dropdown.show').forEach(d => {
                   if (!d.contains(e.target) && !e.target.closest('.btn-game-options')) {
                     d.classList.remove('show');
@@ -439,7 +469,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 btn.addEventListener('click', (e) => {
                   e.stopPropagation();
                   const index = btn.getAttribute('data-index');
-                  const dropdown = document.getElementById(`game-dropdown-${index}`);
+                  const dropdown = document.getElementById(`game - dropdown - ${ index } `);
                   dropdown.classList.remove('show');
 
                   const game = node.games[index];
@@ -456,7 +486,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 btn.addEventListener('click', (e) => {
                   e.stopPropagation();
                   const index = btn.getAttribute('data-index');
-                  const dropdown = document.getElementById(`game-dropdown-${index}`);
+                  const dropdown = document.getElementById(`game - dropdown - ${ index } `);
                   dropdown.classList.remove('show');
 
                   openConfirmModal('Delete Game', 'Are you sure you want to remove this game from the waypoint?', () => {
@@ -477,7 +507,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (edge) {
           const fromNode = nodes.find(n => n.id === edge.from);
           const titleEl = document.getElementById('edge-editor-title');
-          if (titleEl && fromNode) titleEl.textContent = `Transition from ${fromNode.title}`;
+          if (titleEl && fromNode) titleEl.textContent = `Transition from ${ fromNode.title } `;
 
           const transitionList = document.getElementById('transition-games-list');
           if (transitionList && fromNode) {
@@ -485,14 +515,16 @@ document.addEventListener('DOMContentLoaded', async () => {
               let html = '';
               fromNode.games.forEach(game => {
                 html += `
-        const transitionList = document.getElementById('transition-games-list');
-        if (transitionList && fromNode) {
-          if (fromNode.games && fromNode.games.length > 0) {
-            let html = '';
-            fromNode.games.forEach((game, index) => {
-              const passChecked = edge.triggers.some(t => t.game_index === index && t.outcome === 'pass') ? 'checked' : '';
-              const failChecked = edge.triggers.some(t => t.game_index === index && t.outcome === 'fail') ? 'checked' : '';
-              html += `
+                const transitionList = document.getElementById('transition-games-list');
+                if (transitionList && fromNode) {
+                  if (fromNode.games && fromNode.games.length > 0) {
+                    let html = '';
+                    fromNode.games.forEach((game, index) => {
+                      const passChecked = edge.triggers.some(t => t.game_index === index && t.outcome === 'pass') ? 'checked' : '';
+                      const failChecked = edge.triggers.some(t => t.game_index === index && t.outcome === 'fail') ? 'checked' : '';
+                      const isUnlimited = game.minigame_config && game.minigame_config.allow_multiple_attempts;
+
+                      html += `
                   < div class="transition-game-card" >
                   <div class="transition-game-card__title">${game.gamemode}</div>
                   <div class="transition-game-card__controls">
@@ -507,11 +539,32 @@ document.addEventListener('DOMContentLoaded', async () => {
                   </div>
                 </div >
                   `;
-              });
-              transitionList.innerHTML = html;
-            } else {
-              transitionList.innerHTML = '';
-            }
+                    });
+                    transitionList.innerHTML = html;
+                  } else {
+                    transitionList.innerHTML = '';
+                  }
+                  <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px;">
+                    <div class="transition-game-card" style="margin-bottom: 0;">
+                      <div class="transition-game-card__title">${game.gamemode}</div>
+                      <div class="transition-game-card__controls">
+                        <label class="trigger-checkbox-label">
+                          <input type="checkbox" class="trigger--pass" data-game-index="${index}" ${passChecked}>
+                            Pass
+                        </label>
+                        <label class="trigger-checkbox-label">
+                          <input type="checkbox" class="trigger--fail" data-game-index="${index}" ${failChecked}>
+                            Fail
+                        </label>
+                      </div>
+                    </div>
+                    ${isUnlimited ? `
+                  <div id="unlimited-warning-${index}" style="background-color: rgba(234, 67, 53, 0.1); border: 1px solid rgba(234, 67, 53, 0.2); border-radius: 6px; padding: 8px 10px; color: #ff6b6b; font-size: 11px; display: ${failChecked ? 'flex' : 'none'}; align-items: center; gap: 8px;">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                    <span><strong>Game has Unlimited Attempts.</strong> Fail branch will never trigger.</span>
+                  </div>` : ''}
+                  </div>
+                  `;
             });
             transitionList.innerHTML = html;
             
@@ -523,6 +576,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                    edge.triggers.push({ game_index: gIdx, outcome: tType });
                  } else {
                    edge.triggers = edge.triggers.filter(t => !(t.game_index === gIdx && t.outcome === tType));
+                 }
+
+                 if (tType === 'fail') {
+                   const warningEl = document.getElementById(`unlimited - warning - ${ gIdx } `);
+                   if (warningEl) {
+                     warningEl.style.display = e.target.checked ? 'flex' : 'none';
+                   }
                  }
               });
             });
