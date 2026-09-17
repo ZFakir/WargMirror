@@ -9,10 +9,17 @@
  *   const user = await api.getCurrentUser(); // null for guests
  */
 
-/* eslint-disable no-var */
-// Use the globally configured API_BASE_URL (from config.js) or fallback
-var API_BASE = window.API_BASE_URL || 'https://wargmirror.onrender.com';
+// Auto-detect local development environment
+if (!window.API_BASE_URL) {
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    window.API_BASE_URL = 'http://localhost:3000';
+  } else {
+    window.API_BASE_URL = 'https://wargmirror.onrender.com';
+  }
+}
+var API_BASE = window.API_BASE_URL;
 
+// eslint-disable-next-line no-unused-vars
 var api = (function () {
 
   /* ── Generic fetch wrapper ──────────────────────────────── */
@@ -29,6 +36,17 @@ var api = (function () {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
+      credentials: 'include'
+    });
+    if (!res.ok) {
+      throw Object.assign(new Error('API error'), { status: res.status, path });
+    }
+    return res.json();
+  }
+
+  async function _delete(path) {
+    const res = await fetch(API_BASE + path, {
+      method: 'DELETE',
       credentials: 'include'
     });
     if (!res.ok) {
@@ -56,7 +74,7 @@ var api = (function () {
 
     // Build initials from username (up to 2 chars)
     var initials = username
-      .split(/[\s_\-]+/)
+      .split(/[\s_-]+/)
       .slice(0, 2)
       .map(function (w) { return w[0] || ''; })
       .join('')
@@ -87,6 +105,7 @@ var api = (function () {
       },
       likes:    arg.like_count    || 0,
       dislikes: arg.dislike_count || 0,
+      userVote: arg.user_vote     || null,
       rating:   rating,
       featured: false,
       // Keep raw fields for pages that need them
@@ -168,6 +187,14 @@ var api = (function () {
     return _post('/api/args/' + argId + '/flag', { reason, description, reporter_id: reporterId });
   }
 
+  async function removeRecentArg(argId, userId = 1) { // Defaulting user_id to 1 until auth is hooked up
+    return _delete('/api/sessions/' + userId + '/arg/' + argId);
+  }
+
+  async function submitFeedback(feedbackData) {
+    return _post('/api/feedback', feedbackData);
+  }
+
   /* ── Public API ─────────────────────────────────────────── */
   return {
     getCurrentUser,
@@ -180,6 +207,8 @@ var api = (function () {
     normaliseArg,
     voteArg,
     flagArg,
+    removeRecentArg,
+    submitFeedback,
   };
 
 }());

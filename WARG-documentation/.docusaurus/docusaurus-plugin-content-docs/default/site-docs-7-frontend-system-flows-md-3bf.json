@@ -1,0 +1,23 @@
+{
+  "id": "frontend/system-flows",
+  "title": "System Flows",
+  "description": "The interactions between the static Multi-Page Application (MPA) frontend and the Express REST API can be complex. Below are the key system flows visualized.",
+  "source": "@site/docs/7-frontend/system-flows.md",
+  "sourceDirName": "7-frontend",
+  "slug": "/frontend/system-flows",
+  "permalink": "/docs/frontend/system-flows",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/docs/7-frontend/system-flows.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 2,
+  "frontMatter": {
+    "sidebar_position": 2
+  },
+  "sidebar": "tutorialSidebar",
+  "previous": {
+    "title": "Client Views & Workflows",
+    "permalink": "/docs/frontend/client-views"
+  }
+}

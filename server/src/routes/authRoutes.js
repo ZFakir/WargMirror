@@ -4,16 +4,33 @@ const router = express.Router();
 const authController = require('../controllers/authController');
 
 // Redirect to Google's consent screen
-router.get('/google', passport.authenticate('google', {
+router.get('/google', (req, res, next) => {
+  // Store the requesting origin in the session so we know where to redirect back to
+  if (req.headers.referer) {
+    const refererUrl = new URL(req.headers.referer);
+    req.session.oauthReturnTo = refererUrl.origin;
+  }
+  next();
+}, passport.authenticate('google', {
   scope: ['profile', 'email']
 }));
 
 // Google redirects back here after the user grants/denies permission
 router.get('/google/callback', (req, res, next) => {
-  passport.authenticate('google', (err, user, info) => {
-    // Use CLIENT_PAGES_URL for redirects (includes /client path for local dev).
-    // Falls back to CLIENT_URL if not set.
-    const clientUrl = process.env.CLIENT_PAGES_URL || process.env.CLIENT_URL || '';
+  passport.authenticate('google', (err, user) => {
+    // Determine redirect URL:
+    // 1. Where they initiated the login from (saved in session)
+    // 2. The explicit CLIENT_PAGES_URL (if configured)
+    // 3. The default CLIENT_URL
+    let clientUrl = req.session.oauthReturnTo || process.env.CLIENT_PAGES_URL || process.env.CLIENT_URL || '';
+    
+    // If CLIENT_URL is a comma-separated list, take the first one
+    if (clientUrl && clientUrl.includes(',')) {
+      clientUrl = clientUrl.split(',')[0].trim();
+    }
+    
+    // Clean up session
+    delete req.session.oauthReturnTo;
 
     // Database or other server error
     if (err) {
@@ -63,6 +80,20 @@ router.post('/login', (req, res, next) => {
   })(req, res, next);
 });
 
+// Logout
+router.get('/logout', (req, res, next) => {
+  req.logout((err) => {
+    if (err) {
+      console.error('❌ Logout Error:', err);
+      return res.status(500).json({ error: 'Failed to log out' });
+    }
+    req.session.destroy(() => {
+      res.clearCookie('connect.sid');
+      return res.json({ message: 'Logged out successfully' });
+    });
+  });
+});
+
 // Get the currently authenticated user
 router.get('/me', (req, res) => {
   if (req.isAuthenticated()) {
@@ -71,22 +102,10 @@ router.get('/me', (req, res) => {
       username: req.user.username,
       email: req.user.email,
       role: req.user.role,
-      avatar: req.user.avatar
+      profile_picture: req.user.profile_picture_url || null
     });
   }
-  res.status(401).json({ error: 'Not authenticated' });
-});
-
-// Logout — destroy session and redirect to login
-router.get('/logout', (req, res) => {
-  req.logout((err) => {
-    if (err) {
-      return res.status(500).json({ error: 'Failed to logout' });
-    }
-    req.session.destroy(() => {
-      res.redirect((process.env.CLIENT_PAGES_URL || process.env.CLIENT_URL || '') + '/login.html');
-    });
-  });
+  return res.status(401).json({ error: 'Not authenticated' });
 });
 
 module.exports = router;

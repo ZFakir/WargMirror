@@ -599,6 +599,50 @@
   transform: translateX(4px);
 }
 
+.sub-card__dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  background: var(--color-bg-panel);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+  display: none;
+  flex-direction: column;
+  min-width: 120px;
+  z-index: 100;
+  overflow: hidden;
+}
+
+.sub-card__dropdown.show {
+  display: flex;
+}
+
+.dropdown-item {
+  background: none;
+  border: none;
+  color: var(--color-text-primary);
+  padding: 8px 12px;
+  text-align: left;
+  font-size: var(--font-size-body);
+  cursor: pointer;
+  transition: background 0.2s;
+  width: 100%;
+}
+
+.dropdown-item:hover {
+  background: rgba(192, 184, 155, 0.1);
+}
+
+.dropdown-item--danger {
+  color: #ff4d4d;
+}
+
+.dropdown-item--danger:hover {
+  background: rgba(255, 77, 77, 0.1);
+}
+
 .add-item-btn {
   background: transparent;
   border: 1px dashed rgba(192, 184, 155, 0.3);
@@ -779,4 +823,76 @@
 .modal__footer {
   display: flex;
   justify-content: flex-end;
+}
+
+/* ── QnA / MCQ Modal ── */
+.modal--large {
+  max-width: 600px;
+}
+.qna-editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.qna-label {
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  margin-bottom: var(--space-1);
+}
+.qna-label-hint {
+  font-weight: 400;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  margin-left: var(--space-2);
+}
+.qna-options-header {
+  margin-top: var(--space-4);
+  display: flex;
+  align-items: baseline;
+}
+.qna-options-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.qna-option-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: var(--color-bg-card-hover);
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+}
+.qna-option-letter {
+  font-weight: 700;
+  color: var(--color-primary);
+  width: 24px;
+  text-align: center;
+}
+.qna-option-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+}
+.qna-option-input:focus {
+  outline: none;
+}
+.qna-option-radio {
+  accent-color: var(--color-primary);
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+.qna-option-delete {
+  color: var(--color-error);
+  padding: 4px;
+}
+.qna-option-delete:hover {
+  background: rgba(255, 68, 68, 0.1);
+  border-radius: var(--radius-sm);
 }

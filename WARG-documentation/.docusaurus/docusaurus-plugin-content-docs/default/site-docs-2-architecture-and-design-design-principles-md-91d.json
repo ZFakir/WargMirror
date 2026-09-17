@@ -1,0 +1,27 @@
+{
+  "id": "architecture-and-design/design-principles",
+  "title": "Design Principles and Colour System",
+  "description": "The visual language of the WARG Platform should support exploration rather than compete with it. Every design decision should help players navigate, understand, and enjoy the experience without unnecessary complexity.",
+  "source": "@site/docs/2-architecture-and-design/design-principles.md",
+  "sourceDirName": "2-architecture-and-design",
+  "slug": "/architecture-and-design/design-principles",
+  "permalink": "/docs/architecture-and-design/design-principles",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/docs/2-architecture-and-design/design-principles.md",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 2,
+  "frontMatter": {
+    "sidebar_position": 2
+  },
+  "sidebar": "tutorialSidebar",
+  "previous": {
+    "title": "Implementation Details",
+    "permalink": "/docs/architecture-and-design/implementation-details"
+  },
+  "next": {
+    "title": "Database Schema",
+    "permalink": "/docs/database/schema"
+  }
+}
