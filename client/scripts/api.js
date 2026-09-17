@@ -191,6 +191,10 @@ var api = (function () {
     return _delete('/api/sessions/' + userId + '/arg/' + argId);
   }
 
+  async function submitFeedback(feedbackData) {
+    return _post('/api/feedback', feedbackData);
+  }
+
   /* ── Public API ─────────────────────────────────────────── */
   return {
     getCurrentUser,
@@ -204,6 +208,7 @@ var api = (function () {
     voteArg,
     flagArg,
     removeRecentArg,
+    submitFeedback,
   };
 
 }());
