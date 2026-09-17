@@ -82,11 +82,25 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (argData.WaypointEdges) {
           argData.WaypointEdges.forEach(edge => {
+            let triggers = [];
+            let conditions = edge.conditions_json;
+            if (typeof conditions === 'string') {
+              try { conditions = JSON.parse(conditions); } catch { /* ignore parse error */ }
+            }
+            if (conditions && Array.isArray(conditions)) {
+              const fromWpData = (argData.Waypoints || []).find(w => w.waypoint_id === edge.from_waypoint_id);
+              if (fromWpData && fromWpData.Minigames) {
+                triggers = conditions.map(cond => {
+                  const index = fromWpData.Minigames.findIndex(mg => mg.game_id === cond.game_id);
+                  return { game_index: index, outcome: cond.outcome };
+                }).filter(t => t.game_index !== -1);
+              }
+            }
             edges.push({
               id: `e${nextEdgeId++}`,
               from: idMap[edge.from_waypoint_id],
               to: idMap[edge.to_waypoint_id],
-              triggers: []
+              triggers
             });
           });
         }
@@ -471,25 +485,49 @@ document.addEventListener('DOMContentLoaded', async () => {
               let html = '';
               fromNode.games.forEach(game => {
                 html += `
-                <div class="transition-game-card">
+        const transitionList = document.getElementById('transition-games-list');
+        if (transitionList && fromNode) {
+          if (fromNode.games && fromNode.games.length > 0) {
+            let html = '';
+            fromNode.games.forEach((game, index) => {
+              const passChecked = edge.triggers.some(t => t.game_index === index && t.outcome === 'pass') ? 'checked' : '';
+              const failChecked = edge.triggers.some(t => t.game_index === index && t.outcome === 'fail') ? 'checked' : '';
+              html += `
+                  < div class="transition-game-card" >
                   <div class="transition-game-card__title">${game.gamemode}</div>
                   <div class="transition-game-card__controls">
                     <label class="trigger-checkbox-label">
-                      <input type="checkbox" class="trigger--pass">
+                      <input type="checkbox" class="trigger--pass" data-game-index="${index}" ${passChecked}>
                       Pass
                     </label>
                     <label class="trigger-checkbox-label">
-                      <input type="checkbox" class="trigger--fail">
+                      <input type="checkbox" class="trigger--fail" data-game-index="${index}" ${failChecked}>
                       Fail
                     </label>
                   </div>
-                </div>
-              `;
+                </div >
+                  `;
               });
               transitionList.innerHTML = html;
             } else {
               transitionList.innerHTML = '';
             }
+            });
+            transitionList.innerHTML = html;
+            
+            transitionList.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+              cb.addEventListener('change', (e) => {
+                 const tType = e.target.classList.contains('trigger--pass') ? 'pass' : 'fail';
+                 const gIdx = parseInt(e.target.getAttribute('data-game-index'), 10);
+                 if (e.target.checked) {
+                   edge.triggers.push({ game_index: gIdx, outcome: tType });
+                 } else {
+                   edge.triggers = edge.triggers.filter(t => !(t.game_index === gIdx && t.outcome === tType));
+                 }
+              });
+            });
+          } else {
+            transitionList.innerHTML = '';
           }
         }
       }
@@ -550,7 +588,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       };
 
       const method = currentArgId ? 'PUT' : 'POST';
-      const url = currentArgId ? `${API_BASE}/api/args/${currentArgId}` : `${API_BASE}/api/args`;
+      const url = currentArgId ? `${ API_BASE } /api/args / ${ currentArgId } ` : `${ API_BASE } /api/args`;
 
       try {
         const res = await fetch(url, {
@@ -568,7 +606,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (!currentArgId && data.arg_id) {
           currentArgId = data.arg_id;
-          window.history.pushState({}, '', `edit_warg?id=${currentArgId}`);
+          window.history.pushState({}, '', `edit_warg ? id = ${ currentArgId } `);
         }
 
         // Update nodes with their DB IDs
@@ -590,7 +628,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (!btn) return;
       if (isLoading) {
         btn.disabled = true;
-        btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;animation:spin 1s linear infinite;margin-right:8px;vertical-align:middle"><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/></svg><span style="vertical-align:middle">${originalText}</span>`;
+        btn.innerHTML = `< svg viewBox = "0 0 24 24" fill = "none" stroke = "currentColor" stroke - width="2" stroke - linecap="round" stroke - linejoin="round" style = "width:16px;height:16px;animation:spin 1s linear infinite;margin-right:8px;vertical-align:middle" ><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/></svg > <span style="vertical-align:middle">${originalText}</span>`;
       } else {
         btn.disabled = false;
         btn.textContent = originalText;
@@ -626,7 +664,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         openConfirmModal(
           'Publish WARG',
-          `Publish "${wargTitle}"? It will become visible to all players.`,
+          `Publish "${wargTitle}" ? It will become visible to all players.`,
           async () => {
             try {
               await saveArg('published');
@@ -749,7 +787,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const input = document.createElement('input');
         input.type = 'text';
         input.className = 'qna-option-input';
-        input.placeholder = `Option ${getLetter(idx).replace('.', '')}`;
+        input.placeholder = `Option ${ getLetter(idx).replace('.', '') } `;
         input.value = opt.text;
         input.addEventListener('input', (e) => {
           opt.text = e.target.value;
@@ -768,7 +806,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const btnDel = document.createElement('button');
         btnDel.className = 'icon-btn qna-option-delete';
         btnDel.title = 'Delete Option';
-        btnDel.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`;
+        btnDel.innerHTML = `< svg viewBox = "0 0 24 24" fill = "none" stroke = "currentColor" stroke - width="2" width = "18" height = "18" ><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg > `;
         btnDel.addEventListener('click', () => {
           qnaOptionsData.splice(idx, 1);
           renderQnaOptions();

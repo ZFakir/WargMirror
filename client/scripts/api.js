@@ -192,64 +192,67 @@ var api = (function () {
   }
 
   async function getMinigameReference(gameId) {
-      const res = await fetch(API_BASE + '/api/minigames/' + gameId + '/reference', { credentials: 'include' });
-      if (!res.ok) throw new Error('Failed to fetch reference');
+    const res = await fetch(API_BASE + '/api/minigames/' + gameId + '/reference', { credentials: 'include' });
+    if (!res.ok) throw new Error('Failed to fetch reference');
 
-      const contentType = res.headers.get('content-type');
-      if (contentType && contentType.includes('application/json')) {
-        return res.json();
-      }
-      return res.blob();
-    }
-
-    async function submitMinigameAttempt(gameId, imageBlob) {
-      const formData = new FormData();
-      formData.append('image', imageBlob, 'attempt.jpg');
-
-      const res = await fetch(API_BASE + '/api/minigames/' + gameId + '/attempt', {
-        method: 'POST',
-        body: formData,
-        credentials: 'include'
-      });
-      if (!res.ok) {
-        const errText = await res.text();
-        throw new Error(errText || 'Failed to submit attempt');
-      }
+    const contentType = res.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
       return res.json();
     }
-
-    async function uploadMinigameReference(gameId, imageBlob) {
-      const formData = new FormData();
-      formData.append('image', imageBlob, 'reference.jpg');
-
-      const res = await fetch(API_BASE + '/api/minigames/' + gameId + '/reference', {
-        method: 'POST',
-        body: formData,
-        credentials: 'include'
-      });
-      if (!res.ok) {
-        const errText = await res.text();
-        throw new Error(errText || 'Failed to upload reference');
-      }
-      return res.json();
+    return res.blob();
   }
 
-  /* ── Public API ─────────────────────────────────────────── */
-  return {
-    getCurrentUser,
-    getArgs,
-    getArgById,
-    getUserProfile,
-    getUserLibrary,
-    getActiveSessions,
-    getFriends,
-    normaliseArg,
-    voteArg,
-    flagArg,
-    removeRecentArg,
-    getMinigameReference,
-    submitMinigameAttempt,
-    uploadMinigameReference
-  };
+  async function submitMinigameAttempt(gameId, imageBlob) {
+    const formData = new FormData();
+    formData.append('image', imageBlob, 'attempt.jpg');
 
-}());
+    const res = await fetch(API_BASE + '/api/minigames/' + gameId + '/attempt', {
+      method: 'POST',
+      body: formData,
+      credentials: 'include'
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(errText || 'Failed to submit attempt');
+    }
+    return res.json();
+  }
+
+  async function uploadMinigameReference(gameId, imageBlob) {
+    const formData = new FormData();
+    formData.append('image', imageBlob, 'reference.jpg');
+
+    const res = await fetch(API_BASE + '/api/minigames/' + gameId + '/reference', {
+      method: 'POST',
+      body: formData,
+      credentials: 'include'
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(errText || 'Failed to upload reference');
+    }
+    return res.json();
+    async function submitFeedback(feedbackData) {
+      return _post('/api/feedback', feedbackData);
+    }
+
+    /* ── Public API ─────────────────────────────────────────── */
+    return {
+      getCurrentUser,
+      getArgs,
+      getArgById,
+      getUserProfile,
+      getUserLibrary,
+      getActiveSessions,
+      getFriends,
+      normaliseArg,
+      voteArg,
+      flagArg,
+      removeRecentArg,
+      getMinigameReference,
+      submitMinigameAttempt,
+      uploadMinigameReference
+    submitFeedback,
+    };
+
+  } ());

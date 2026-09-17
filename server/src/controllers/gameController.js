@@ -1,14 +1,24 @@
 const { sequelize, Waypoint, WaypointEdge, Minigame, GameSession, WaypointProgress, MinigameAttempt, LocationEvent } = require('../models');
 
 // Helper to evaluate branching conditions
-const evaluateConditions = async (user_id, conditions) => {
-  if (!conditions || conditions.length === 0) return true; // Unconditional edge
+const evaluateConditions = async (user_id, rawConditions, transaction = null) => {
+  let conditions = rawConditions;
+  if (typeof conditions === 'string') {
+    try { conditions = JSON.parse(conditions); } catch { /* ignore parse error */ }
+  }
+
+  if (!conditions || !Array.isArray(conditions) || conditions.length === 0) {
+    return true; // Unconditional edge
+  }
   
   for (const cond of conditions) {
-    const attempt = await MinigameAttempt.findOne({
+    const findOpts = {
       where: { user_id, game_id: cond.game_id },
       order: [['attempted_at', 'DESC']]
-    });
+    };
+    if (transaction) findOpts.transaction = transaction;
+    const attempt = await MinigameAttempt.findOne(findOpts);
+    
     if (!attempt || attempt.outcome !== cond.outcome) {
       return false; // Condition not met
     }
@@ -202,7 +212,7 @@ exports.submitMinigame = async (req, res) => {
     const edges = await WaypointEdge.findAll({ where: { from_waypoint_id: waypoint_id }, transaction });
     
     for (const edge of edges) {
-      const canUnlock = await evaluateConditions(user_id, edge.conditions_json);
+      const canUnlock = await evaluateConditions(user_id, edge.conditions_json, transaction);
       if (canUnlock) {
         await WaypointProgress.upsert({
           user_id,

@@ -1,13 +1,8 @@
-const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
-const cors = require('cors');
-const session = require('express-session');
-const MySQLStore = require('express-mysql-session')(session);
 require('dotenv').config();
-const path = require('path');
+
 const sequelize = require('./src/config/database');
-const passport = require('./src/config/passport');
 const { sequelize: db } = require('./src/models');
 const argRoutes = require('./src/routes/argRoutes');
 const userRoutes = require('./src/routes/userRoutes');
@@ -18,6 +13,9 @@ const commentRoutes = require('./src/routes/commentRoutes');
 const minigameRoutes = require('./src/routes/minigameRoutes');
 const gameRoutes = require('./src/routes/gameRoutes');
 const app = express();
+const createApp = require('./src/app');
+
+const app = createApp();
 const server = http.createServer(app);
 server.keepAliveTimeout = 65000; // 65 seconds
 server.headersTimeout = 66000; // 66 seconds
@@ -26,7 +24,7 @@ server.headersTimeout = 66000; // 66 seconds
 const io = new Server(server, {
   cors: {
     origin: function (origin, callback) {
-      // In production, configure CLIENT_URL in your environment variables. 
+      // In production, configure CLIENT_URL in your environment variables.
       // For multiple origins (e.g., local dev + prod), separate them with commas in your .env
       const allowedOrigins = process.env.CLIENT_URL
         ? process.env.CLIENT_URL.split(',').map(url => url.trim().replace(/\/$/, ''))
