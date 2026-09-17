@@ -421,19 +421,25 @@ document.addEventListener('DOMContentLoaded', async () => {
               const isUnlimited = game.minigame_config && game.minigame_config.allow_multiple_attempts;
 
               html += `
-                <div class="transition-game-card">
-                  <div class="transition-game-card__title">${game.gamemode}</div>
-                  ${isUnlimited ? '<div class="warning-text" style="font-size: 11px; color: #ff9800; margin-bottom: 6px; line-height: 1.2;">Warning: Game has Unlimited Attempts. Fail branch will not trigger.</div>' : ''}
-                  <div class="transition-game-card__controls">
-                    <label class="trigger-checkbox-label">
-                      <input type="checkbox" class="trigger--pass" data-game-index="${index}" ${passChecked}>
-                      Pass
-                    </label>
-                    <label class="trigger-checkbox-label">
-                      <input type="checkbox" class="trigger--fail" data-game-index="${index}" ${failChecked}>
-                      Fail
-                    </label>
+                <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px;">
+                  <div class="transition-game-card" style="margin-bottom: 0;">
+                    <div class="transition-game-card__title">${game.gamemode}</div>
+                    <div class="transition-game-card__controls">
+                      <label class="trigger-checkbox-label">
+                        <input type="checkbox" class="trigger--pass" data-game-index="${index}" ${passChecked}>
+                        Pass
+                      </label>
+                      <label class="trigger-checkbox-label">
+                        <input type="checkbox" class="trigger--fail" data-game-index="${index}" ${failChecked}>
+                        Fail
+                      </label>
+                    </div>
                   </div>
+                  ${isUnlimited ? `
+                  <div id="unlimited-warning-${index}" style="background-color: rgba(234, 67, 53, 0.1); border: 1px solid rgba(234, 67, 53, 0.2); border-radius: 6px; padding: 8px 10px; color: #ff6b6b; font-size: 11px; display: ${failChecked ? 'flex' : 'none'}; align-items: center; gap: 8px;">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                    <span><strong>Game has Unlimited Attempts.</strong> Fail branch will never trigger.</span>
+                  </div>` : ''}
                 </div>
               `;
             });
@@ -447,6 +453,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                    edge.triggers.push({ game_index: gIdx, outcome: tType });
                  } else {
                    edge.triggers = edge.triggers.filter(t => !(t.game_index === gIdx && t.outcome === tType));
+                 }
+
+                 if (tType === 'fail') {
+                   const warningEl = document.getElementById(`unlimited-warning-${gIdx}`);
+                   if (warningEl) {
+                     warningEl.style.display = e.target.checked ? 'flex' : 'none';
+                   }
                  }
               });
             });
