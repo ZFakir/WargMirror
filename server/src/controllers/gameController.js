@@ -207,6 +207,11 @@ exports.submitMinigame = async (req, res) => {
       attempted_at: new Date()
     }, { transaction });
 
+    if (outcome === 'fail' && config.allow_multiple_attempts) {
+      await transaction.commit();
+      return res.json({ outcome: 'fail', can_retry: true });
+    }
+
     let unlockedNodes = [];
 
     // Always update waypoint progress regardless of pass or fail

@@ -317,7 +317,11 @@ document.addEventListener('DOMContentLoaded', () => {
               const isLastGame = index === minigames.length - 1;
               playModal.showFeedback(result.outcome, isLastGame);
 
-              if (result.outcome === 'pass' || result.outcome === 'fail') {
+              if (result.can_retry && result.outcome === 'fail') {
+                setTimeout(() => {
+                  renderMinigame(index);
+                }, 2000);
+              } else if (result.outcome === 'pass' || result.outcome === 'fail') {
                 if (result.unlockedNodes) {
                   result.unlockedNodes.forEach(unlockedId => {
                     mapModal.updateNodeStatus(unlockedId.toString(), 'unlocked');

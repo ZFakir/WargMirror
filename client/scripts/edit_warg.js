@@ -308,9 +308,15 @@ document.addEventListener('DOMContentLoaded', async () => {
           if (node.games && node.games.length > 0) {
             let html = '';
             node.games.forEach((game, index) => {
+              const config = game.minigame_config || {};
+              const unlimitedChecked = config.allow_multiple_attempts ? 'checked' : '';
               html += `
                 <div class="sub-card" style="position: relative;" tabindex="0">
-                  <span class="sub-card__text">${game.gamemode}</span>
+                  <div><span class="sub-card__text">${game.gamemode}</span></div>
+                  <label style="display: inline-block; font-size: 11px; margin-top: 4px; cursor: pointer; color: var(--color-text-muted);">
+                    <input type="checkbox" class="unlimited-attempts-checkbox" data-index="${index}" ${unlimitedChecked}>
+                    Unlimited attempts
+                  </label>
                   <button class="icon-btn sub-card__action btn-game-options" data-index="${index}" aria-label="More options">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
                   </button>
@@ -322,6 +328,17 @@ document.addEventListener('DOMContentLoaded', async () => {
               `;
             });
             gamesList.innerHTML = html;
+
+            // Unlimited attempts checkbox logic
+            gamesList.querySelectorAll('.unlimited-attempts-checkbox').forEach(cb => {
+              cb.addEventListener('change', (e) => {
+                const cbIndex = e.target.getAttribute('data-index');
+                if (!node.games[cbIndex].minigame_config) {
+                  node.games[cbIndex].minigame_config = {};
+                }
+                node.games[cbIndex].minigame_config.allow_multiple_attempts = e.target.checked;
+              });
+            });
 
             // Wire up dropdown logic
             const optionBtns = gamesList.querySelectorAll('.btn-game-options');
@@ -401,9 +418,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             fromNode.games.forEach((game, index) => {
               const passChecked = edge.triggers.some(t => t.game_index === index && t.outcome === 'pass') ? 'checked' : '';
               const failChecked = edge.triggers.some(t => t.game_index === index && t.outcome === 'fail') ? 'checked' : '';
+              const isUnlimited = game.minigame_config && game.minigame_config.allow_multiple_attempts;
+
               html += `
                 <div class="transition-game-card">
                   <div class="transition-game-card__title">${game.gamemode}</div>
+                  ${isUnlimited ? '<div class="warning-text" style="font-size: 11px; color: #ff9800; margin-bottom: 6px; line-height: 1.2;">Warning: Game has Unlimited Attempts. Fail branch will not trigger.</div>' : ''}
                   <div class="transition-game-card__controls">
                     <label class="trigger-checkbox-label">
                       <input type="checkbox" class="trigger--pass" data-game-index="${index}" ${passChecked}>
