@@ -21,6 +21,10 @@ jobs:
       - name: Run Backend Tests
         working-directory: ./server
         run: npm test
+        env:
+          DATABASE_URL: sqlite::memory:
+          JWT_SECRET: dummy_secret_for_testing
+          SESSION_SECRET: dummy_session_secret
 
       - name: Install Frontend Dependencies
         working-directory: ./client
