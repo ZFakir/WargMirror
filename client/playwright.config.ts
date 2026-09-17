@@ -63,7 +63,7 @@ export default defineConfig({
 
   /* Run your local dev server before starting the tests */
   webServer: {
-    command: 'npx http-server ./ -p 8080 -s',
+    command: 'npx http-server ./ -p 8080 -a 127.0.0.1 -s',
     url: 'http://127.0.0.1:8080',
     reuseExistingServer: !process.env.CI,
   },
