@@ -14,8 +14,11 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.63.0",
+    "@types/node": "^22.20.3",
     "eslint": "^10.8.1",
     "globals": "^17.11.0",
+    "http-server": "^14.1.1",
+    "monocart-reporter": "^2.13.1",
     "serve": "^14.2.6"
   }
 }
