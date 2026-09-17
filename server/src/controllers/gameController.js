@@ -11,15 +11,24 @@ const evaluateConditions = async (user_id, rawConditions, transaction = null) =>
     return true; // Unconditional edge
   }
   
+  // Group outcomes by game_id to treat multiple outcomes for the same game as OR
+  const groupedConditions = {};
   for (const cond of conditions) {
+    if (!groupedConditions[cond.game_id]) {
+      groupedConditions[cond.game_id] = [];
+    }
+    groupedConditions[cond.game_id].push(cond.outcome);
+  }
+
+  for (const [game_id, allowedOutcomes] of Object.entries(groupedConditions)) {
     const findOpts = {
-      where: { user_id, game_id: cond.game_id },
+      where: { user_id, game_id },
       order: [['attempted_at', 'DESC']]
     };
     if (transaction) findOpts.transaction = transaction;
     const attempt = await MinigameAttempt.findOne(findOpts);
     
-    if (!attempt || attempt.outcome !== cond.outcome) {
+    if (!attempt || !allowedOutcomes.includes(attempt.outcome)) {
       return false; // Condition not met
     }
   }
