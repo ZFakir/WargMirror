@@ -19,5 +19,13 @@ export default defineConfig([
         mapModal: "readonly"
       }
     }
+  },
+  {
+    files: ["playwright.config.js", "tests/**/*.js"],
+    languageOptions: {
+      globals: {
+        ...globals.node
+      }
+    }
   }
 ]);
