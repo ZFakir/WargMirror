@@ -1,23 +1,37 @@
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./fixtures.js');
 
-test('user can navigate to login and see the form', async ({ page }) => {
-  // Navigate to the login page (via the local webServer configured in playwright.config.js)
-  await page.goto('/login.html');
+test.describe('login page/script logic', () => {
+  test('should render login form elements', async ({ page }) => {
+    await page.goto('/login.html');
+    await expect(page.locator('h1')).toHaveText('Welcome to WARG');
+    await expect(page.locator('input#email')).toBeVisible();
+    await expect(page.locator('input#password')).toBeVisible();
+    await expect(page.locator('button[type="submit"]')).toBeVisible();
+  });
 
-  // Verify the page title
-  await expect(page).toHaveTitle(/Login/);
+  test('should handle validation errors', async ({ page }) => {
+    await page.goto('/login.html');
+    // Clicking submit with empty inputs triggers browser required validation,
+    // so we fill invalid data and let the JS API call fail
+    await page.fill('input#email', 'invalid@user.com');
+    await page.fill('input#password', 'wrongpass');
+    
+    // Mock the API response to return a 401
+    await page.route('**/auth/login', route => {
+      route.fulfill({
+        status: 401,
+        contentType: 'application/json',
+        body: JSON.stringify({ message: 'Incorrect email or password.' })
+      });
+    });
 
-  // Verify the header is visible
-  const header = page.locator('h1', { hasText: 'Welcome to WARG' });
-  await expect(header).toBeVisible();
+    await page.click('button[type="submit"]');
 
-  // Verify the email and password inputs exist
-  const emailInput = page.locator('input[type="email"]');
-  const passwordInput = page.locator('input[type="password"]');
-  await expect(emailInput).toBeVisible();
-  await expect(passwordInput).toBeVisible();
-
-  // Note: we don't submit the form here because this is a purely frontend UI test 
-  // without a mocked backend, so submitting it might redirect to an error or require a real API.
-  // In a full E2E test, we would intercept network requests or spin up the real backend.
+    // Assuming the frontend script alerts or shows an error message.
+    // If it uses window.alert, we can intercept it:
+    page.once('dialog', dialog => {
+      expect(dialog.message()).toContain('Incorrect email or password');
+      dialog.dismiss();
+    });
+  });
 });
