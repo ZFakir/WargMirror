@@ -3,8 +3,33 @@ name: CI
 on: [push]
 
 jobs:
-  hello:
+  test:
     runs-on: ubuntu-latest
     steps:
-      - name: Say hello
-        run: echo "Hello from Gitea Actions!"
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install Backend Dependencies
+        working-directory: ./server
+        run: npm ci
+
+      - name: Run Backend Tests
+        working-directory: ./server
+        run: npm test
+
+      - name: Install Frontend Dependencies
+        working-directory: ./client
+        run: npm ci
+
+      - name: Install Playwright Browsers
+        working-directory: ./client
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Frontend Tests
+        working-directory: ./client
+        run: npx playwright test --project=chromium
