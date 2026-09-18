@@ -10,3 +10,12 @@ npm-debug.log
 # OS generated files
 .DS_Store
 Thumbs.db
+
+# Coverage and Test results
+coverage/
+.v8-coverage/
+playwright-report/
+test-results/
+blob-report/
+.nyc_output/
+
