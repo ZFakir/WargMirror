@@ -192,7 +192,7 @@ var api = (function () {
   }
 
   async function getMinigameReference(gameId) {
-    const res = await fetch(API_BASE + '/api/minigames/' + gameId + '/reference', { credentials: 'include' });
+    const res = await fetch(API_BASE + '/api/minigames/' + gameId + '/reference/image', { credentials: 'include' });
     if (!res.ok) throw new Error('Failed to fetch reference');
 
     const contentType = res.headers.get('content-type');
@@ -232,7 +232,9 @@ var api = (function () {
       throw new Error(errText || 'Failed to upload reference');
     }
     return res.json();
-    async function submitFeedback(feedbackData) {
+  }
+  
+  async function submitFeedback(feedbackData) {
       return _post('/api/feedback', feedbackData);
     }
 
@@ -251,8 +253,8 @@ var api = (function () {
       removeRecentArg,
       getMinigameReference,
       submitMinigameAttempt,
-      uploadMinigameReference
-    submitFeedback,
+      uploadMinigameReference,
+      submitFeedback,
     };
 
-  } ());
+  })();
