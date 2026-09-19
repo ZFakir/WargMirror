@@ -71,10 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
             lng: wp.location.coordinates[0],
             desc: wp.description || '',
             type: 'solo',
-            status: index === 0 ? 'current' : 'locked', // First waypoint current, rest locked
-            progress: 0,
-            progLabel: 'Not started',
-            minigames: wp.Minigames || []
+            minigames: wp.Minigames || [],
             status: status,
             progress: progressPercent,
             progLabel: progLabel
@@ -223,7 +220,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (cvMinigame) {
-      playModal.setContent('<div id="camera-container" class="camera-container" style="position:relative; width:100%; height:100%;"></div>');
+      playModal.setControls('<div id="camera-container" class="camera-container" style="position:relative; width:100%; min-height:300px;"></div>');
       const container = document.getElementById('camera-container');
 
       try {
@@ -286,7 +283,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       } catch (err) {
         console.error(err);
-        playModal.setContent('<p>Error initializing camera minigame.</p>');
+        playModal.setControls('<p>Error initializing camera minigame.</p>');
       }
     } else {
       const actionBtn = document.createElement('button');
@@ -405,20 +402,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const isLastGame = index === minigames.length - 1;
                 playModal.showFeedback(result.outcome, isLastGame);
 
-                if (result.outcome === 'pass' || result.outcome === 'fail') {
-                  if (result.unlockedNodes) {
-                    result.unlockedNodes.forEach(unlockedId => {
-                      mapModal.updateNodeStatus(unlockedId.toString(), 'unlocked');
-                    });
-                  }
-
-                  if (!isLastGame) {
-                    setTimeout(() => {
-                      renderMinigame(index + 1);
-                    }, 2000);
-                  } else {
-                    mapModal.updateNodeStatus(node.id, 'completed');
-                  }
                   if (result.can_retry && result.outcome === 'fail') {
                     setTimeout(() => {
                       renderMinigame(index);
@@ -437,7 +420,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     } else {
                       mapModal.updateNodeStatus(node.id, 'completed');
                     }
-                  } catch (err) {
+                  }
+                } catch (err) {
                     console.error(err);
                     alert("Error submitting minigame.");
                     gameWrapper.innerHTML = originalContent;
@@ -472,7 +456,8 @@ document.addEventListener('DOMContentLoaded', () => {
           maximumAge: 0
         });
       }
-    });
+    }
+  });
 
   // Comments System Logic (Copied from original)
   const commentsList = document.getElementById('comments-list');
