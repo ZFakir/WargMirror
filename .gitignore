@@ -19,3 +19,6 @@ test-results/
 blob-report/
 .nyc_output/
 
+# Python
+__pycache__/
+*.pyc

@@ -14,8 +14,7 @@
   <link rel="stylesheet" href="styles/home.css" />
   <link rel="stylesheet" href="styles/game.css" />
   <link rel="stylesheet" href="styles/edit_warg.css" />
-  <script src="scripts/config.js"></script>
-</head>
+
 
 <body>
 
@@ -175,12 +174,7 @@
                     <path d="M22 2L15 22 11 13 2 9l20-7z" />
                   </svg>
                   Publish WARG
-                  <button class="add-item-btn" id="btn-add-game" title="Add Game">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <line x1="12" y1="5" x2="12" y2="19"></line>
-                      <line x1="5" y1="12" x2="19" y2="12"></line>
-                    </svg>
-                  </button>
+                </button>
               </div>
             </section>
           </div>
@@ -215,7 +209,7 @@
                   <div class="relationship-card__list" id="editor-games-list">
                     <!-- Game sub-cards will be injected here -->
                   </div>
-                  <button class="add-item-btn" title="Add Game">
+                  <button class="add-item-btn" id="btn-add-game" title="Add Game">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <line x1="12" y1="5" x2="12" y2="19"></line>
                       <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -296,15 +290,12 @@
     </div>
   </div>
 
-  <script src="scripts/home.js"></script> <!-- Includes navigation drawer logic -->
-  <script src="scripts/edit_warg.js" type="module"></script>
 
-  <script src="scripts/edit_warg.js?v=2" type="module"></script>
   <!-- Game Selector Modal -->
   <div class="modal-overlay" id="game-selector-modal-overlay" aria-hidden="true">
     <div class="modal">
       <div class="modal__header">
-        <h3 class="modal__title">Select a Game Type</h3>
+        <h2>Select Game Type</h2>
         <button class="icon-btn" id="btn-close-game-selector-modal" aria-label="Close modal">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -312,25 +303,25 @@
           </svg>
         </button>
       </div>
-      <div class="modal__body">
-        <div class="game-selector-list" style="display: flex; flex-direction: column; gap: 8px;">
-          <button class="btn btn--outline btn--block game-type-btn" data-game-type="qna">QnA / MCQ</button>
-          <button class="btn btn--outline btn--block game-type-btn" data-game-type="gps" disabled
-            title="Coming Soon">GPS Proximity</button>
-          <button class="btn btn--outline btn--block game-type-btn" data-game-type="qr" disabled title="Coming Soon">QR
-            Code Scan</button>
-          <button class="btn btn--outline btn--block game-type-btn" data-game-type="ar" disabled title="Coming Soon">AR
-            Object Scan</button>
-        </div>
+      <div class="modal__body" style="display: flex; flex-direction: column; gap: 8px;">
+        <button class="btn btn--outline game-type-btn" data-game-type="gps">GPS Location</button>
+        <button class="btn btn--outline game-type-btn" data-game-type="ar">AR Object Scan</button>
+        <button class="btn btn--outline game-type-btn" data-game-type="barcode">Barcode Game</button>
+        <button class="btn btn--outline game-type-btn" data-game-type="shape_match">Shape Match</button>
+        <button class="btn btn--outline game-type-btn" data-game-type="colour_match">Colour Match</button>
+        <button class="btn btn--outline game-type-btn" data-game-type="texture_match">Texture Match</button>
+        <button class="btn btn--outline game-type-btn" data-game-type="sift_match">Then & Now (SIFT)</button>
+        <button class="btn btn--outline game-type-btn" data-game-type="symmetry_finder">Symmetry Finder</button>
+        <button class="btn btn--outline game-type-btn" data-game-type="qna">QnA / MCQ</button>
       </div>
     </div>
   </div>
 
-  <!-- QnA / MCQ Game Modal -->
+  <!-- QnA Modal -->
   <div class="modal-overlay" id="qna-modal-overlay" aria-hidden="true">
-    <div class="modal modal--large">
+    <div class="modal" style="width: 500px; max-width: 90vw;">
       <div class="modal__header">
-        <h3 class="modal__title">Configure QnA Game</h3>
+        <h2>Configure QnA Game</h2>
         <button class="icon-btn" id="btn-close-qna-modal" aria-label="Close modal">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -339,22 +330,15 @@
         </button>
       </div>
       <div class="modal__body">
-        <div class="qna-editor">
-          <label for="qna-question" class="qna-label">Question</label>
-          <textarea class="editor-input editor-input--desc" id="qna-question" placeholder="Enter your question here..."
-            rows="3" spellcheck="false"></textarea>
-
-          <div class="qna-options-header">
-            <label class="qna-label">Options</label>
-            <span class="qna-label-hint">Select the radio button to mark the correct answer.</span>
-          </div>
-
-          <div class="qna-options-list" id="qna-options-list">
-            <!-- Option rows injected here -->
-          </div>
-
-          <button class="btn btn--outline btn--block" id="btn-add-qna-option">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <div style="margin-bottom: 16px;">
+          <label style="display: block; font-size: 14px; font-weight: 500; margin-bottom: 8px; color: var(--text-2);">Question Prompt</label>
+          <input type="text" id="qna-question" style="width: 100%; padding: 10px; border-radius: 6px; background: var(--surface); color: var(--text-1); border: 1px solid var(--border);" placeholder="What is the color of the sky?" />
+        </div>
+        <div style="margin-bottom: 16px;">
+          <label style="display: block; font-size: 14px; font-weight: 500; margin-bottom: 8px; color: var(--text-2);">Answers</label>
+          <div id="qna-options-list" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px;"></div>
+          <button class="btn btn--outline" id="btn-add-qna-option" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
               <line x1="12" y1="5" x2="12" y2="19"></line>
               <line x1="5" y1="12" x2="19" y2="12"></line>
             </svg>
@@ -371,10 +355,7 @@
 
   <script src="scripts/config.js"></script>
   <script src="scripts/api.js"></script>
-  <script src="scripts/home.js"></script> <!-- Includes navigation drawer logic -->
-  <script src="scripts/edit_warg.js" type="module"></script>
-  <script src="scripts/config.js?v=2"></script>
-  <script src="scripts/home.js"></script> <!-- Includes navigation drawer logic -->
+  <script src="scripts/home.js"></script>
   <script src="scripts/edit_warg.js" type="module"></script>
 </body>
 

@@ -92,6 +92,12 @@ function createApp() {
   app.use('/api/comments', commentRoutes);
   app.use('/api/feedback', feedbackRoutes);
 
+  const aiRoutes = require('./routes/aiRoutes');
+  const minigameRoutes = require('./routes/minigameRoutes');
+
+  app.use('/api/ai', aiRoutes);
+  app.use('/api/minigames', minigameRoutes);
+
   const gameRoutes = require('./routes/gameRoutes');
   const requireAuth = (req, res, next) => {
     if (req.isAuthenticated()) return next();

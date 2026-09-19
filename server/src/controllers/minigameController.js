@@ -20,6 +20,7 @@ exports.uploadReference = async (req, res) => {
     config.reference_image_path = req.file.path;
 
     minigame.config_json = config;
+    minigame.changed('config_json', true);
     await minigame.save();
 
     res.json({ message: 'Reference uploaded successfully', url: config.reference_image_url });
