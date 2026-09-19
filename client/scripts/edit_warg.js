@@ -71,7 +71,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             let firstMgRef = null;
             if (wp.Minigames && wp.Minigames.length > 0) {
               const mg = wp.Minigames[0];
-              firstMgId = mg.minigame_id || null;
+              firstMgId = mg.game_id || null;
               firstMgRef = (mg.config_json && mg.config_json.reference_image_url) || null;
             }
 
@@ -322,6 +322,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const gamesList = document.getElementById('editor-games-list');
         if (gamesList) {
+          gamesList.innerHTML = '';
           if (node.games && node.games.length > 0) {
             let html = '';
             node.games.forEach((game, index) => {
