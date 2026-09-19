@@ -33,7 +33,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       'sift_match': { type: 'sift_match', label: 'Then & Now (SIFT)' },
       'symmetry_finder': { type: 'symmetry_finder', label: 'Symmetry Finder' },
       'photo_submit': { type: 'photo_submit', label: 'Photo Submit' },
-      'text_answer': { type: 'text_answer', label: 'Text Answer' }
       'text_answer': { type: 'text_answer', label: 'QnA / MCQ' }
     };
     return map[gameType] || { type: 'gps', label: 'GPS Location' };
@@ -61,16 +60,26 @@ document.addEventListener('DOMContentLoaded', async () => {
                 nodeGames.push({
                   type: mappedType.type,
                   gamemode: mappedType.label,
-                  minigame_config: mg.config_json || null
+                  minigame_config: mg.config_json || null,
+                  minigame_id: mg.game_id,
+                  reference_url: (mg.config_json && mg.config_json.reference_image_url) || null
                 });
               });
+            }
+
+            let firstMgId = null;
+            let firstMgRef = null;
+            if (wp.Minigames && wp.Minigames.length > 0) {
+              const mg = wp.Minigames[0];
+              firstMgId = mg.minigame_id || null;
+              firstMgRef = (mg.config_json && mg.config_json.reference_image_url) || null;
             }
 
             nodes.push({
               id: nodeId,
               waypoint_id: wp.waypoint_id,
-              minigame_id: mg.minigame_id,
-              reference_url: mg.config?.reference_image_url || null,
+              minigame_id: firstMgId,
+              reference_url: firstMgRef,
               lat: wp.location.coordinates[1],
               lng: wp.location.coordinates[0],
               title: wp.title,
@@ -174,8 +183,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         lat, lng,
         title: 'New Waypoint',
         description: '',
-        gamemode: 'GPS Location',
-        type: 'gps'
+        games: [{
+          gamemode: 'GPS Location',
+          type: 'gps',
+          minigame_config: {}
+        }]
       };
       nodes.push(newNode);
       mapModal.addEditorNode(newNode);
@@ -314,129 +326,104 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const gamesList = document.getElementById('editor-games-list');
         if (gamesList) {
-          const isCVGame = ['shape_match', 'colour_match', 'texture_match', 'sift_match', 'symmetry_finder'].includes(node.type);
-          gamesList.innerHTML = `
-            <div class="sub-card" style="flex-direction: column; align-items: stretch; padding: 12px; gap: 8px; cursor: default;">
-              <select id="gamemode-select" style="width: 100%; padding: 8px; border-radius: 4px; background: var(--surface); color: var(--text-1); border: 1px solid var(--border); outline: none;">
-                <option value="gps" ${node.type === 'gps' ? 'selected' : ''}>GPS Location</option>
-                <option value="ar" ${node.type === 'ar' ? 'selected' : ''}>AR Object Scan</option>
-                <option value="barcode" ${node.type === 'barcode' ? 'selected' : ''}>Barcode Game</option>
-                <option value="shape_match" ${node.type === 'shape_match' ? 'selected' : ''}>Shape Match</option>
-                <option value="colour_match" ${node.type === 'colour_match' ? 'selected' : ''}>Colour Match</option>
-                <option value="texture_match" ${node.type === 'texture_match' ? 'selected' : ''}>Texture Match</option>
-                <option value="sift_match" ${node.type === 'sift_match' ? 'selected' : ''}>Then & Now (SIFT)</option>
-                <option value="symmetry_finder" ${node.type === 'symmetry_finder' ? 'selected' : ''}>Symmetry Finder</option>
-              </select>
-              ${isCVGame ? `
-                <button class="btn btn--outline" id="btn-set-reference" style="width: 100%; margin-top: 8px;">
-                  Set Reference Photo
-                </button>
-                ${node.reference_url ? `<img src="${node.reference_url}" style="width: 100%; max-height: 120px; object-fit: cover; border-radius: 4px; margin-top: 8px; border: 1px solid var(--border);" />` : ''}
-              ` : ''}
-            </div>
-          `;
-
-          const selectEl = document.getElementById('gamemode-select');
-          if (selectEl) {
-            selectEl.addEventListener('change', (e) => {
-              node.type = e.target.value;
-              node.gamemode = e.target.options[e.target.selectedIndex].text;
-              updatePanel();
-            });
-          }
-
-          const btnSetRef = document.getElementById('btn-set-reference');
-          if (btnSetRef) {
-            btnSetRef.addEventListener('click', async () => {
-              const origText = btnSetRef.textContent;
-              setLoadingState(btnSetRef, true, origText);
-
-              if (!currentArgId || !node.minigame_id) {
-                try {
-                  await saveArg('draft');
-                } catch (err) {
-                  openAlertModal('Failed to automatically save WARG before setting reference photo.');
-                  setLoadingState(btnSetRef, false, origText);
-                  return;
-                }
-              }
-
-              setLoadingState(btnSetRef, false, origText);
-
-              const input = document.createElement('input');
-              input.type = 'file';
-              input.accept = 'image/*';
-              input.onchange = async (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                setLoadingState(btnSetRef, true, origText);
-                try {
-                  const formData = new FormData();
-                  formData.append('image', file);
-                  const res = await fetch(`${API_BASE}/api/minigames/${node.minigame_id}/reference`, {
-                    method: 'POST',
-                    body: formData,
-                    credentials: 'include'
-                  });
-                  if (!res.ok) throw new Error('Upload failed');
-                  await res.json();
-                  node.reference_url = `${API_BASE}/api/minigames/${node.minigame_id}/reference/image?ts=${Date.now()}`;
-                  updatePanel();
-                } catch (err) {
-                  openAlertModal('Failed to upload reference photo.');
-                } finally {
-                  setLoadingState(btnSetRef, false, origText);
-                }
-              };
-              input.click();
-            });
-            if (node.games && node.games.length > 0) {
-              let html = '';
-              node.games.forEach((game, index) => {
-                html += `
           if (node.games && node.games.length > 0) {
             let html = '';
             node.games.forEach((game, index) => {
               const config = game.minigame_config || {};
               const unlimitedChecked = config.allow_multiple_attempts ? 'checked' : '';
+              const isCVGame = ['shape_match', 'colour_match', 'texture_match', 'sift_match', 'symmetry_finder'].includes(game.type);
+
               html += `
-                  < div class="sub-card" style = "position: relative;" tabindex = "0" >
-                  <div><span class="sub-card__text">${game.gamemode}</span></div>
+                <div class="sub-card" style="position: relative; flex-direction: column; align-items: stretch;" tabindex="0">
+                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span class="sub-card__text">${game.gamemode}</span>
+                    <button class="icon-btn sub-card__action btn-game-options" data-index="${index}" aria-label="More options">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
+                    </button>
+                  </div>
                   <label style="display: inline-block; font-size: 11px; margin-top: 4px; cursor: pointer; color: var(--color-text-muted);">
                     <input type="checkbox" class="unlimited-attempts-checkbox" data-index="${index}" ${unlimitedChecked}>
                     Unlimited attempts
                   </label>
-                  <button class="icon-btn sub-card__action btn-game-options" data-index="${index}" aria-label="More options">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
-                  </button>
+                  ${isCVGame ? `
+                    <button class="btn btn--outline btn-set-reference" data-index="${index}" style="width: 100%; margin-top: 8px;">
+                      Set Reference Photo
+                    </button>
+                    ${game.reference_url ? `<img src="${game.reference_url}" style="width: 100%; max-height: 120px; object-fit: cover; border-radius: 4px; margin-top: 8px; border: 1px solid var(--border);" />` : ''}
+                  ` : ''}
                   <div class="sub-card__dropdown game-options-dropdown" id="game-dropdown-${index}">
                     <button class="dropdown-item btn-edit-game" data-index="${index}">Edit Game</button>
                     <button class="dropdown-item dropdown-item--danger btn-delete-game" data-index="${index}">Delete Game</button>
                   </div>
-                </div >
-                  `;
+                </div>
+              `;
+            });
+            gamesList.innerHTML = html;
+
+            // Wire up "Set Reference Photo"
+            gamesList.querySelectorAll('.btn-set-reference').forEach(btn => {
+              btn.addEventListener('click', () => {
+                const index = btn.getAttribute('data-index');
+                const game = node.games[index];
+
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = 'image/*';
+                input.onchange = async (e) => {
+                  const file = e.target.files[0];
+                  if (!file) return;
+
+                  const origText = btn.textContent;
+                  btn.textContent = 'Saving...';
+                  btn.disabled = true;
+
+                  if (!currentArgId || !game.minigame_id) {
+                    try {
+                      await saveArg('draft');
+                    } catch (err) {
+                      console.error(err);
+                      openAlertModal('Failed to automatically save WARG before setting reference photo.');
+                      btn.textContent = origText;
+                      btn.disabled = false;
+                      return;
+                    }
+                  }
+
+                  btn.textContent = 'Uploading...';
+                  try {
+                    const formData = new FormData();
+                    formData.append('image', file);
+                    const res = await fetch(`${API_BASE}/api/minigames/${game.minigame_id}/reference`, {
+                      method: 'POST',
+                      body: formData,
+                      credentials: 'include'
+                    });
+                    if (!res.ok) throw new Error('Upload failed');
+                    await res.json();
+                    game.reference_url = `${API_BASE}/api/minigames/${game.minigame_id}/reference/image?ts=${Date.now()}`;
+                    updatePanel();
+                  } catch (err) {
+                    console.error(err);
+                    openAlertModal('Failed to upload reference photo.');
+                  } finally {
+                    btn.textContent = origText;
+                    btn.disabled = false;
+                  }
+                };
+
+                // Triggers immediately inside the click event handler
+                input.click();
               });
-              gamesList.innerHTML = html;
+            });
 
-              // Wire up dropdown logic
-              const optionBtns = gamesList.querySelectorAll('.btn-game-options');
-              optionBtns.forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                  e.stopPropagation();
-                  const index = btn.getAttribute('data-index');
-                  const dropdown = document.getElementById(`game - dropdown - ${ index } `);
-
-                  // close others
-                  gamesList.querySelectorAll('.game-options-dropdown.show').forEach(d => {
-                    if (d !== dropdown) d.classList.remove('show');
-                  });
-
-                  dropdown.classList.toggle('show');
-                });
+            // Close dropdown when clicking outside
+            document.addEventListener('click', (e) => {
+              gamesList.querySelectorAll('.game-options-dropdown.show').forEach(d => {
+                if (!d.contains(e.target) && !e.target.closest('.btn-game-options')) {
+                  d.classList.remove('show');
+                }
               });
-
-              // Close dropdown when clicking outside
-              document.addEventListener('click', function closeDropdown(e) {
+            });
             // Unlimited attempts checkbox logic
             gamesList.querySelectorAll('.unlimited-attempts-checkbox').forEach(cb => {
               cb.addEventListener('change', (e) => {
@@ -454,22 +441,24 @@ document.addEventListener('DOMContentLoaded', async () => {
               btn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const index = btn.getAttribute('data-index');
-                const dropdown = document.getElementById(`game - dropdown - ${ index } `);
+                const dropdown = document.getElementById(`game-dropdown-${index}`);
                 
                 // close others
                 gamesList.querySelectorAll('.game-options-dropdown.show').forEach(d => {
-                  if (!d.contains(e.target) && !e.target.closest('.btn-game-options')) {
+                  if (d !== dropdown) {
                     d.classList.remove('show');
                   }
                 });
+                if (dropdown) dropdown.classList.toggle('show');
               });
+            });
 
               const editBtns = gamesList.querySelectorAll('.btn-edit-game');
               editBtns.forEach(btn => {
                 btn.addEventListener('click', (e) => {
                   e.stopPropagation();
                   const index = btn.getAttribute('data-index');
-                  const dropdown = document.getElementById(`game - dropdown - ${ index } `);
+                  const dropdown = document.getElementById(`game-dropdown-${index}`);
                   dropdown.classList.remove('show');
 
                   const game = node.games[index];
@@ -486,7 +475,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 btn.addEventListener('click', (e) => {
                   e.stopPropagation();
                   const index = btn.getAttribute('data-index');
-                  const dropdown = document.getElementById(`game - dropdown - ${ index } `);
+                  const dropdown = document.getElementById(`game-dropdown-${index}`);
                   dropdown.classList.remove('show');
 
                   openConfirmModal('Delete Game', 'Are you sure you want to remove this game from the waypoint?', () => {
@@ -497,7 +486,7 @@ document.addEventListener('DOMContentLoaded', async () => {
               });
 
             } else {
-              gamesList.innerHTML = ''; // No game attached yet
+              gamesList.innerHTML = '<p style="color: var(--text-2); font-size: 12px; margin-top: 8px;">No games added yet.</p>';
             }
           }
         }
@@ -513,37 +502,12 @@ document.addEventListener('DOMContentLoaded', async () => {
           if (transitionList && fromNode) {
             if (fromNode.games && fromNode.games.length > 0) {
               let html = '';
-              fromNode.games.forEach(game => {
-                html += `
-                const transitionList = document.getElementById('transition-games-list');
-                if (transitionList && fromNode) {
-                  if (fromNode.games && fromNode.games.length > 0) {
-                    let html = '';
-                    fromNode.games.forEach((game, index) => {
-                      const passChecked = edge.triggers.some(t => t.game_index === index && t.outcome === 'pass') ? 'checked' : '';
-                      const failChecked = edge.triggers.some(t => t.game_index === index && t.outcome === 'fail') ? 'checked' : '';
-                      const isUnlimited = game.minigame_config && game.minigame_config.allow_multiple_attempts;
+              fromNode.games.forEach((game, index) => {
+                const passChecked = edge.triggers.some(t => t.game_index === index && t.outcome === 'pass') ? 'checked' : '';
+                const failChecked = edge.triggers.some(t => t.game_index === index && t.outcome === 'fail') ? 'checked' : '';
+                const isUnlimited = game.minigame_config && game.minigame_config.allow_multiple_attempts;
 
-                      html += `
-                  < div class="transition-game-card" >
-                  <div class="transition-game-card__title">${game.gamemode}</div>
-                  <div class="transition-game-card__controls">
-                    <label class="trigger-checkbox-label">
-                      <input type="checkbox" class="trigger--pass" data-game-index="${index}" ${passChecked}>
-                      Pass
-                    </label>
-                    <label class="trigger-checkbox-label">
-                      <input type="checkbox" class="trigger--fail" data-game-index="${index}" ${failChecked}>
-                      Fail
-                    </label>
-                  </div>
-                </div >
-                  `;
-                    });
-                    transitionList.innerHTML = html;
-                  } else {
-                    transitionList.innerHTML = '';
-                  }
+                html += `
                   <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px;">
                     <div class="transition-game-card" style="margin-bottom: 0;">
                       <div class="transition-game-card__title">${game.gamemode}</div>
@@ -564,36 +528,37 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <span><strong>Game has Unlimited Attempts.</strong> Fail branch will never trigger.</span>
                   </div>` : ''}
                   </div>
-                  `;
-            });
-            transitionList.innerHTML = html;
-            
-            transitionList.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-              cb.addEventListener('change', (e) => {
-                 const tType = e.target.classList.contains('trigger--pass') ? 'pass' : 'fail';
-                 const gIdx = parseInt(e.target.getAttribute('data-game-index'), 10);
-                 if (e.target.checked) {
-                   edge.triggers.push({ game_index: gIdx, outcome: tType });
-                 } else {
-                   edge.triggers = edge.triggers.filter(t => !(t.game_index === gIdx && t.outcome === tType));
-                 }
-
-                 if (tType === 'fail') {
-                   const warningEl = document.getElementById(`unlimited - warning - ${ gIdx } `);
-                   if (warningEl) {
-                     warningEl.style.display = e.target.checked ? 'flex' : 'none';
-                   }
-                 }
+                `;
               });
-            });
-          } else {
-            transitionList.innerHTML = '';
+              transitionList.innerHTML = html;
+            
+              transitionList.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                cb.addEventListener('change', (e) => {
+                   const tType = e.target.classList.contains('trigger--pass') ? 'pass' : 'fail';
+                   const gIdx = parseInt(e.target.getAttribute('data-game-index'), 10);
+                   if (e.target.checked) {
+                     edge.triggers.push({ game_index: gIdx, outcome: tType });
+                   } else {
+                     edge.triggers = edge.triggers.filter(t => !(t.game_index === gIdx && t.outcome === tType));
+                   }
+
+                   if (tType === 'fail') {
+                     const warningEl = document.getElementById(`unlimited-warning-${gIdx}`);
+                     if (warningEl) {
+                       warningEl.style.display = e.target.checked ? 'flex' : 'none';
+                     }
+                   }
+                });
+              });
+            } else {
+              transitionList.innerHTML = '';
+            }
           }
         }
       }
-    }
+  }
 
-    // ── UI Actions ──
+  // ── UI Actions ──
     if (btnAddWaypoint) {
       btnAddWaypoint.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -648,7 +613,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       };
 
       const method = currentArgId ? 'PUT' : 'POST';
-      const url = currentArgId ? `${ API_BASE } /api/args / ${ currentArgId } ` : `${ API_BASE } /api/args`;
+      const url = currentArgId ? `${API_BASE}/api/args/${currentArgId}` : `${API_BASE}/api/args`;
 
       try {
         const res = await fetch(url, {
@@ -666,14 +631,21 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (!currentArgId && data.arg_id) {
           currentArgId = data.arg_id;
-          window.history.pushState({}, '', `edit_warg ? id = ${ currentArgId } `);
+          window.history.pushState({}, '', `edit_warg?id=${currentArgId}`);
         }
 
         // Update nodes with their DB IDs
-        if (data.idMap || data.minigameMap) {
+        if (data.idMap || data.minigameMap || data.wpObjMap) {
           nodes.forEach(n => {
             if (data.idMap && data.idMap[n.id]) n.waypoint_id = data.idMap[n.id];
             if (data.minigameMap && data.minigameMap[n.id]) n.minigame_id = data.minigameMap[n.id];
+            if (data.wpObjMap && data.wpObjMap[n.id] && Array.isArray(n.games)) {
+              n.games.forEach((game, i) => {
+                if (data.wpObjMap[n.id].gameIds[i]) {
+                  game.minigame_id = data.wpObjMap[n.id].gameIds[i];
+                }
+              });
+            }
           });
         }
 
@@ -688,7 +660,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (!btn) return;
       if (isLoading) {
         btn.disabled = true;
-        btn.innerHTML = `< svg viewBox = "0 0 24 24" fill = "none" stroke = "currentColor" stroke - width="2" stroke - linecap="round" stroke - linejoin="round" style = "width:16px;height:16px;animation:spin 1s linear infinite;margin-right:8px;vertical-align:middle" ><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/></svg > <span style="vertical-align:middle">${originalText}</span>`;
+        btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;animation:spin 1s linear infinite;margin-right:8px;vertical-align:middle"><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/></svg> <span style="vertical-align:middle">${originalText}</span>`;
       } else {
         btn.disabled = false;
         btn.textContent = originalText;
@@ -866,7 +838,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const btnDel = document.createElement('button');
         btnDel.className = 'icon-btn qna-option-delete';
         btnDel.title = 'Delete Option';
-        btnDel.innerHTML = `< svg viewBox = "0 0 24 24" fill = "none" stroke = "currentColor" stroke - width="2" width = "18" height = "18" ><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg > `;
+        btnDel.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`;
         btnDel.addEventListener('click', () => {
           qnaOptionsData.splice(idx, 1);
           renderQnaOptions();
@@ -929,6 +901,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         closeGameSelectorModal();
         if (gameType === 'qna') {
           openQnaModal(null, null); // Always new game when adding from selector
+        } else {
+          const node = nodes.find(n => n.id === selectedId);
+          if (node) {
+            if (!node.games) node.games = [];
+            node.games.push({
+              gamemode: btn.textContent.trim(),
+              type: gameType,
+              minigame_config: {}
+            });
+            updatePanel();
+          }
         }
       });
     });
@@ -989,6 +972,14 @@ document.addEventListener('DOMContentLoaded', async () => {
           type: 'text_answer',
           minigame_config: configJson
         };
+
+        if (currentEditGameIndex !== null && currentEditGameIndex !== undefined) {
+          const oldGame = node.games[currentEditGameIndex];
+          if (oldGame) {
+            newGame.minigame_id = oldGame.minigame_id;
+            newGame.reference_url = oldGame.reference_url;
+          }
+        }
 
         if (!node.games) node.games = [];
 
