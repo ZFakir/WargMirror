@@ -84,6 +84,20 @@ function createApp() {
     res.json({ message: 'WARG Platform Backend is running!' });
   });
 
+  const sequelize = require('./config/database');
+  
+  // Healthcheck Route (Use this for UptimeRobot)
+  app.get('/ping', async (req, res) => {
+    try {
+      // Ping the database to keep it alive
+      await sequelize.authenticate();
+      res.status(200).json({ status: 'ok', message: 'Backend and Database are alive!' });
+    } catch (error) {
+      console.error('Ping DB Error:', error);
+      res.status(500).json({ status: 'error', message: 'Database connection failed' });
+    }
+  });
+
   // Mount API Routes
   app.use('/auth', authRoutes);
   app.use('/api/args', argRoutes);
