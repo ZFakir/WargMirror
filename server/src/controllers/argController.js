@@ -100,18 +100,20 @@ exports.createArg = async (req, res) => {
 
       idMap[wp.id] = dbWp.waypoint_id;
       wpObjMap[wp.id] = { gameIds: [] };
-      if (wp.games && Array.isArray(wp.games) && wp.games.length > 0) {
-        for (let i = 0; i < wp.games.length; i++) {
-          const game = wp.games[i];
-          const minigame = await Minigame.create({
-            waypoint_id: dbWp.waypoint_id,
-            game_type: mapFrontendTypeToGameType(game.type),
-            config_json: game.minigame_config || null
-          }, { transaction });
-          wpObjMap[wp.id].gameIds[i] = minigame.game_id;
-          if (i === 0) minigameMap[wp.id] = minigame.game_id;
+      if (wp.games !== undefined) {
+        if (Array.isArray(wp.games)) {
+          for (let i = 0; i < wp.games.length; i++) {
+            const game = wp.games[i];
+            const minigame = await Minigame.create({
+              waypoint_id: dbWp.waypoint_id,
+              game_type: mapFrontendTypeToGameType(game.type),
+              config_json: game.minigame_config || null
+            }, { transaction });
+            wpObjMap[wp.id].gameIds[i] = minigame.game_id;
+            if (i === 0) minigameMap[wp.id] = minigame.game_id;
+          }
         }
-      } else {
+      } else if (wp.type) {
         // Legacy fallback
         const mg = await Minigame.create({
           waypoint_id: dbWp.waypoint_id,
@@ -145,7 +147,7 @@ exports.createArg = async (req, res) => {
     }
 
     await transaction.commit();
-    res.status(201).json({ ...newArg.toJSON(), idMap, minigameMap });
+    res.status(201).json({ ...newArg.toJSON(), idMap, minigameMap, wpObjMap });
   } catch (error) {
     await transaction.rollback();
     console.error(error);
@@ -212,36 +214,38 @@ exports.updateArg = async (req, res) => {
           await Minigame.destroy({ where: { game_id: toDeleteMgIds }, transaction });
         }
 
-        if (wp.games && Array.isArray(wp.games) && wp.games.length > 0) {
-          for (let i = 0; i < wp.games.length; i++) {
-            const game = wp.games[i];
-            if (game.minigame_id) {
-               const existing = await Minigame.findByPk(game.minigame_id, { transaction });
-               if (existing) {
-                  let updatedConfig = existing.config_json || {};
-                  if (game.minigame_config) {
-                     updatedConfig = { ...updatedConfig, ...game.minigame_config };
-                  }
-                  await existing.update({
-                     game_type: mapFrontendTypeToGameType(game.type),
-                     config_json: updatedConfig
-                  }, { transaction });
-                  wpObjMap[wp.id].gameIds[i] = existing.game_id;
-                  if (i === 0) minigameMap[wp.id] = existing.game_id;
-                  continue;
-               }
+        if (wp.games !== undefined) {
+          if (Array.isArray(wp.games)) {
+            for (let i = 0; i < wp.games.length; i++) {
+              const game = wp.games[i];
+              if (game.minigame_id) {
+                 const existing = await Minigame.findByPk(game.minigame_id, { transaction });
+                 if (existing) {
+                    let updatedConfig = existing.config_json || {};
+                    if (game.minigame_config) {
+                       updatedConfig = { ...updatedConfig, ...game.minigame_config };
+                    }
+                    await existing.update({
+                       game_type: mapFrontendTypeToGameType(game.type),
+                       config_json: updatedConfig
+                    }, { transaction });
+                    wpObjMap[wp.id].gameIds[i] = existing.game_id;
+                    if (i === 0) minigameMap[wp.id] = existing.game_id;
+                    continue;
+                 }
+              }
+              
+              const minigame = await Minigame.create({
+                waypoint_id: wp.waypoint_id,
+                game_type: mapFrontendTypeToGameType(game.type),
+                config_json: game.minigame_config || null
+              }, { transaction });
+              wpObjMap[wp.id].gameIds[i] = minigame.game_id;
+              if (i === 0) minigameMap[wp.id] = minigame.game_id;
             }
-            
-            const minigame = await Minigame.create({
-              waypoint_id: wp.waypoint_id,
-              game_type: mapFrontendTypeToGameType(game.type),
-              config_json: game.minigame_config || null
-            }, { transaction });
-            wpObjMap[wp.id].gameIds[i] = minigame.game_id;
-            if (i === 0) minigameMap[wp.id] = minigame.game_id;
           }
-        } else {
-          // Legacy fallback for older clients that don't send wp.games
+        } else if (wp.type) {
+          // Legacy fallback for older clients that don't send wp.games but send wp.type
           const mg = await Minigame.create({
             waypoint_id: wp.waypoint_id,
             game_type: mapFrontendTypeToGameType(wp.type)
@@ -260,18 +264,20 @@ exports.updateArg = async (req, res) => {
         idMap[wp.id] = dbWp.waypoint_id;
         wpObjMap[wp.id] = { gameIds: [] };
 
-        if (wp.games && Array.isArray(wp.games) && wp.games.length > 0) {
-          for (let i = 0; i < wp.games.length; i++) {
-            const game = wp.games[i];
-            const minigame = await Minigame.create({
-              waypoint_id: dbWp.waypoint_id,
-              game_type: mapFrontendTypeToGameType(game.type),
-              config_json: game.minigame_config || null
-            }, { transaction });
-            wpObjMap[wp.id].gameIds[i] = minigame.game_id;
-            if (i === 0) minigameMap[wp.id] = minigame.game_id;
+        if (wp.games !== undefined) {
+          if (Array.isArray(wp.games)) {
+            for (let i = 0; i < wp.games.length; i++) {
+              const game = wp.games[i];
+              const minigame = await Minigame.create({
+                waypoint_id: dbWp.waypoint_id,
+                game_type: mapFrontendTypeToGameType(game.type),
+                config_json: game.minigame_config || null
+              }, { transaction });
+              wpObjMap[wp.id].gameIds[i] = minigame.game_id;
+              if (i === 0) minigameMap[wp.id] = minigame.game_id;
+            }
           }
-        } else {
+        } else if (wp.type) {
           // Legacy fallback
           const mg = await Minigame.create({
             waypoint_id: dbWp.waypoint_id,
