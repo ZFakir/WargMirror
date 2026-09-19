@@ -183,11 +183,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         lat, lng,
         title: 'New Waypoint',
         description: '',
-        games: [{
-          gamemode: 'GPS Location',
-          type: 'gps',
-          minigame_config: {}
-        }]
+        games: []
       };
       nodes.push(newNode);
       mapModal.addEditorNode(newNode);
@@ -880,6 +876,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const gameTypeBtns = document.querySelectorAll('.game-type-btn');
 
     function openGameSelectorModal() {
+      const node = nodes.find(n => n.id === selectedId);
+      if (node && node.games && node.games.length >= 1) {
+        openAlertModal('A waypoint can only have a maximum of one minigame. Please delete the existing game to add a new one.');
+        return;
+      }
       if (gameSelectorModalOverlay) gameSelectorModalOverlay.setAttribute('aria-hidden', 'false');
     }
 
