@@ -22,3 +22,11 @@ blob-report/
 # Python
 __pycache__/
 *.pyc
+
+# Server Data and Uploads
+server/uploads/
+server/database.sqlite
+
+# Temporary/Backup Files
+old_*.js
+main_edit_warg.js
