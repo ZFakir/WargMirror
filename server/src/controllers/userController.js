@@ -188,3 +188,29 @@ exports.respondToFriendRequest = async (req, res) => {
     res.status(500).json({ error: 'Failed to respond to friend request' });
   }
 };
+
+exports.removeFriend = async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const friendId = req.params.friendId;
+
+    const result = await FriendRequest.destroy({
+      where: {
+        [Op.or]: [
+          { sender_id: userId, receiver_id: friendId },
+          { sender_id: friendId, receiver_id: userId }
+        ],
+        status: 'accepted'
+      }
+    });
+
+    if (result === 0) {
+      return res.status(404).json({ error: 'Friend connection not found' });
+    }
+
+    res.json({ success: true, message: 'Friend removed' });
+  } catch (error) {
+    console.error('Failed to remove friend:', error);
+    res.status(500).json({ error: 'Failed to remove friend' });
+  }
+};

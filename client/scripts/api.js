@@ -178,6 +178,10 @@ var api = (function () {
     return _get('/api/users/' + userId + '/friends');
   }
 
+  async function removeFriend(userId, friendId) {
+    return _delete('/api/users/' + userId + '/friends/' + friendId);
+  }
+
   async function searchUsers(query) {
     return _get('/api/users/search/query?q=' + encodeURIComponent(query));
   }
@@ -229,6 +233,7 @@ var api = (function () {
     getUserLibrary,
     getActiveSessions,
     getFriends,
+    removeFriend,
     searchUsers,
     sendFriendRequest,
     getFriendRequests,

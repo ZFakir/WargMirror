@@ -411,9 +411,12 @@ function renderFriends(friends) {
           <div class="friend-item__name">${friend.username}</div>
           <div class="friend-item__activity">${activityText}</div>
         </div>
-        <button class="friend-item__action" aria-label="Invite ${friend.username} to a game">Invite</button>
       </div>
     `;
+
+    li.querySelector('.friend-item').addEventListener('click', () => {
+      openFriendProfileModal(friend.user_id);
+    });
 
     if (isOnline) {
       onlineList.appendChild(li);
@@ -654,5 +657,82 @@ feedbackForm?.addEventListener('submit', async e => {
   } finally {
     submitBtn.disabled = false;
     submitBtn.textContent = originalText;
+  }
+});
+
+/* ── Friend Profile Modal ── */
+const friendProfileModal = document.getElementById('friend-profile-modal');
+const btnCloseFriendProfile = document.getElementById('btn-close-friend-profile');
+const btnRemoveFriend = document.getElementById('btn-remove-friend');
+
+let currentProfileFriendId = null;
+
+async function openFriendProfileModal(friendId) {
+  currentProfileFriendId = friendId;
+  
+  // Reset UI
+  document.getElementById('friend-profile-username').textContent = 'Loading...';
+  document.getElementById('friend-profile-avatar').textContent = '';
+  document.getElementById('friend-profile-points').textContent = '0';
+  document.getElementById('friend-profile-distance').textContent = '0 km';
+  document.getElementById('friend-profile-badges-count').textContent = '0';
+  document.getElementById('friend-profile-level').textContent = 'Level 1';
+  btnRemoveFriend.disabled = false;
+  btnRemoveFriend.textContent = 'Remove Friend';
+  
+  if (friendProfileModal) {
+    friendProfileModal.classList.add('is-open');
+    friendProfileModal.setAttribute('aria-hidden', 'false');
+  }
+
+  try {
+    const profile = await api.getUserProfile(friendId);
+    document.getElementById('friend-profile-username').textContent = profile.username;
+    document.getElementById('friend-profile-avatar').textContent = profile.username.substring(0, 2).toUpperCase();
+    document.getElementById('friend-profile-points').textContent = (profile.total_points || 0).toLocaleString();
+    document.getElementById('friend-profile-distance').textContent = Math.round((profile.distance_walked_m || 0) / 1000) + ' km';
+    document.getElementById('friend-profile-badges-count').textContent = (profile.Badges || []).length;
+    // Mock level based on points
+    const level = Math.max(1, Math.floor((profile.total_points || 0) / 100) + 1);
+    document.getElementById('friend-profile-level').textContent = 'Level ' + level;
+  } catch (error) {
+    console.error('Failed to load profile:', error);
+    showToast('Failed to load friend profile');
+    closeFriendProfileModal();
+  }
+}
+
+function closeFriendProfileModal() {
+  if (friendProfileModal) {
+    friendProfileModal.classList.remove('is-open');
+    friendProfileModal.setAttribute('aria-hidden', 'true');
+  }
+  currentProfileFriendId = null;
+}
+
+btnCloseFriendProfile?.addEventListener('click', closeFriendProfileModal);
+
+friendProfileModal?.addEventListener('click', e => {
+  if (e.target === friendProfileModal) closeFriendProfileModal();
+});
+
+btnRemoveFriend?.addEventListener('click', async () => {
+  if (!currentProfileFriendId) return;
+  
+  const originalText = btnRemoveFriend.textContent;
+  btnRemoveFriend.disabled = true;
+  btnRemoveFriend.textContent = 'Removing...';
+  
+  try {
+    const currentUser = await api.getCurrentUser();
+    await api.removeFriend(currentUser.user_id, currentProfileFriendId);
+    showToast('Friend removed');
+    closeFriendProfileModal();
+    initHomeData(); // Refresh friends list
+  } catch (error) {
+    console.error('Failed to remove friend:', error);
+    showToast('Failed to remove friend');
+    btnRemoveFriend.disabled = false;
+    btnRemoveFriend.textContent = originalText;
   }
 });
