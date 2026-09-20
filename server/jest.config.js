@@ -15,6 +15,7 @@ module.exports = {
       displayName: 'integration',
       testEnvironment: 'node',
       setupFiles: ['<rootDir>/tests/setup/loadEnv.js'],
+      setupFilesAfterEnv: ['<rootDir>/tests/setup/jest.setup.js'],
       globalSetup: '<rootDir>/tests/setup/globalSetup.js',
       globalTeardown: '<rootDir>/tests/setup/globalTeardown.js',
       testMatch: ['<rootDir>/tests/integration/**/*.test.js']

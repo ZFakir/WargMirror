@@ -58,7 +58,7 @@ function createApp() {
   };
 
   if (process.env.NODE_ENV !== 'test') {
-    // eslint-disable-next-line global-require
+     
     const MySQLStore = require('express-mysql-session')(session);
     const dbUrl = new URL(process.env.DATABASE_URL);
     sessionOptions.store = new MySQLStore({
