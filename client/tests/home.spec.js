@@ -15,7 +15,7 @@ test.describe('home page/script logic', () => {
     });
 
     await page.goto('/home.html');
-    await expect(page.locator('header.top-nav')).toBeVisible();
+    await expect(page.locator('header.topbar')).toBeVisible();
     await expect(page.locator('nav.bottom-nav')).toBeVisible();
   });
 
@@ -43,7 +43,7 @@ test.describe('home page/script logic', () => {
     await page.goto('/home.html');
     
     // Check if the mock ARG is rendered in the DOM
-    const argTitle = page.locator('h3', { hasText: 'Mystery at Origins' });
+    const argTitle = page.locator('#row-recent h3').filter({ hasText: 'Mystery at Origins' });
     await expect(argTitle).toBeVisible();
   });
 });

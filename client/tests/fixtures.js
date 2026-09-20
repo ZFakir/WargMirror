@@ -4,24 +4,28 @@ const crypto = require('crypto');
 const path = require('path');
 
 const test = base.extend({
-  page: async ({ page }, use) => {
-    // Start coverage
-    await page.coverage.startJSCoverage({ resetOnNavigation: false });
+  page: async ({ page, browserName }, use) => {
+    // Start coverage only if supported
+    if (page.coverage) {
+      await page.coverage.startJSCoverage({ resetOnNavigation: false });
+    }
     
     await use(page);
     
     // Stop coverage
-    const coverage = await page.coverage.stopJSCoverage();
-    
-    const v8dir = path.join(process.cwd(), '.v8-coverage');
-    if (!fs.existsSync(v8dir)) {
-      fs.mkdirSync(v8dir, { recursive: true });
+    if (page.coverage) {
+      const coverage = await page.coverage.stopJSCoverage();
+      
+      const v8dir = path.join(process.cwd(), '.v8-coverage');
+      if (!fs.existsSync(v8dir)) {
+        fs.mkdirSync(v8dir, { recursive: true });
+      }
+      
+      fs.writeFileSync(
+        path.join(v8dir, `coverage-${crypto.randomUUID()}.json`),
+        JSON.stringify({ result: coverage })
+      );
     }
-    
-    fs.writeFileSync(
-      path.join(v8dir, `coverage-${crypto.randomUUID()}.json`),
-      JSON.stringify({ result: coverage })
-    );
   }
 });
 
