@@ -178,6 +178,31 @@ var api = (function () {
     return _get('/api/users/' + userId + '/friends');
   }
 
+  async function searchUsers(query) {
+    return _get('/api/users/search/query?q=' + encodeURIComponent(query));
+  }
+
+  async function sendFriendRequest(senderId, receiverId) {
+    return _post('/api/users/' + senderId + '/friends/request', { receiverId });
+  }
+
+  async function getFriendRequests(userId) {
+    return _get('/api/users/' + userId + '/friends/requests');
+  }
+
+  async function respondToFriendRequest(requestId, status) {
+    const res = await fetch(API_BASE + '/api/users/friends/requests/' + requestId, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+      credentials: 'include'
+    });
+    if (!res.ok) {
+      throw Object.assign(new Error('API error'), { status: res.status, path: '/api/users/friends/requests/' + requestId });
+    }
+    return res.json();
+  }
+
   /* ── Game Actions ───────────────────────────────────────── */
   async function voteArg(argId, voteType, userId = 1) { // Defaulting user_id to 1 until auth is hooked up
     return _post('/api/args/' + argId + '/vote', { vote: voteType, user_id: userId });
@@ -204,6 +229,10 @@ var api = (function () {
     getUserLibrary,
     getActiveSessions,
     getFriends,
+    searchUsers,
+    sendFriendRequest,
+    getFriendRequests,
+    respondToFriendRequest,
     normaliseArg,
     voteArg,
     flagArg,

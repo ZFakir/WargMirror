@@ -161,14 +161,31 @@ document.addEventListener('keydown', e => {
 
 /* ── Friends search: live filter ── */
 const friendsSearchInput = document.getElementById('friends-search-input');
+const friendsDefaultView = document.getElementById('friends-default-view');
+const searchResultsContainer = document.getElementById('friend-search-results-container');
+const searchResultsList = document.getElementById('friend-search-results-list');
 
+let searchTimeout;
 friendsSearchInput?.addEventListener('input', () => {
-  const query = friendsSearchInput.value.toLowerCase().trim();
-  const friendItems = document.querySelectorAll('.friend-item');
-  friendItems.forEach(item => {
-    const name = item.querySelector('.friend-item__name')?.textContent.toLowerCase() ?? '';
-    item.closest('li').style.display = (!query || name.includes(query)) ? '' : 'none';
-  });
+  const query = friendsSearchInput.value.trim();
+  
+  clearTimeout(searchTimeout);
+  if (!query) {
+    friendsDefaultView.style.display = 'block';
+    searchResultsContainer.style.display = 'none';
+    return;
+  }
+
+  searchTimeout = setTimeout(async () => {
+    try {
+      const users = await api.searchUsers(query);
+      renderUserSearchResults(users);
+      friendsDefaultView.style.display = 'none';
+      searchResultsContainer.style.display = 'block';
+    } catch (err) {
+      console.error('Search failed', err);
+    }
+  }, 300);
 });
 
 /* ── Notification badge clear ── */
@@ -233,12 +250,15 @@ async function initHomeData() {
       if (statDist) statDist.textContent = Math.round((profile.distance_walked_m || 0) / 1000) + ' km';
     } catch { /* profile stats are non-critical */ }
 
-    // Fetch and render friends
+    // Fetch and render friends & requests
     try {
       var friends = await api.getFriends(currentUser.user_id);
       renderFriends(friends);
+      
+      var requests = await api.getFriendRequests(currentUser.user_id);
+      renderPendingRequests(requests);
     } catch (err) {
-      console.error('Failed to fetch friends', err);
+      console.error('Failed to fetch friends/requests', err);
     }
 
     // Fetch active sessions for "Recently Played"
@@ -413,6 +433,129 @@ function renderFriends(friends) {
   }
 }
 
+async function renderUserSearchResults(users) {
+  if (!searchResultsList) return;
+  searchResultsList.innerHTML = '';
+  
+  if (users.length === 0) {
+    searchResultsList.innerHTML = '<li style="padding:1rem;color:var(--text-muted);font-size:var(--font-size-sm);text-align:center;">No users found</li>';
+    return;
+  }
+  
+  const currentUser = await api.getCurrentUser();
+
+  users.forEach(user => {
+    // Basic prevent self-add
+    if (currentUser && user.user_id === currentUser.user_id) return;
+    
+    const initials = (user.username || '??').substring(0, 2).toUpperCase();
+    const li = document.createElement('li');
+    li.innerHTML = `
+      <div class="friend-item" role="listitem">
+        <div class="friend-item__avatar">
+          <div class="friend-item__avatar-img" aria-hidden="true">${initials}</div>
+        </div>
+        <div class="friend-item__info">
+          <div class="friend-item__name">${user.username}</div>
+        </div>
+        <button class="friend-item__action btn-add-friend" data-id="${user.user_id}" aria-label="Add ${user.username}">Add</button>
+      </div>
+    `;
+    
+    li.querySelector('.btn-add-friend').addEventListener('click', async (e) => {
+      const btn = e.target;
+      const originalText = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = '...';
+      try {
+        await api.sendFriendRequest(currentUser.user_id, user.user_id);
+        btn.textContent = 'Sent';
+      } catch (err) {
+        btn.disabled = false;
+        btn.textContent = originalText;
+        showToast('Failed to send request');
+      }
+    });
+    
+    searchResultsList.appendChild(li);
+  });
+}
+
+function renderPendingRequests(requests) {
+  const list = document.getElementById('pending-requests-list');
+  const title = document.getElementById('pending-requests-title');
+  const count = document.getElementById('pending-requests-count');
+  
+  if (!list || !title) return;
+  
+  list.innerHTML = '';
+  
+  if (requests.length === 0) {
+    title.style.display = 'none';
+    return;
+  }
+  
+  title.style.display = '';
+  if (count) count.textContent = requests.length;
+  
+  requests.forEach(req => {
+    const initials = (req.sender?.username || '??').substring(0, 2).toUpperCase();
+    const li = document.createElement('li');
+    li.innerHTML = `
+      <div class="friend-item" role="listitem">
+        <div class="friend-item__avatar">
+          <div class="friend-item__avatar-img" aria-hidden="true">${initials}</div>
+        </div>
+        <div class="friend-item__info">
+          <div class="friend-item__name">${req.sender?.username || 'Unknown'}</div>
+          <div class="friend-item__activity" style="font-size:0.75rem;">Sent you a request</div>
+        </div>
+        <div style="display:flex; gap:0.5rem;">
+          <button class="friend-item__action btn-accept" data-id="${req.request_id}">✓</button>
+          <button class="friend-item__action btn-decline" data-id="${req.request_id}">✕</button>
+        </div>
+      </div>
+    `;
+    
+    li.querySelector('.btn-accept').addEventListener('click', async (e) => {
+      const btn = e.target;
+      const declineBtn = li.querySelector('.btn-decline');
+      btn.disabled = true;
+      declineBtn.disabled = true;
+      btn.textContent = '...';
+      try {
+        await api.respondToFriendRequest(req.request_id, 'accepted');
+        // Refresh everything
+        initHomeData();
+      } catch (err) {
+        btn.disabled = false;
+        declineBtn.disabled = false;
+        btn.textContent = '✓';
+        showToast('Failed to accept');
+      }
+    });
+    
+    li.querySelector('.btn-decline').addEventListener('click', async (e) => {
+      const btn = e.target;
+      const acceptBtn = li.querySelector('.btn-accept');
+      btn.disabled = true;
+      acceptBtn.disabled = true;
+      btn.textContent = '...';
+      try {
+        await api.respondToFriendRequest(req.request_id, 'declined');
+        initHomeData();
+      } catch (err) {
+        btn.disabled = false;
+        acceptBtn.disabled = false;
+        btn.textContent = '✕';
+        showToast('Failed to decline');
+      }
+    });
+    
+    list.appendChild(li);
+  });
+}
+
 // Kick off
 document.addEventListener('DOMContentLoaded', initHomeData);
 
@@ -424,22 +567,6 @@ document.querySelectorAll('.friend-item[role="button"]').forEach(item => {
       item.click();
     }
   });
-});
-
-/* ── Invite link: clipboard ── */
-const inviteBtn = document.getElementById('btn-invite-friends');
-inviteBtn?.addEventListener('click', async () => {
-  const link = `${location.origin}/invite?ref=player`;
-  try {
-    await navigator.clipboard.writeText(link);
-    const orig = inviteBtn.textContent;
-    inviteBtn.textContent = 'Copied!';
-    setTimeout(() => { inviteBtn.textContent = orig; }, 2000);
-  } catch {
-    const orig = inviteBtn.textContent;
-    inviteBtn.textContent = 'Copy failed';
-    setTimeout(() => { inviteBtn.textContent = orig; }, 2000);
-  }
 });
 
 /* ── Handle removing from recent ── */
