@@ -30,7 +30,7 @@ test.describe('login page/script logic', () => {
     // Assuming the frontend script alerts or shows an error message.
     // If it uses window.alert, we can intercept it:
     page.once('dialog', dialog => {
-      expect(dialog.message()).toContain('Incorrect email or password');
+      expect(dialog.message()).toContain('Login failed. Please check your credentials.');
       dialog.dismiss();
     });
   });
