@@ -6,14 +6,14 @@ const path = require('path');
 const test = base.extend({
   page: async ({ page, browserName }, use) => {
     // Start coverage only if supported
-    if (page.coverage) {
+    if (browserName === 'chromium') {
       await page.coverage.startJSCoverage({ resetOnNavigation: false });
     }
     
     await use(page);
     
     // Stop coverage
-    if (page.coverage) {
+    if (browserName === 'chromium') {
       const coverage = await page.coverage.stopJSCoverage();
       
       const v8dir = path.join(process.cwd(), '.v8-coverage');
