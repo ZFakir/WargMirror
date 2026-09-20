@@ -474,6 +474,7 @@ async function renderUserSearchResults(users) {
         await api.sendFriendRequest(currentUser.user_id, user.user_id);
         btn.textContent = 'Sent';
       } catch (err) {
+        console.error('Failed to send friend request:', err);
         btn.disabled = false;
         btn.textContent = originalText;
         showToast('Failed to send request');
@@ -531,6 +532,7 @@ function renderPendingRequests(requests) {
         // Refresh everything
         initHomeData();
       } catch (err) {
+        console.error('Failed to accept friend request:', err);
         btn.disabled = false;
         declineBtn.disabled = false;
         btn.textContent = '✓';
@@ -548,6 +550,7 @@ function renderPendingRequests(requests) {
         await api.respondToFriendRequest(req.request_id, 'declined');
         initHomeData();
       } catch (err) {
+        console.error('Failed to decline friend request:', err);
         btn.disabled = false;
         acceptBtn.disabled = false;
         btn.textContent = '✕';
