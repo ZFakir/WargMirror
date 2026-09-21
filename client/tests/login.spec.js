@@ -21,17 +21,15 @@ test.describe('login page/script logic', () => {
       route.fulfill({
         status: 401,
         contentType: 'application/json',
-        body: JSON.stringify({ message: 'Incorrect email or password.' })
+        body: JSON.stringify({ error: 'Incorrect email or password.' })
       });
     });
 
+    const dialogPromise = page.waitForEvent('dialog');
     await page.click('button[type="submit"]');
 
-    // Assuming the frontend script alerts or shows an error message.
-    // If it uses window.alert, we can intercept it:
-    page.once('dialog', dialog => {
-      expect(dialog.message()).toContain('Login failed. Please check your credentials.');
-      dialog.dismiss();
-    });
+    const dialog = await dialogPromise;
+    expect(dialog.message()).toContain('Incorrect email or password');
+    await dialog.dismiss();
   });
 });
