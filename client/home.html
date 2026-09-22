@@ -257,43 +257,47 @@
       <input
         type="search"
         id="friends-search-input"
-        placeholder="Find a friend…"
-        aria-label="Search friends"
+        placeholder="Find a user…"
+        aria-label="Search users"
         autocomplete="off"
       />
     </div>
 
-    <!-- Online friends -->
-    <div class="panel-title" style="font-size:var(--font-size-caption);">
-      <span>Online <span class="text-green">·</span> <span id="online-friends-count">0</span></span>
-    </div>
-
-    <ul class="friends-list" id="online-friends-list" aria-label="Online friends">
-      <!-- Dynamically populated by home.js -->
-    </ul>
-
-    <!-- Away/Offline friends -->
-    <div class="panel-title" style="font-size:var(--font-size-caption);">
-      <span>Away / Offline</span>
-    </div>
-
-    <ul class="friends-list" id="offline-friends-list" aria-label="Away and offline friends">
-      <!-- Dynamically populated by home.js -->
-    </ul>
-
-    <div class="panel-divider" role="separator"></div>
-
-    <!-- Invite Banner -->
-    <div class="invite-banner" role="region" aria-label="Invite friends">
-      <div class="invite-banner__heading">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/>
-          <line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/>
-        </svg>
-        Invite Friends
+    <!-- Search results (hidden by default) -->
+    <div id="friend-search-results-container" style="display: none;">
+      <div class="panel-title" style="font-size:var(--font-size-caption);">
+        <span>Search Results</span>
       </div>
-      <p class="invite-banner__text">Bring your crew to campus — share a link and start a co-op ARG together.</p>
-      <button class="invite-banner__btn" id="btn-invite-friends">Copy Invite Link</button>
+      <ul class="friends-list" id="friend-search-results-list" aria-label="Search results">
+        <!-- Dynamically populated -->
+      </ul>
+    </div>
+
+    <!-- Default friends view (hidden when searching) -->
+    <div id="friends-default-view">
+      <!-- Pending Requests -->
+      <div class="panel-title" id="pending-requests-title" style="font-size:var(--font-size-caption); display: none;">
+        <span>Pending Requests <span class="text-accent">·</span> <span id="pending-requests-count">0</span></span>
+      </div>
+      <ul class="friends-list" id="pending-requests-list" aria-label="Pending requests">
+        <!-- Dynamically populated -->
+      </ul>
+
+      <!-- Online friends -->
+      <div class="panel-title" style="font-size:var(--font-size-caption);">
+        <span>Online <span class="text-green">·</span> <span id="online-friends-count">0</span></span>
+      </div>
+      <ul class="friends-list" id="online-friends-list" aria-label="Online friends">
+        <!-- Dynamically populated by home.js -->
+      </ul>
+
+      <!-- Away/Offline friends -->
+      <div class="panel-title" style="font-size:var(--font-size-caption);">
+        <span>Away / Offline</span>
+      </div>
+      <ul class="friends-list" id="offline-friends-list" aria-label="Away and offline friends">
+        <!-- Dynamically populated by home.js -->
+      </ul>
     </div>
 
   </aside>
@@ -425,6 +429,48 @@
         <button type="submit" class="btn-primary">Submit Feedback</button>
       </div>
     </form>
+  </div>
+</div>
+
+<!-- Friend Profile Modal -->
+<div class="feedback-modal-overlay" id="friend-profile-modal" aria-hidden="true">
+  <div class="feedback-modal" role="dialog" aria-labelledby="friend-profile-name" aria-modal="true">
+    <div class="feedback-modal__header">
+      <h2 id="friend-profile-name" style="margin: 0; font-size: 1.25rem;">Profile</h2>
+      <button class="icon-btn" id="btn-close-friend-profile" aria-label="Close profile modal">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+    <div class="feedback-modal__scroll-area" style="padding: 1rem;">
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 1rem; margin-bottom: 2rem;">
+        <div id="friend-profile-avatar" style="width: 80px; height: 80px; border-radius: 50%; background: var(--bg-card); display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: bold; border: 2px solid var(--color-accent);"></div>
+        <div style="text-align: center;">
+          <h3 id="friend-profile-username" style="margin: 0; font-size: 1.5rem; margin-bottom: 0.25rem;">-</h3>
+          <p id="friend-profile-level" style="margin: 0; color: var(--color-accent); font-size: 0.9rem;">Level 1</p>
+        </div>
+      </div>
+      
+      <div class="activity-card__stats" style="margin-bottom: 2rem; background: var(--bg-surface); padding: 1rem; border-radius: 12px;">
+        <div class="stat-block">
+          <span class="stat-block__value stat-block__value--accent" id="friend-profile-points">0</span>
+          <span class="stat-block__label">Points</span>
+        </div>
+        <div class="stat-block">
+          <span class="stat-block__value stat-block__value--green" id="friend-profile-distance">0 km</span>
+          <span class="stat-block__label">Walked</span>
+        </div>
+        <div class="stat-block">
+          <span class="stat-block__value" id="friend-profile-badges-count">0</span>
+          <span class="stat-block__label">Badges</span>
+        </div>
+      </div>
+
+      <div class="feedback-modal__actions" style="margin-top: 2rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+        <button type="button" class="btn-secondary" id="btn-remove-friend" style="width: 100%; color: #ff4d4f; border-color: #ff4d4f;">Remove Friend</button>
+      </div>
+    </div>
   </div>
 </div>
 
