@@ -30,15 +30,10 @@ test.describe('edit_warg page logic', () => {
 
     await page.goto('/edit_warg.html');
     
-    // Simulate selecting a node to enable the add game button
-    await page.evaluate(() => {
-      window.dispatchEvent(new CustomEvent('warg:node-selected', { detail: { id: 'wp1' } }));
-    });
-    
-    // Open game selector (dispatch click directly to bypass playwright visibility checks)
-    await page.evaluate(() => {
-      document.getElementById('btn-add-game').click();
-    });
+    // Open game selector
+    const btnAddGame = page.locator('#btn-add-game');
+    await expect(btnAddGame).toBeAttached();
+    await btnAddGame.click({ force: true });
     
     const selectorModal = page.locator('#game-selector-modal-overlay');
     await expect(selectorModal).toHaveAttribute('aria-hidden', 'false');
