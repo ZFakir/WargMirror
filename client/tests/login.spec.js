@@ -21,7 +21,7 @@ test.describe('login page/script logic', () => {
       route.fulfill({
         status: 401,
         contentType: 'application/json',
-        body: JSON.stringify({ message: 'Incorrect email or password.' })
+        body: JSON.stringify({ error: 'Incorrect email or password.' })
       });
     });
 
