@@ -1,5 +1,9 @@
 const { sequelize } = require('../../src/models');
 
+if (typeof jest !== 'undefined') {
+  jest.setTimeout(30000);
+}
+
 /**
  * Truncates every table in the test database. FK checks are disabled
  * around the operation because tables reference each other (e.g. Arg ->
@@ -12,7 +16,7 @@ async function resetDatabase() {
   await sequelize.query('SET FOREIGN_KEY_CHECKS = 0');
   const tables = Object.values(sequelize.models).map((m) => m.getTableName());
   for (const table of tables) {
-    await sequelize.query(`TRUNCATE TABLE \`${table}\``);
+    await sequelize.query(`DELETE FROM \`${table}\``);
   }
   await sequelize.query('SET FOREIGN_KEY_CHECKS = 1');
 }
