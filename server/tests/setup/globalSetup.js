@@ -10,7 +10,6 @@ module.exports = async () => {
     );
   }
 
-  // eslint-disable-next-line global-require
   const { sequelize } = require('../../src/models');
 
   await sequelize.authenticate();

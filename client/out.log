@@ -1,0 +1,26 @@
+[MR] generating report data ...
+[MR] generating test report ...
+[MR] Client UI Coverage Report
+┌─────────────┬──────────────────────┐
+│ Tests       │ 75                   │
+│ ├ Failed    │ 48 (64.0%)           │
+│ ├ Flaky     │ 0  (0.0%)            │
+│ ├ Skipped   │ 0  (0.0%)            │
+│ └ Passed    │ 27 (36.0%)           │
+│ Steps       │ 1015                 │
+│ Suites      │ 60                   │
+│ ├ Projects  │ 3                    │
+│ ├ Files     │ 20                   │
+│ ├ Describes │ 57                   │
+│ └ Shards    │ 0                    │
+│ Errors      │ 51                   │
+│ Retries     │ 0                    │
+│ Logs        │ 0                    │
+│ Attachments │ 48                   │
+│ Artifacts   │ 0                    │
+│ Playwright  │ v1.63.0              │
+│ Date        │ 2026/09/20, 08:39:17 │
+│ Duration    │ 6m 1s                │
+└─────────────┴──────────────────────┘
+[MR] json: coverage-reports/index.json
+[MR] view report: npx monocart show-report coverage-reports/index.html
