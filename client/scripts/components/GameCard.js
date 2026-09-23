@@ -426,9 +426,9 @@ var GameCard = (function () {
     var gameId = article.dataset.gameId;
     console.log('[WARG] Open game:', title ? title.textContent.trim() : gameId);
     if (window.location.pathname.includes('studio')) {
-      window.location.href = 'edit_warg.html?id=' + gameId;
+      window.location.href = 'edit_warg?id=' + gameId;
     } else {
-      window.location.href = 'game.html?id=' + gameId;
+      window.location.href = 'game?id=' + gameId;
     }
   }
 
