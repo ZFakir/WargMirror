@@ -2,6 +2,7 @@
  * Minigame Handlers Registry
  * Exports a function to get the UI handler for a specific game type.
  */
+/* global Html5QrcodeScanner */
 
 export function getMinigameHandler(gameType) {
   switch (gameType) {
@@ -105,7 +106,7 @@ export function getMinigameHandler(gameType) {
               scanner.clear().catch(err => console.error(err));
               scanner = null;
               onSubmit(decodedText);
-            }, (errorMessage) => {
+            }, () => {
               // ignore parse errors
             });
           });

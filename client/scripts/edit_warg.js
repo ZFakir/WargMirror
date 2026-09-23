@@ -5,6 +5,8 @@
 
 import { MapModal } from './components/MapModal.js';
 
+/* global Html5QrcodeScanner */
+
 document.addEventListener('DOMContentLoaded', async () => {
   const API_BASE = window.API_BASE_URL || 'https://wargmirror.onrender.com';
   
@@ -964,12 +966,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         { fps: 10, qrbox: {width: 250, height: 250} }, 
         /* verbose= */ false
       );
-      barcodeHtml5QrcodeScanner.render((decodedText, decodedResult) => {
+      barcodeHtml5QrcodeScanner.render((decodedText) => {
         barcodeValue.value = decodedText;
         barcodeHtml5QrcodeScanner.clear().catch(err => console.error(err));
         barcodeHtml5QrcodeScanner = null;
         btnStartBarcodeScan.style.display = 'inline-block';
-      }, (errorMessage) => {
+      }, () => {
         // parse errors are normal, just ignore
       });
     });
