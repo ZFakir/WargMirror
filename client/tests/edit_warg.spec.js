@@ -30,12 +30,23 @@ test.describe('edit_warg page logic', () => {
 
     await page.goto('/edit_warg.html');
     
-    // Open game selector
-    const btnAddGame = page.locator('#btn-add-game');
-    await expect(btnAddGame).toBeAttached();
-    await btnAddGame.click({ force: true });
-    
+    // Wait for script to finish initializing by waiting for Leaflet map container
+    await page.waitForSelector('.leaflet-container', { state: 'attached' });
+
+    // Wait for script to finish initializing by waiting for Leaflet map container
+    await page.waitForSelector('.leaflet-container', { state: 'attached' });
+
+    // The script initializes asynchronously. The event listener on btn-add-game 
+    // is attached at the end of the script. We poll the click until the modal opens.
     const selectorModal = page.locator('#game-selector-modal-overlay');
+    await expect(async () => {
+      await page.evaluate(() => {
+        const btn = document.getElementById('btn-add-game');
+        if (btn) btn.click();
+      });
+      await expect(selectorModal).toHaveAttribute('aria-hidden', 'false', { timeout: 1000 });
+    }).toPass({ timeout: 10000 });
+    
     await expect(selectorModal).toHaveAttribute('aria-hidden', 'false');
 
     // Click QR Code game
