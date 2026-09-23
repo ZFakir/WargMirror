@@ -22,8 +22,9 @@ const io = new Server(server, {
         : [];
 
       const normalizedOrigin = origin ? origin.trim().replace(/\/$/, '') : null;
+      const isLocalDevelopment = process.env.NODE_ENV !== 'production' && normalizedOrigin && normalizedOrigin.startsWith('http://localhost');
 
-      if (!normalizedOrigin || allowedOrigins.includes(normalizedOrigin)) {
+      if (!normalizedOrigin || allowedOrigins.includes(normalizedOrigin) || isLocalDevelopment) {
         callback(null, true);
       } else {
         callback(new Error('Origin not allowed by CORS'));

@@ -71,6 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
             lng: wp.location.coordinates[0],
             desc: wp.description || '',
             type: 'solo',
+            minigames: wp.Minigames || [],
             status: status,
             progress: progressPercent,
             progLabel: progLabel
@@ -95,17 +96,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const localVotes = JSON.parse(localStorage.getItem('warg_votes') || '{}');
         const userVote = argData.user_vote || localVotes[argId] || null;
         if (userVote === 'like' && btnLike) {
-            btnLike.classList.add('is-active');
+          btnLike.classList.add('is-active');
         } else if (userVote === 'dislike' && btnDislike) {
-            btnDislike.classList.add('is-active');
+          btnDislike.classList.add('is-active');
         }
       } catch { /* ignore */ }
 
-      mapModal.init({ nodes, edges: (gameState.edges || []).map(e => ({
-        id: (e.edge_id || e.id || '').toString(),
-        from: (e.from_waypoint_id || e.from).toString(),
-        to: (e.to_waypoint_id || e.to).toString()
-      })) });
+      mapModal.init({
+        nodes, edges: (gameState.edges || []).map(e => ({
+          id: (e.edge_id || e.id || '').toString(),
+          from: (e.from_waypoint_id || e.from).toString(),
+          to: (e.to_waypoint_id || e.to).toString()
+        }))
+      });
 
       // Start watching player location
       if (navigator.geolocation) {
@@ -128,17 +131,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function handleVote(action) {
     const activeBtn = action === 'like' ? btnLike : btnDislike;
-    
+
     // Optimistic UI updates
     const parseCount = span => span ? parseInt(span.textContent.replace(/[^0-9-]/g, ''), 10) || 0 : 0;
-    
+
     let currentLikes = parseCount(btnLike ? btnLike.querySelector('span') : null);
     let currentDislikes = parseCount(btnDislike ? btnDislike.querySelector('span') : null);
-    
+
     const isPressed = activeBtn && activeBtn.classList.contains('is-active');
-    
+
     if (activeBtn) activeBtn.classList.toggle('is-active', !isPressed);
-    
+
     if (action === 'like') {
       currentLikes += isPressed ? -1 : 1;
       if (!isPressed && btnDislike && btnDislike.classList.contains('is-active')) {
@@ -152,21 +155,21 @@ document.addEventListener('DOMContentLoaded', () => {
         currentLikes--;
       }
     }
-    
+
     if (btnLike) btnLike.querySelector('span').textContent = `(${currentLikes})`;
     if (btnDislike) btnDislike.querySelector('span').textContent = `(${currentDislikes})`;
-    
+
     try {
       const localVotes = JSON.parse(localStorage.getItem('warg_votes') || '{}');
       let newVote = null;
       if (btnLike && btnLike.classList.contains('is-active')) newVote = 'like';
       else if (btnDislike && btnDislike.classList.contains('is-active')) newVote = 'dislike';
-      
+
       if (newVote) localVotes[argId] = newVote;
       else delete localVotes[argId];
       localStorage.setItem('warg_votes', JSON.stringify(localVotes));
     } catch { /* ignore */ }
-    
+
     try {
       const res = await fetch(`${API_BASE}/api/args/${argId}/vote`, {
         method: 'POST',
@@ -174,13 +177,13 @@ document.addEventListener('DOMContentLoaded', () => {
         body: JSON.stringify({ vote: action, user_id: 1 }),
         credentials: 'include'
       });
-      
+
       if (res.ok) {
         const data = await res.json();
         if (data.success) {
           if (btnLike) btnLike.querySelector('span').textContent = `(${data.like_count})`;
           if (btnDislike) btnDislike.querySelector('span').textContent = `(${data.dislike_count})`;
-          
+
           if (action === 'like') {
             if (btnLike) btnLike.classList.toggle('is-active', data.action === 'voted');
             if (btnDislike) btnDislike.classList.remove('is-active');
@@ -205,171 +208,254 @@ document.addEventListener('DOMContentLoaded', () => {
   // Listen for the 'Play' event from the Map Modal
   document.addEventListener('warg:play-node', async (e) => {
     const node = e.detail;
+    // Launch the game's actual Play Modal using the node's data
+    playModal.open(node.name, node.desc);
 
-    if (node.status === 'locked') {
-      alert("This waypoint is locked. Complete earlier waypoints to unlock it.");
-      return;
+    const cvGameTypes = ['shape_match', 'colour_match', 'texture_match', 'sift_match', 'symmetry_finder'];
+
+    // Check if the node has a CV minigame
+    let cvMinigame = null;
+    if (node.minigames && node.minigames.length > 0) {
+      cvMinigame = node.minigames.find(mg => cvGameTypes.includes(mg.game_type));
     }
 
-    if (node.status === 'completed') {
-      alert("You have already completed this waypoint.");
-      return;
-    }
+    if (cvMinigame) {
+      playModal.setControls('<div id="camera-container" class="camera-container" style="position:relative; width:100%; min-height:300px;"></div>');
+      const container = document.getElementById('camera-container');
 
-    // Open play modal immediately to show loading state
-    playModal.open(node.name, "Checking your location...");
-    playModal.clearControls();
-
-    const loadingState = document.createElement('div');
-    loadingState.style.textAlign = 'center';
-    loadingState.style.padding = '2rem';
-    loadingState.style.color = 'var(--color-text-muted)';
-    loadingState.innerHTML = '<p>Verifying geofence...</p>';
-    playModal.controlsContainer.appendChild(loadingState);
-
-    // Try to get geolocation
-    if (!navigator.geolocation) {
-      alert("Geolocation is not supported by your browser");
-      playModal.close();
-      return;
-    }
-
-    const processLocation = async (latitude, longitude, accuracy) => {
       try {
-        const arriveRes = await fetch(`${API_BASE}/api/game/${argId}/waypoint/${node.id}/arrive`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ lat: latitude, lng: longitude, accuracy_m: accuracy })
+        const refData = await api.getMinigameReference(cvMinigame.game_id);
+        const { CameraCapture } = await import('./components/CameraCapture.js');
+
+        const camera = new CameraCapture(container, cvMinigame.game_type, refData);
+
+        // Setup UI
+        const captureBtn = document.createElement('button');
+        captureBtn.className = 'btn-capture';
+
+        const controlsDiv = document.createElement('div');
+        controlsDiv.className = 'camera-controls';
+        controlsDiv.appendChild(captureBtn);
+        container.appendChild(controlsDiv);
+
+        const feedbackDiv = document.createElement('div');
+        feedbackDiv.className = 'camera-feedback';
+        feedbackDiv.textContent = 'Aligning...';
+        container.appendChild(feedbackDiv);
+
+        camera.onScoreUpdate = (score) => {
+          feedbackDiv.textContent = `Match: ${Math.round(score)}%`;
+          if (score > 80) captureBtn.style.borderColor = 'var(--color-success)';
+          else captureBtn.style.borderColor = 'var(--color-brand)';
+        };
+
+        await camera.start();
+
+        captureBtn.addEventListener('click', async () => {
+          const blob = await camera.snap();
+          feedbackDiv.textContent = 'Analyzing...';
+          try {
+            const result = await api.submitMinigameAttempt(cvMinigame.game_id, blob);
+
+            // Show result overlay
+            const overlay = document.createElement('div');
+            overlay.className = `camera-result-overlay ${result.passed ? 'pass' : 'fail'}`;
+            overlay.innerHTML = `
+              <h2>${result.passed ? 'Match Found!' : 'Not Quite...'}</h2>
+              <p>Score: ${Math.round(result.confidence_score * 100)}%</p>
+              <p>+${result.points_awarded} Points</p>
+              <p>${result.message || ''}</p>
+            `;
+            container.appendChild(overlay);
+
+          } catch (err) {
+            console.error(err);
+            feedbackDiv.textContent = 'Error: ' + err.message;
+          }
         });
 
-        if (!arriveRes.ok) throw new Error('Arrive check failed');
-        const arriveData = await arriveRes.json();
+        // Clean up when modal closes
+        const originalClose = playModal.close.bind(playModal);
+        playModal.close = () => {
+          camera.stop();
+          originalClose();
+        };
 
-        if (!arriveData.within_radius) {
-          const override = confirm(`You are outside of the geofence (Distance: ${Math.round(arriveData.distance)}m, Radius: ${arriveData.radius}m).\n\nProceed anyway (Dev Override)?`);
-          if (!override) {
-            playModal.close();
-            return;
+      } catch (err) {
+        console.error(err);
+        playModal.setControls('<p>Error initializing camera minigame.</p>');
+      }
+    } else {
+      const actionBtn = document.createElement('button');
+      actionBtn.className = 'btn btn--primary';
+      actionBtn.textContent = 'Scan Barcode';
+      playModal.setControls(actionBtn);
+
+      if (node.status === 'locked') {
+        alert("This waypoint is locked. Complete earlier waypoints to unlock it.");
+        return;
+      }
+
+      if (node.status === 'completed') {
+        alert("You have already completed this waypoint.");
+        return;
+      }
+
+      // Open play modal immediately to show loading state
+      playModal.open(node.name, "Checking your location...");
+      playModal.clearControls();
+
+      const loadingState = document.createElement('div');
+      loadingState.style.textAlign = 'center';
+      loadingState.style.padding = '2rem';
+      loadingState.style.color = 'var(--color-text-muted)';
+      loadingState.innerHTML = '<p>Verifying geofence...</p>';
+      playModal.controlsContainer.appendChild(loadingState);
+
+      // Try to get geolocation
+      if (!navigator.geolocation) {
+        alert("Geolocation is not supported by your browser");
+        playModal.close();
+        return;
+      }
+
+      const processLocation = async (latitude, longitude, accuracy) => {
+        try {
+          const arriveRes = await fetch(`${API_BASE}/api/game/${argId}/waypoint/${node.id}/arrive`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ lat: latitude, lng: longitude, accuracy_m: accuracy })
+          });
+
+          if (!arriveRes.ok) throw new Error('Arrive check failed');
+          const arriveData = await arriveRes.json();
+
+          if (!arriveData.within_radius) {
+            const override = confirm(`You are outside of the geofence (Distance: ${Math.round(arriveData.distance)}m, Radius: ${arriveData.radius}m).\n\nProceed anyway (Dev Override)?`);
+            if (!override) {
+              playModal.close();
+              return;
+            }
           }
-        }
 
-        // Restore actual description
-        playModal.open(node.name, node.desc);
+          // Restore actual description
+          playModal.open(node.name, node.desc);
 
-        // Find minigame config
-        const wpData = gameState.waypoints.find(w => w.waypoint_id.toString() === node.id);
-        const minigames = wpData.Minigames && wpData.Minigames.length > 0 ? wpData.Minigames : [{ game_type: 'gps_proximity' }];
-
-        playModal.clearControls();
-
-        const renderMinigame = (index) => {
-          if (index >= minigames.length) {
-            mapModal.updateNodeStatus(node.id, 'completed');
-            playModal.close();
-            return;
-          }
+          // Find minigame config
+          const wpData = gameState.waypoints.find(w => w.waypoint_id.toString() === node.id);
+          const minigames = wpData.Minigames && wpData.Minigames.length > 0 ? wpData.Minigames : [{ game_type: 'gps_proximity' }];
 
           playModal.clearControls();
 
-          const minigame = minigames[index];
-          const handler = getMinigameHandler(minigame.game_type);
+          const renderMinigame = (index) => {
+            if (index >= minigames.length) {
+              mapModal.updateNodeStatus(node.id, 'completed');
+              playModal.close();
+              return;
+            }
 
-          const gameWrapper = document.createElement('div');
-          gameWrapper.className = 'minigame-wrapper';
-          gameWrapper.style.marginBottom = '20px';
+            playModal.clearControls();
 
-          if (minigames.length > 1) {
-            const gameTitle = document.createElement('h4');
-            gameTitle.style.marginBottom = '10px';
-            gameTitle.style.color = 'var(--color-brand)';
-            gameTitle.textContent = `Task ${index + 1} of ${minigames.length}: ${minigame.game_type.replace('_', ' ').toUpperCase()}`;
-            gameWrapper.appendChild(gameTitle);
-          }
+            const minigame = minigames[index];
+            const handler = getMinigameHandler(minigame.game_type);
 
-          playModal.controlsContainer.appendChild(gameWrapper);
+            const gameWrapper = document.createElement('div');
+            gameWrapper.className = 'minigame-wrapper';
+            gameWrapper.style.marginBottom = '20px';
 
-          handler.render(gameWrapper, minigame.config_json || {}, async (submission) => {
-            // Show loading spinner
-            const originalContent = gameWrapper.innerHTML;
-            gameWrapper.innerHTML = `
+            if (minigames.length > 1) {
+              const gameTitle = document.createElement('h4');
+              gameTitle.style.marginBottom = '10px';
+              gameTitle.style.color = 'var(--color-brand)';
+              gameTitle.textContent = `Task ${index + 1} of ${minigames.length}: ${minigame.game_type.replace('_', ' ').toUpperCase()}`;
+              gameWrapper.appendChild(gameTitle);
+            }
+
+            playModal.controlsContainer.appendChild(gameWrapper);
+
+            handler.render(gameWrapper, minigame.config_json || {}, async (submission) => {
+              // Show loading spinner
+              const originalContent = gameWrapper.innerHTML;
+              gameWrapper.innerHTML = `
               <div style="text-align: center; padding: 2rem;">
                 <div class="spinner" style="margin: 0 auto 1rem; width: 40px; height: 40px; border: 4px solid var(--color-bg-elevated); border-top: 4px solid var(--color-brand); border-radius: 50%; animation: spin 1s linear infinite;"></div>
                 <p>Verifying...</p>
               </div>
             `;
 
-            // On Submit
-            try {
-              const submitRes = await fetch(`${API_BASE}/api/game/${argId}/waypoint/${node.id}/submit`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({
-                  game_id: minigame.game_id,
-                  game_type: minigame.game_type,
-                  submission
-                })
-              });
-              if (!submitRes.ok) throw new Error('Submission failed');
-              const result = await submitRes.json();
+              // On Submit
+              try {
+                const submitRes = await fetch(`${API_BASE}/api/game/${argId}/waypoint/${node.id}/submit`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  credentials: 'include',
+                  body: JSON.stringify({
+                    game_id: minigame.game_id,
+                    game_type: minigame.game_type,
+                    submission
+                  })
+                });
+                if (!submitRes.ok) throw new Error('Submission failed');
+                const result = await submitRes.json();
 
-              const isLastGame = index === minigames.length - 1;
-              playModal.showFeedback(result.outcome, isLastGame);
+                const isLastGame = index === minigames.length - 1;
+                playModal.showFeedback(result.outcome, isLastGame);
 
-              if (result.can_retry && result.outcome === 'fail') {
-                setTimeout(() => {
-                  renderMinigame(index);
-                }, 2000);
-              } else if (result.outcome === 'pass' || result.outcome === 'fail') {
-                if (result.unlockedNodes) {
-                  result.unlockedNodes.forEach(unlockedId => {
-                    mapModal.updateNodeStatus(unlockedId.toString(), 'unlocked');
-                  });
-                }
+                  if (result.can_retry && result.outcome === 'fail') {
+                    setTimeout(() => {
+                      renderMinigame(index);
+                    }, 2000);
+                  } else if (result.outcome === 'pass' || result.outcome === 'fail') {
+                    if (result.unlockedNodes) {
+                      result.unlockedNodes.forEach(unlockedId => {
+                        mapModal.updateNodeStatus(unlockedId.toString(), 'unlocked');
+                      });
+                    }
 
-                if (!isLastGame) {
-                  setTimeout(() => {
-                    renderMinigame(index + 1);
-                  }, 2000);
-                } else {
-                  mapModal.updateNodeStatus(node.id, 'completed');
-                }
-              }
-            } catch (err) {
-              console.error(err);
-              alert("Error submitting minigame.");
-              gameWrapper.innerHTML = originalContent;
-              renderMinigame(index);
-            }
-          });
-        };
+                    if (!isLastGame) {
+                      setTimeout(() => {
+                        renderMinigame(index + 1);
+                      }, 2000);
+                    } else {
+                      mapModal.updateNodeStatus(node.id, 'completed');
+                    }
+                  }
+                } catch (err) {
+                    console.error(err);
+                    alert("Error submitting minigame.");
+                    gameWrapper.innerHTML = originalContent;
+                    renderMinigame(index);
+                  }
+                });
+          };
 
-        renderMinigame(0);
+          renderMinigame(0);
 
-      } catch (err) {
-        console.error(err);
-        alert("Error during geofence check.");
-        playModal.close();
+        } catch (err) {
+          console.error(err);
+          alert("Error during geofence check.");
+          playModal.close();
+        }
+      };
+
+      if (window.lastPlayerLocation) {
+        processLocation(window.lastPlayerLocation.latitude, window.lastPlayerLocation.longitude, window.lastPlayerLocation.accuracy);
+      } else {
+        navigator.geolocation.getCurrentPosition((position) => {
+          const { latitude, longitude, accuracy } = position.coords;
+          window.lastPlayerLocation = { latitude, longitude, accuracy };
+          processLocation(latitude, longitude, accuracy);
+        }, (error) => {
+          alert("Unable to retrieve your location for geofencing.");
+          console.error(error);
+          playModal.close();
+        }, {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0
+        });
       }
-    };
-
-    if (window.lastPlayerLocation) {
-      processLocation(window.lastPlayerLocation.latitude, window.lastPlayerLocation.longitude, window.lastPlayerLocation.accuracy);
-    } else {
-      navigator.geolocation.getCurrentPosition((position) => {
-        const { latitude, longitude, accuracy } = position.coords;
-        window.lastPlayerLocation = { latitude, longitude, accuracy };
-        processLocation(latitude, longitude, accuracy);
-      }, (error) => {
-        alert("Unable to retrieve your location for geofencing.");
-        console.error(error);
-        playModal.close();
-      }, {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0
-      });
     }
   });
 
@@ -464,12 +550,12 @@ document.addEventListener('DOMContentLoaded', () => {
       function appendCommentTree(comment, parentElement, isReply = false) {
         const node = renderCommentNode(comment, isReply);
         parentElement.appendChild(node);
-        
+
         if (comment.replies && comment.replies.length > 0) {
           const repliesContainer = document.createElement('div');
           repliesContainer.className = 'comment-replies';
           node.querySelector('.comment-item__content').appendChild(repliesContainer);
-          
+
           comment.replies.forEach(reply => {
             appendCommentTree(reply, repliesContainer, true);
           });
@@ -487,14 +573,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function postComment(body, parentId = null, isSpoiler = false, btnElement = null) {
     if (!body.trim()) return;
-    
+
     let originalBtnHTML = '';
     if (btnElement) {
       originalBtnHTML = btnElement.innerHTML;
       btnElement.disabled = true;
       btnElement.innerHTML = '<div style="display:inline-block;width:14px;height:14px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;animation:spin 1s linear infinite;vertical-align:middle;"></div>';
     }
-    
+
     try {
       const response = await fetch(`${API_BASE}/api/comments/arg/${argId}`, {
         method: 'POST',
@@ -518,10 +604,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
       commentInput.value = '';
       if (checkIsSpoiler) checkIsSpoiler.checked = false;
-      
+
       // Wait for comments to reload before removing the spinner
       await loadComments();
-      
+
       if (btnElement && document.body.contains(btnElement)) {
         btnElement.disabled = false;
         btnElement.innerHTML = originalBtnHTML;

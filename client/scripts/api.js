@@ -69,7 +69,7 @@ var api = (function () {
    *     author: { name, initials }, likes, dislikes, rating, featured }
    */
   function normaliseArg(arg) {
-    var creator  = arg.Creator || {};
+    var creator = arg.Creator || {};
     var username = creator.username || 'Unknown';
 
     // Build initials from username (up to 2 chars)
@@ -91,22 +91,22 @@ var api = (function () {
     var image = null;
 
     return {
-      id:            String(arg.arg_id),
-      title:         arg.title        || 'Untitled',
-      mode:          arg.mode         || 'solo',
-      caption:       arg.caption      || '',
-      emoji:         '🎮',
-      image:         image,
-      progress:      null,
+      id: String(arg.arg_id),
+      title: arg.title || 'Untitled',
+      mode: arg.mode || 'solo',
+      caption: arg.caption || '',
+      emoji: '🎮',
+      image: image,
+      progress: null,
       progressLabel: null,
       author: {
-        name:     username,
+        name: username,
         initials: initials,
       },
-      likes:    arg.like_count    || 0,
+      likes: arg.like_count || 0,
       dislikes: arg.dislike_count || 0,
-      userVote: arg.user_vote     || null,
-      rating:   rating,
+      userVote: arg.user_vote || null,
+      rating: rating,
       featured: false,
       // Keep raw fields for pages that need them
       _raw: arg,
@@ -178,6 +178,35 @@ var api = (function () {
     return _get('/api/users/' + userId + '/friends');
   }
 
+  async function removeFriend(userId, friendId) {
+    return _delete('/api/users/' + userId + '/friends/' + friendId);
+  }
+
+  async function searchUsers(query) {
+    return _get('/api/users/search/query?q=' + encodeURIComponent(query));
+  }
+
+  async function sendFriendRequest(senderId, receiverId) {
+    return _post('/api/users/' + senderId + '/friends/request', { receiverId });
+  }
+
+  async function getFriendRequests(userId) {
+    return _get('/api/users/' + userId + '/friends/requests');
+  }
+
+  async function respondToFriendRequest(requestId, status) {
+    const res = await fetch(API_BASE + '/api/users/friends/requests/' + requestId, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+      credentials: 'include'
+    });
+    if (!res.ok) {
+      throw Object.assign(new Error('API error'), { status: res.status, path: '/api/users/friends/requests/' + requestId });
+    }
+    return res.json();
+  }
+
   /* ── Game Actions ───────────────────────────────────────── */
   async function voteArg(argId, voteType, userId = 1) { // Defaulting user_id to 1 until auth is hooked up
     return _post('/api/args/' + argId + '/vote', { vote: voteType, user_id: userId });
@@ -191,6 +220,49 @@ var api = (function () {
     return _delete('/api/sessions/' + userId + '/arg/' + argId);
   }
 
+  async function getMinigameReference(gameId) {
+    const res = await fetch(API_BASE + '/api/minigames/' + gameId + '/reference/image', { credentials: 'include' });
+    if (!res.ok) throw new Error('Failed to fetch reference');
+
+    const contentType = res.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      return res.json();
+    }
+    return res.blob();
+  }
+
+  async function submitMinigameAttempt(gameId, imageBlob) {
+    const formData = new FormData();
+    formData.append('image', imageBlob, 'attempt.jpg');
+
+    const res = await fetch(API_BASE + '/api/minigames/' + gameId + '/attempt', {
+      method: 'POST',
+      body: formData,
+      credentials: 'include'
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(errText || 'Failed to submit attempt');
+    }
+    return res.json();
+  }
+
+  async function uploadMinigameReference(gameId, imageBlob) {
+    const formData = new FormData();
+    formData.append('image', imageBlob, 'reference.jpg');
+
+    const res = await fetch(API_BASE + '/api/minigames/' + gameId + '/reference', {
+      method: 'POST',
+      body: formData,
+      credentials: 'include'
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(errText || 'Failed to upload reference');
+    }
+    return res.json();
+  }
+  
   async function submitFeedback(feedbackData) {
     return _post('/api/feedback', feedbackData);
   }
@@ -204,11 +276,19 @@ var api = (function () {
     getUserLibrary,
     getActiveSessions,
     getFriends,
+    removeFriend,
+    searchUsers,
+    sendFriendRequest,
+    getFriendRequests,
+    respondToFriendRequest,
     normaliseArg,
     voteArg,
     flagArg,
     removeRecentArg,
+    getMinigameReference,
+    submitMinigameAttempt,
+    uploadMinigameReference,
     submitFeedback,
   };
 
-}());
+})();

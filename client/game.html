@@ -14,6 +14,8 @@
   <link rel="stylesheet" href="styles/tokens.css" />
   <link rel="stylesheet" href="styles/home.css" />
   <link rel="stylesheet" href="styles/game.css?v=2" />
+  <link rel="stylesheet" href="styles/game.css" />
+
 </head>
 
 <body>
@@ -184,13 +186,21 @@
           <div class="game-actions-bar" style="display: flex; gap: 16px; align-items: center; margin-bottom: 24px;">
             <!-- Like Game -->
             <button class="icon-btn" id="btn-like-game" aria-label="Like game" title="Like">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z" />
+                <path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" />
+              </svg>
               <span></span>
             </button>
 
             <!-- Dislike Game -->
             <button class="icon-btn" id="btn-dislike-game" aria-label="Dislike game" title="Dislike">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z"/><path d="M17 2h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z" />
+                <path d="M17 2h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17" />
+              </svg>
               <span></span>
             </button>
 
@@ -198,7 +208,11 @@
 
             <!-- Flag/Report Game -->
             <button class="icon-btn" id="btn-flag-game" aria-label="Flag game for review" title="Report/Flag">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+                <line x1="4" y1="22" x2="4" y2="15" />
+              </svg>
             </button>
           </div>
 
@@ -212,12 +226,13 @@
 
             <div class="game-discussion__compose">
               <div class="comment-item__avatar">
-                <img src="https://api.dicebear.com/9.x/identicon/svg?seed=WARGPlayer&backgroundColor=1a1816"
-                  alt="You" id="current-user-avatar" />
+                <img src="https://api.dicebear.com/9.x/identicon/svg?seed=WARGPlayer&backgroundColor=1a1816" alt="You"
+                  id="current-user-avatar" />
               </div>
               <div style="flex-grow: 1; display: flex; flex-direction: column;">
                 <div class="compose-input-wrapper">
-                  <input type="text" id="comment-input" class="input-field" placeholder="Add a comment..." aria-label="New comment text" />
+                  <input type="text" id="comment-input" class="input-field" placeholder="Add a comment..."
+                    aria-label="New comment text" />
                   <button id="btn-post-comment" class="btn btn--primary btn--sm">Post</button>
                 </div>
                 <div class="compose-options">
@@ -403,7 +418,7 @@
   </div><!-- /.app-shell -->
 
   <script src="scripts/config.js"></script>
-  <script src="scripts/data/games.js"></script>
+  <script src="scripts/api.js"></script>
   <script src="scripts/home.js"></script>
   <!-- Play Menu Modal -->
   <div class="modal-overlay" id="play-modal-overlay" aria-hidden="true">
@@ -433,8 +448,7 @@
         </div>
       </div>
     </div>
-  <script src="scripts/game.js?v=4" type="module"></script>
+    <script src="scripts/game.js?v=4" type="module"></script>
 </body>
 
 </html>
-
