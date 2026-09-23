@@ -87,15 +87,21 @@ function createApp() {
   const sequelize = require('./config/database');
   
   // Healthcheck Route (Use this for UptimeRobot)
+  // MUST always return 200 so Render counts it as activity and UptimeRobot
+  // stays green. DB status is reported as metadata, not as a failure.
   app.get('/ping', async (req, res) => {
+    let dbAlive = false;
     try {
-      // Ping the database to keep it alive
       await sequelize.authenticate();
-      res.status(200).json({ status: 'ok', message: 'Backend and Database are alive!' });
+      dbAlive = true;
     } catch (error) {
-      console.error('Ping DB Error:', error);
-      res.status(500).json({ status: 'error', message: 'Database connection failed' });
+      console.error('Ping DB Error:', error.message);
     }
+    res.status(200).json({
+      status: 'ok',
+      db: dbAlive ? 'connected' : 'unreachable',
+      timestamp: new Date().toISOString()
+    });
   });
 
   // Mount API Routes

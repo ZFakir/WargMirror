@@ -68,4 +68,29 @@ async function startServer() {
 }
 
 startServer();
+
+// ── Self-ping to prevent Render free-tier cold starts ────────────────
+// Render spins down free services after ~15 min of inactivity.
+// This hits our own /ping endpoint every 14 min to keep the process
+// (and the DB connection it checks) alive.
+if (process.env.NODE_ENV === 'production') {
+  const PING_INTERVAL_MS = 14 * 60 * 1000; // 14 minutes
+  const SELF_URL =
+    process.env.RENDER_EXTERNAL_URL ||   // Render injects this automatically
+    `http://localhost:${PORT}`;
+
+  setInterval(async () => {
+    try {
+      const res = await fetch(`${SELF_URL}/ping`);
+      const body = await res.json();
+      console.log(`[self-ping] ${new Date().toISOString()} → ${body.status}`);
+    } catch (err) {
+      console.error(`[self-ping] failed: ${err.message}`);
+    }
+  }, PING_INTERVAL_MS);
+
+  console.log(
+    `🏓 Self-ping enabled every ${PING_INTERVAL_MS / 60000} min → ${SELF_URL}/ping`
+  );
+}
 // Trigger nodemon
