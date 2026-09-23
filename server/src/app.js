@@ -106,7 +106,13 @@ function createApp() {
   app.use('/api/game', requireAuth, gameRoutes);
 
   const path = require('path');
-  app.use('/client', express.static(path.join(__dirname, '../../client')));
+  const staticOptions = { extensions: ['html', 'htm'] };
+  
+  // Serve static files from the client directory at the root (e.g. /login)
+  app.use(express.static(path.join(__dirname, '../../client'), staticOptions));
+  
+  // Also serve them under /client for backwards compatibility (e.g. /client/login)
+  app.use('/client', express.static(path.join(__dirname, '../../client'), staticOptions));
 
   return app;
 }
