@@ -50,7 +50,7 @@ test.describe('edit_warg page logic', () => {
     await expect(selectorModal).toHaveAttribute('aria-hidden', 'false');
 
     // Click QR Code game
-    await page.click('button[data-game-type="qr"]');
+    await page.click('button[data-game-type="barcode"]');
     
     // Verify Barcode modal opens
     const barcodeModal = page.locator('#barcode-modal-overlay');
