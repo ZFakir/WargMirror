@@ -3,29 +3,49 @@ import numpy as np
 
 def extract_hsv_histogram(image_bytes: bytes, mask_bytes: bytes = None) -> np.ndarray:
     """
-    Decodes an image byte stream, converts it to HSV colour-space, 
-    and extracts a normalized 1D Hue histogram to ignore lighting conditions.
+    Decodes an image byte stream, converts it to HSV colour-space,
+    and extracts a normalized 2D Hue-Saturation histogram.
+
+    Low-saturation pixels (whites, greys, near-blacks) are masked out
+    because their Hue channel carries no meaningful colour information
+    and would otherwise create false similarity between chromatic and
+    achromatic images.
     """
     nparr = np.frombuffer(image_bytes, np.uint8)
     image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
     hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    
-    # Decode mask if provided (e.g., from SAM)
+
+    # ── Build a combined mask ────────────────────────────────────
+    # 1. Decode external mask if provided (e.g., from SAM)
     mask = None
     if mask_bytes:
         mask_arr = np.frombuffer(mask_bytes, np.uint8)
         mask = cv2.imdecode(mask_arr, cv2.IMREAD_GRAYSCALE)
         _, mask = cv2.threshold(mask, 127, 255, cv2.THRESH_BINARY)
-    
-    # 1D Histogram (Hue ONLY) with 8 coarse bins to forgive lighting shifts
+
+    # 2. Saturation gate – discard pixels with S < 30
+    #    (achromatic pixels whose Hue is essentially random noise)
+    sat_mask = cv2.inRange(hsv_image[:, :, 1], 30, 255)
+
+    if mask is not None:
+        mask = cv2.bitwise_and(mask, sat_mask)
+    else:
+        mask = sat_mask
+
+    # If almost no chromatic pixels survive, return a zero histogram
+    # so that achromatic images score ~0 against chromatic references.
+    if cv2.countNonZero(mask) < 0.01 * mask.size:
+        return np.zeros(12 * 8, dtype=np.float32)
+
+    # ── 2D Histogram: Hue (12 bins) × Saturation (8 bins) ───────
     hist = cv2.calcHist(
-        [hsv_image], 
-        [0],         # Channel: H
-        mask,        # Ignore the background if mask is provided
-        [8],         # Coarse bins
-        [0, 180]     # Range: H(0-179)
+        [hsv_image],
+        [0, 1],            # Channels: H + S
+        mask,
+        [12, 8],           # 12 hue bins, 8 saturation bins
+        [0, 180, 0, 256]   # Ranges: H(0-179), S(0-255)
     )
-    
+
     cv2.normalize(hist, hist, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX)
     return hist.flatten()
 
