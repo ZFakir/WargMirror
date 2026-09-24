@@ -1,3 +1,4 @@
+/* global showToast, ConfirmModal, GameCard */
 /**
  * WARG Platform — Admin Dashboard Script
  * Handles fetching real data for flagged games, recent flags, and player search.
