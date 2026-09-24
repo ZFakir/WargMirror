@@ -1,11 +1,11 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
 fastapi
 uvicorn
 python-multipart
-opencv-python
+opencv-python-headless
 numpy
 torch>=2.0.0
 torchvision>=0.15.2
 Pillow>=9.5.0
 timm
 git+https://github.com/ChaoningZhang/MobileSAM.git
-
