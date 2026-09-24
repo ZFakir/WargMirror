@@ -19,7 +19,6 @@ if (!window.API_BASE_URL) {
 }
 var API_BASE = window.API_BASE_URL;
 
-// eslint-disable-next-line no-unused-vars
 var api = (function () {
 
   /* ── Generic fetch wrapper ──────────────────────────────── */
@@ -317,7 +316,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
       });
     }
-  } catch (e) {
+  } catch {
     // Ignore errors for unauthenticated users
   }
 });

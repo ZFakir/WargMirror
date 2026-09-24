@@ -1,3 +1,4 @@
+/* global showToast */
 /**
  * WARG Platform — Game Page Script
  * Handles: Progress timeline rendering, game engine integration, and interactions.

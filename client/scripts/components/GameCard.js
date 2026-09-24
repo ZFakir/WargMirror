@@ -1,3 +1,4 @@
+/* global showToast */
 /**
  * WARG Platform — GameCard Component
  * ===================================
