@@ -935,7 +935,12 @@ export class MapModal {
     if (!this.container) return;
     const overlay = document.createElement('div');
     overlay.className = 'map-completed-overlay';
-    overlay.innerHTML = '<h1 style="color: #FFD700; text-shadow: 2px 2px 10px rgba(0,0,0,0.9); font-size: 4rem; text-align: center; animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);">COMPLETED</h1>';
+    
+    overlay.innerHTML = `
+      <div class="map-shimmer-layer"></div>
+      <h1 class="completed-text">COMPLETED</h1>
+    `;
+    
     overlay.style.position = 'absolute';
     overlay.style.top = '0';
     overlay.style.left = '0';
@@ -944,18 +949,50 @@ export class MapModal {
     overlay.style.display = 'flex';
     overlay.style.alignItems = 'center';
     overlay.style.justifyContent = 'center';
-    overlay.style.backgroundColor = 'rgba(0,0,0,0.6)';
     overlay.style.zIndex = '9999';
     overlay.style.pointerEvents = 'none';
 
-    // Add keyframes if not exists
-    if (!document.getElementById('map-completed-keyframes')) {
+    // Add styles & keyframes if not exists
+    if (!document.getElementById('map-completed-styles')) {
       const style = document.createElement('style');
-      style.id = 'map-completed-keyframes';
+      style.id = 'map-completed-styles';
       style.textContent = `
+        .map-completed-overlay {
+          background-color: rgba(0, 0, 0, 0.4);
+        }
+        .map-shimmer-layer {
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(120deg, rgba(255,215,0,0) 0%, rgba(255,215,0,0.1) 25%, rgba(255,215,0,0.4) 50%, rgba(255,215,0,0.1) 75%, rgba(255,215,0,0) 100%);
+          background-size: 200% 200%;
+          mix-blend-mode: color-dodge;
+          animation: goldSweep 3s ease-in-out infinite, fadeIn 1.5s forwards;
+          opacity: 0;
+          pointer-events: none;
+        }
+        .completed-text {
+          position: relative;
+          color: #FFD700; 
+          text-shadow: 0 0 30px rgba(255,215,0,0.8), 2px 2px 10px rgba(0,0,0,0.9); 
+          font-size: 4rem; 
+          text-align: center; 
+          animation: popIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+          z-index: 2;
+          pointer-events: none;
+        }
         @keyframes popIn {
-          0% { transform: scale(0.5); opacity: 0; }
+          0% { transform: scale(0.5); opacity: 0; filter: blur(10px); }
+          50% { transform: scale(1.1); filter: blur(0px); }
           100% { transform: scale(1); opacity: 1; }
+        }
+        @keyframes goldSweep {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+        @keyframes fadeIn {
+          0% { opacity: 0; }
+          100% { opacity: 1; }
         }
       `;
       document.head.appendChild(style);

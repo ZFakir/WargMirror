@@ -110,6 +110,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }))
       });
 
+      if (gameState && gameState.session && gameState.session.status === 'completed') {
+        setTimeout(() => {
+          mapModal.showCompletedOverlay();
+        }, 500);
+      }
+
       // Start watching player location
       if (navigator.geolocation) {
         navigator.geolocation.watchPosition((position) => {
