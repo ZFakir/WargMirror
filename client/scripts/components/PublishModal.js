@@ -79,20 +79,39 @@ export class PublishModal {
       }
     });
 
-    // Mock submit behavior
-    this.submitBtn.addEventListener('click', () => {
+    // Submit behavior
+    this.submitBtn.addEventListener('click', async () => {
+      if (!this.gameId) {
+        this.close();
+        return;
+      }
+
       const origText = this.submitBtn.textContent;
       const isUnpublish = this.action === 'unpublish';
       this.submitBtn.textContent = isUnpublish ? 'Unpublishing...' : 'Publishing...';
       this.submitBtn.disabled = true;
 
-      setTimeout(() => {
+      try {
+        const API_BASE = window.API_BASE_URL || 'https://wargmirror.onrender.com';
+        const res = await fetch(`${API_BASE}/api/args/${this.gameId}/status`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: isUnpublish ? 'unpublished' : 'published' }),
+          credentials: 'include'
+        });
+        
+        if (!res.ok) throw new Error('Failed to update status');
+        
+        alert(`WARG ${isUnpublish ? 'unpublished' : 'published'} successfully!`);
+        window.location.reload();
+      } catch (err) {
+        console.error(err);
+        alert(`Failed to ${isUnpublish ? 'unpublish' : 'publish'}.`);
+      } finally {
         this.submitBtn.textContent = origText;
         this.submitBtn.disabled = false;
         this.close();
-        
-        alert(`WARG ${isUnpublish ? 'unpublished' : 'published'} successfully!`);
-      }, 800);
+      }
     });
   }
 
@@ -100,7 +119,8 @@ export class PublishModal {
     return this.overlay.getAttribute('aria-hidden') === 'false';
   }
 
-  open(gameTitle = 'this game', action = 'publish') {
+  open(gameId, gameTitle = 'this game', action = 'publish') {
+    this.gameId = gameId;
     this.action = action;
     this.gameTitleEl.textContent = gameTitle;
     

@@ -382,3 +382,29 @@ exports.flagArg = async (req, res) => {
     res.status(500).json({ error: 'Failed to flag ARG' });
   }
 };
+
+exports.updateArgStatus = async (req, res) => {
+  try {
+    const arg_id = req.params.id;
+    const { status } = req.body;
+
+    const arg = await Arg.findByPk(arg_id);
+    if (!arg) {
+      return res.status(404).json({ error: 'ARG not found' });
+    }
+
+    const creator_id = req.user ? req.user.user_id : (req.body.creator_id || 1);
+    if (arg.creator_id !== creator_id) {
+      return res.status(403).json({ error: 'Not authorized' });
+    }
+
+    await arg.update({
+      status: sanitizeStatus(status)
+    });
+
+    res.json(arg);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to update ARG status' });
+  }
+};

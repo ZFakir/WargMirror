@@ -75,11 +75,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // ── Listen for publish/unpublish events from GameCards ──
   document.addEventListener('warg:publish', (e) => {
-    publishModal.open(e.detail.gameTitle, 'publish');
+    publishModal.open(e.detail.gameId, e.detail.gameTitle, 'publish');
   });
 
   document.addEventListener('warg:unpublish', (e) => {
-    publishModal.open(e.detail.gameTitle, 'unpublish');
+    publishModal.open(e.detail.gameId, e.detail.gameTitle, 'unpublish');
   });
 });
 

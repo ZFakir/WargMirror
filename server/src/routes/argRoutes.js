@@ -6,6 +6,7 @@ router.get('/', argController.getAllArgs);
 router.get('/:id', argController.getArgById);
 router.post('/', argController.createArg);
 router.put('/:id', argController.updateArg);
+router.patch('/:id/status', argController.updateArgStatus);
 router.post('/:id/vote', argController.voteArg);
 router.post('/:id/flag', argController.flagArg);
 
