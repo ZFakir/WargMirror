@@ -602,6 +602,34 @@ export class MapModal {
     this._cachedEdges = edges;
     this._cachedNodes = nodes;
     this._redrawEdgeSvg();
+
+    // Identify start nodes (0 incoming edges)
+    const incomingEdges = new Set(edges.map(e => e.to));
+    const isCycle = incomingEdges.size === nodes.length && nodes.length > 0;
+    
+    nodes.forEach(node => {
+      const isStart = !incomingEdges.has(node.id) || isCycle;
+      const marker = this.markerLookup[node.id];
+      if (marker) {
+        const el = marker.getElement();
+        if (el) {
+          const core = el.querySelector('.node-marker');
+          if (core) {
+            core.classList.toggle('start-node', isStart);
+            const coreInner = core.querySelector('.node-marker__core');
+            if (coreInner) {
+               if (isStart) {
+                 coreInner.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:16px;height:16px;margin-top:2px"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>';
+                 core.title = 'Start Node';
+               } else {
+                 coreInner.innerHTML = '+';
+                 core.title = '';
+               }
+            }
+          }
+        }
+      }
+    });
   }
 
   /**

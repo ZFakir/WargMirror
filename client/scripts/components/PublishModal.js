@@ -102,15 +102,46 @@ export class PublishModal {
         
         if (!res.ok) throw new Error('Failed to update status');
         
-        alert(`WARG ${isUnpublish ? 'unpublished' : 'published'} successfully!`);
-        window.location.reload();
+        // Show success message inside the modal body
+        const bodyEl = this.overlay.querySelector('.publish-modal__body');
+        bodyEl.innerHTML = `
+          <div style="text-align: center; padding: 16px 0;">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--color-success, #00C853)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 16px;">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+              <polyline points="22 4 12 14.01 9 11.01"></polyline>
+            </svg>
+            <h3 style="margin-bottom: 8px;">Success</h3>
+            <p style="color: var(--color-text-secondary);">WARG ${isUnpublish ? 'unpublished' : 'published'} successfully!</p>
+          </div>
+        `;
+        
+        this.submitBtn.style.display = 'none';
+        this.cancelBtn.textContent = 'Close';
+        
+        // Reload when closed
+        const reloadFn = () => window.location.reload();
+        this.cancelBtn.addEventListener('click', reloadFn);
+        this.closeBtn.addEventListener('click', reloadFn);
+        
       } catch (err) {
         console.error(err);
-        alert(`Failed to ${isUnpublish ? 'unpublish' : 'publish'}.`);
+        const bodyEl = this.overlay.querySelector('.publish-modal__body');
+        bodyEl.innerHTML = `
+          <div style="text-align: center; padding: 16px 0;">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--color-danger, #ff6b6b)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 16px;">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="12"></line>
+              <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            <h3 style="margin-bottom: 8px;">Error</h3>
+            <p style="color: var(--color-text-secondary);">Failed to ${isUnpublish ? 'unpublish' : 'publish'}. Please try again later.</p>
+          </div>
+        `;
+        this.submitBtn.style.display = 'none';
+        this.cancelBtn.textContent = 'Close';
       } finally {
         this.submitBtn.textContent = origText;
         this.submitBtn.disabled = false;
-        this.close();
       }
     });
   }

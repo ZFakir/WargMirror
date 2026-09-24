@@ -543,6 +543,13 @@
   box-shadow: 0 4px 12px var(--color-accent-glow);
 }
 
+.map-modal .node-marker.editor-node.start-node .node-marker__core {
+  background: var(--color-success, #00C853);
+  color: #fff;
+  border-color: #fff;
+  box-shadow: 0 0 16px rgba(0, 200, 83, 0.4);
+}
+
 .map-modal .node-marker.editor-node:active .node-marker__core {
   transform: scale(0.95);
 }
