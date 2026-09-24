@@ -419,6 +419,11 @@ document.addEventListener('DOMContentLoaded', () => {
                       }, 2000);
                     } else {
                       mapModal.updateNodeStatus(node.id, 'completed');
+                      if (result.session_completed) {
+                        setTimeout(() => {
+                          mapModal.showCompletedOverlay();
+                        }, 1000); // Wait a second for popup to close / feedback to finish
+                      }
                     }
                   }
                 } catch (err) {

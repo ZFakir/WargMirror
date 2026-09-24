@@ -931,6 +931,39 @@ export class MapModal {
     }
   }
 
+  showCompletedOverlay() {
+    if (!this.container) return;
+    const overlay = document.createElement('div');
+    overlay.className = 'map-completed-overlay';
+    overlay.innerHTML = '<h1 style="color: #FFD700; text-shadow: 2px 2px 10px rgba(0,0,0,0.9); font-size: 4rem; text-align: center; animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);">COMPLETED</h1>';
+    overlay.style.position = 'absolute';
+    overlay.style.top = '0';
+    overlay.style.left = '0';
+    overlay.style.width = '100%';
+    overlay.style.height = '100%';
+    overlay.style.display = 'flex';
+    overlay.style.alignItems = 'center';
+    overlay.style.justifyContent = 'center';
+    overlay.style.backgroundColor = 'rgba(0,0,0,0.6)';
+    overlay.style.zIndex = '9999';
+    overlay.style.pointerEvents = 'none';
+
+    // Add keyframes if not exists
+    if (!document.getElementById('map-completed-keyframes')) {
+      const style = document.createElement('style');
+      style.id = 'map-completed-keyframes';
+      style.textContent = `
+        @keyframes popIn {
+          0% { transform: scale(0.5); opacity: 0; }
+          100% { transform: scale(1); opacity: 1; }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
+    this.container.appendChild(overlay);
+  }
+
   isFullscreen() {
     return this.container && this.container.classList.contains('is-fullscreen');
   }

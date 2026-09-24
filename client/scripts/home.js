@@ -244,10 +244,18 @@ async function initHomeData() {
     // Fetch user profile for stats
     try {
       var profile = await api.getUserProfile(currentUser.user_id);
-      var statPoints = document.querySelector('.stat-block__value--green');
+      
+      var statPlayed = document.querySelector('.activity-card__stats .stat-block:nth-child(1) .stat-block__value');
+      if (statPlayed) statPlayed.textContent = profile.games_played || 0; // Using view field if available
+      
+      var statPoints = document.querySelector('.activity-card__stats .stat-block:nth-child(2) .stat-block__value');
       if (statPoints) statPoints.textContent = (profile.total_points || 0).toLocaleString();
-      var statDist = document.querySelector('[data-stat="distance"]');
-      if (statDist) statDist.textContent = Math.round((profile.distance_walked_m || 0) / 1000) + ' km';
+      
+      var statCompleted = document.getElementById('sidebar-stat-completed');
+      if (statCompleted) statCompleted.textContent = profile.games_completed || 0;
+      
+      var statBadges = document.querySelector('.activity-card__stats .stat-block:nth-child(4) .stat-block__value');
+      if (statBadges) statBadges.textContent = (profile.Badges || []).length;
     } catch { /* profile stats are non-critical */ }
 
     // Fetch and render friends & requests

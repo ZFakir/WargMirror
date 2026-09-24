@@ -293,8 +293,10 @@ exports.submitMinigame = async (req, res) => {
     
     const sessionProgress = activeProgress.filter(p => argWpIds.includes(p.waypoint_id));
     const hasUnlocked = sessionProgress.some(p => p.status === 'unlocked');
+    let session_completed = false;
     
     if (!hasUnlocked && sessionProgress.some(p => p.status === 'completed')) {
+      session_completed = true;
       await GameSession.update({ status: 'completed', completed_at: new Date() }, {
         where: { user_id, arg_id },
         transaction
@@ -302,7 +304,7 @@ exports.submitMinigame = async (req, res) => {
     }
 
     await transaction.commit();
-    res.json({ outcome, unlockedNodes });
+    res.json({ outcome, unlockedNodes, session_completed });
   } catch (error) {
     await transaction.rollback();
     console.error(error);
