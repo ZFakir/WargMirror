@@ -14,8 +14,9 @@ exports.startGameSession = async (req, res) => {
 exports.getActiveSessions = async (req, res) => {
   try {
     const sessions = await GameSession.findAll({
-      where: { user_id: req.params.user_id, status: 'active' },
-      include: [{ model: Arg, attributes: ['title', 'caption', 'cover_image'] }]
+      where: { user_id: req.params.user_id },
+      include: [{ model: Arg, attributes: ['title', 'caption', 'cover_image'] }],
+      order: [['last_active_at', 'DESC']]
     });
     res.json(sessions);
   } catch (error) {

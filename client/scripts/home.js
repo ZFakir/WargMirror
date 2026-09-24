@@ -266,7 +266,7 @@ async function initHomeData() {
     try {
       var sessions = await api.getActiveSessions(currentUser.user_id);
       sessions.forEach(function (s) {
-        if (s.Arg && s.Arg.arg_id) sessionArgIds.add(String(s.Arg.arg_id));
+        if (s.arg_id) sessionArgIds.add(String(s.arg_id));
       });
     } catch { /* fallback handled below */ }
 
@@ -315,9 +315,14 @@ async function initHomeData() {
     }
   }
 
-  // ── New & Trending — sorted by created_at desc ──
-  var trendingArgs = args.slice().sort(function (a, b) {
-    return new Date(b._raw.created_at) - new Date(a._raw.created_at);
+  // ── New & Trending — published in last week, sorted by likes ──
+  var oneWeekAgo = new Date();
+  oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+  var trendingArgs = args.filter(function (a) {
+    return new Date(a._raw.created_at) >= oneWeekAgo;
+  }).sort(function (a, b) {
+    return (b.likes || 0) - (a.likes || 0);
   }).slice(0, 10);
   if (trendingArgs.length === 0) {
     showRowEmpty('row-new', 'No new games yet.');
