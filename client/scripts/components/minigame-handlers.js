@@ -2,6 +2,7 @@
  * Minigame Handlers Registry
  * Exports a function to get the UI handler for a specific game type.
  */
+/* global Html5QrcodeScanner */
 
 export function getMinigameHandler(gameType) {
   switch (gameType) {
@@ -71,20 +72,59 @@ export function getMinigameHandler(gameType) {
           container.innerHTML = `
             <div style="text-align: center; padding: 1rem;">
                <p style="margin-bottom: 1rem; color: var(--color-text-muted);">Scan the hidden QR or Barcode.</p>
-               <button id="btn-scan-barcode" class="btn btn--primary">Scan Barcode</button>
-               <input type="text" id="qr-override" class="input-field" style="margin-top: 1rem; display: none;" placeholder="Enter code manually (dev)" />
+               <div id="gameplay-barcode-scanner-container" style="width: 100%; max-width: 400px; margin: 0 auto; overflow: hidden; border-radius: 8px;"></div>
+               <button id="btn-scan-barcode" class="btn btn--primary" style="margin-top: 1rem;">
+                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px; margin-right: 6px; vertical-align: middle;"><path d="M4 7V4h3M20 7V4h-3M4 17v3h3M20 17v3h-3M9 9h6v6H9z"></path></svg>
+                 <span style="vertical-align: middle;">Start Scanner</span>
+               </button>
+               <div style="margin-top: 1rem;">
+                 <a href="#" id="link-manual-entry" style="font-size: 12px; color: var(--color-brand); text-decoration: none;">Having trouble? Enter manually</a>
+                 <div id="manual-entry-container" style="display: none; margin-top: 0.5rem; gap: 0.5rem; flex-direction: column;">
+                   <input type="text" id="qr-override" class="input-field" placeholder="Enter barcode manually" />
+                   <button id="btn-submit-manual" class="btn btn--primary btn--sm">Submit</button>
+                 </div>
+               </div>
             </div>
           `;
-          const btn = container.querySelector('#btn-scan-barcode');
-          const input = container.querySelector('#qr-override');
-          btn.addEventListener('click', () => {
-             // Mock scanner UI for development
-             input.style.display = 'block';
-             btn.textContent = 'Submit Code';
-             btn.addEventListener('click', () => {
-                onSubmit(input.value);
-             }, { once: true });
-          }, { once: true });
+          
+          let scanner = null;
+          const btnScan = container.querySelector('#btn-scan-barcode');
+          const linkManual = container.querySelector('#link-manual-entry');
+          const manualContainer = container.querySelector('#manual-entry-container');
+          const inputOverride = container.querySelector('#qr-override');
+          const btnSubmitManual = container.querySelector('#btn-submit-manual');
+          
+          btnScan.addEventListener('click', () => {
+            if (scanner) return;
+            btnScan.style.display = 'none';
+            scanner = new Html5QrcodeScanner(
+              "gameplay-barcode-scanner-container", 
+              { fps: 10, qrbox: {width: 250, height: 250} }, 
+              /* verbose= */ false
+            );
+            scanner.render((decodedText) => {
+              scanner.clear().catch(err => console.error(err));
+              scanner = null;
+              onSubmit(decodedText);
+            }, () => {
+              // ignore parse errors
+            });
+          });
+
+          linkManual.addEventListener('click', (e) => {
+            e.preventDefault();
+            manualContainer.style.display = 'flex';
+            if (scanner) {
+              scanner.clear().catch(err => console.error(err));
+              scanner = null;
+              btnScan.style.display = 'inline-block';
+            }
+          });
+
+          btnSubmitManual.addEventListener('click', () => {
+            const val = inputOverride.value.trim();
+            if (val) onSubmit(val);
+          });
         }
       };
     default:

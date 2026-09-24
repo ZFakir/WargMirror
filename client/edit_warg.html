@@ -354,6 +354,38 @@
     </div>
   </div>
 
+  <!-- Barcode Game Modal -->
+  <div class="modal-overlay" id="barcode-modal-overlay" aria-hidden="true">
+    <div class="modal modal--large">
+      <div class="modal__header">
+        <h3 class="modal__title">Configure Barcode Game</h3>
+        <button class="icon-btn" id="btn-close-barcode-modal" aria-label="Close modal">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <div class="modal__body">
+        <div class="barcode-editor">
+          <label for="barcode-value" style="display: block; font-size: 14px; font-weight: 500; margin-bottom: 8px; color: var(--text-2);">Barcode Value</label>
+          <input type="text" id="barcode-value" style="width: 100%; padding: 10px; border-radius: 6px; background: var(--surface); color: var(--text-1); border: 1px solid var(--border);" placeholder="Enter barcode string..." spellcheck="false" />
+          
+          <div style="margin-top: 1rem; text-align: center;">
+            <p style="margin-bottom: 0.5rem; color: var(--text-muted); font-size: 14px;">Or scan a barcode with your camera:</p>
+            <div id="barcode-scanner-container" style="width: 100%; max-width: 400px; margin: 0 auto; overflow: hidden; border-radius: 8px;"></div>
+            <button class="btn btn--outline" id="btn-start-barcode-scan" style="margin-top: 0.5rem;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px; margin-right: 6px; vertical-align: middle;"><path d="M4 7V4h3M20 7V4h-3M4 17v3h3M20 17v3h-3M9 9h6v6H9z"></path></svg>
+              <span style="vertical-align: middle;">Start Scanner</span>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="modal__footer" style="display: flex; gap: 12px; justify-content: flex-end;">
+        <button class="btn btn--outline" id="btn-cancel-barcode">Cancel</button>
+        <button class="btn btn--primary" id="btn-save-barcode">Save Game</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
   <script src="scripts/config.js"></script>
   <script src="scripts/api.js"></script>
   <script src="scripts/home.js"></script> <!-- Includes navigation drawer logic -->
