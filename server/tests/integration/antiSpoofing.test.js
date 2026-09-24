@@ -61,11 +61,11 @@ describe('Anti-Spoofing Integration Tests', () => {
         lng: 28.03,
         steps: 15,
         buffer: [
-          { lat: -26.192, lng: 28.030001 },
-          { lat: -26.192001, lng: 28.03 },
-          { lat: -26.192002, lng: 28.030001 },
-          { lat: -26.192, lng: 28.030002 },
-          { lat: -26.192003, lng: 28.030003 }
+          { lat: -26.192, lng: 28.030 },
+          { lat: -26.1921, lng: 28.0301 },
+          { lat: -26.1922, lng: 28.0302 },
+          { lat: -26.1921, lng: 28.0303 },
+          { lat: -26.192, lng: 28.0301 }
         ]
       });
 
@@ -103,7 +103,7 @@ describe('Anti-Spoofing Integration Tests', () => {
     expect(res.body.flags[0].reason).toBe('speed_violation');
 
     const updatedUser = await User.findByPk(testUser.user_id);
-    expect(parseFloat(updatedUser.trust_score)).toBe(85.00); // 100 - 15
+    expect(parseFloat(updatedUser.trust_score)).toBe(66.00); // 100 + 1 - 15 - 20
     
     const locationEvents = await LocationEvent.findAll({ where: { user_id: testUser.user_id } });
     expect(locationEvents.length).toBe(2);

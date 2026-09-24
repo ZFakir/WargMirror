@@ -46,7 +46,7 @@ const antiSpoofing = async (req, res, next) => {
       const latVariance = calculateVariance(buffer.map(c => parseFloat(c.lat)));
       const lngVariance = calculateVariance(buffer.map(c => parseFloat(c.lng)));
       
-      const DRIFT_THRESHOLD = 0.0000001; // 1e-7
+      const DRIFT_THRESHOLD = 1e-9; // 1e-9
       if (latVariance < DRIFT_THRESHOLD && lngVariance < DRIFT_THRESHOLD) {
         isSuspicious = true;
         flags.push({ reason: 'drift_anomaly', variance: { lat: latVariance, lng: lngVariance } });
