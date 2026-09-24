@@ -10,3 +10,24 @@ npm-debug.log
 # OS generated files
 .DS_Store
 Thumbs.db
+
+# Coverage and Test results
+coverage/
+coverage-reports/
+.v8-coverage/
+playwright-report/
+test-results/
+blob-report/
+.nyc_output/
+
+# Python
+__pycache__/
+*.pyc
+
+# Server Data and Uploads
+server/uploads/
+server/database.sqlite
+
+# Temporary/Backup Files
+old_*.js
+main_edit_warg.js

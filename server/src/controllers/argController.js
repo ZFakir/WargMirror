@@ -10,7 +10,7 @@ exports.getAllArgs = async (req, res) => {
         { model: ArgVote, attributes: ['vote'], where: { user_id }, required: false }
       ]
     });
-    
+
     const mappedArgs = args.map(arg => {
       const argJSON = arg.toJSON();
       argJSON.user_vote = argJSON.ArgVotes && argJSON.ArgVotes.length > 0 ? argJSON.ArgVotes[0].vote : null;
@@ -31,8 +31,8 @@ exports.getArgById = async (req, res) => {
     const arg = await Arg.findByPk(req.params.id, {
       include: [
         { model: User, as: 'Creator', attributes: ['username', 'avatar'] },
-        { 
-          model: Waypoint, 
+        {
+          model: Waypoint,
           attributes: ['waypoint_id', 'title', 'location', 'description'],
           include: [{ model: Minigame }]
         },
@@ -41,7 +41,7 @@ exports.getArgById = async (req, res) => {
       ]
     });
     if (!arg) return res.status(404).json({ error: 'ARG not found' });
-    
+
     const argJSON = arg.toJSON();
     argJSON.user_vote = argJSON.ArgVotes && argJSON.ArgVotes.length > 0 ? argJSON.ArgVotes[0].vote : null;
     delete argJSON.ArgVotes;
@@ -58,9 +58,20 @@ const mapFrontendTypeToGameType = (type) => {
     'gps': 'gps_proximity',
     'ar': 'ar_object_scan',
     'barcode': 'qr_barcode',
+    'shape_match': 'shape_match',
+    'colour_match': 'colour_match',
+    'texture_match': 'texture_match',
+    'sift_match': 'sift_match',
+    'symmetry_finder': 'symmetry_finder',
+    'photo_submit': 'photo_submit',
     'text_answer': 'text_answer' // Map QnA
   };
   return map[type] || 'gps_proximity';
+};
+
+const sanitizeStatus = (status) => {
+  const valid = ['unpublished', 'published', 'retired'];
+  return valid.includes(status) ? status : 'unpublished';
 };
 
 exports.createArg = async (req, res) => {
@@ -68,15 +79,16 @@ exports.createArg = async (req, res) => {
   try {
     const creator_id = req.user ? req.user.user_id : (req.body.creator_id || 1);
     const { title, description, status, waypoints = [], edges = [] } = req.body;
-    
-    const newArg = await Arg.create({ 
-      creator_id, 
-      title: title || 'Untitled WARG', 
-      description: description || '', 
-      status: status || 'unpublished' 
+
+    const newArg = await Arg.create({
+      creator_id,
+      title: title || 'Untitled WARG',
+      description: description || '',
+      status: sanitizeStatus(status)
     }, { transaction });
 
     const idMap = {};
+    const minigameMap = {};
     const wpObjMap = {};
     for (const wp of waypoints) {
       const dbWp = await Waypoint.create({
@@ -85,20 +97,29 @@ exports.createArg = async (req, res) => {
         description: wp.description || '',
         location: sequelize.fn('ST_GeomFromText', `POINT(${wp.lat} ${wp.lng})`, 4326)
       }, { transaction });
-      
+
       idMap[wp.id] = dbWp.waypoint_id;
       wpObjMap[wp.id] = { gameIds: [] };
-
-      if (wp.games && Array.isArray(wp.games)) {
-        for (let i = 0; i < wp.games.length; i++) {
-          const game = wp.games[i];
-          const mg = await Minigame.create({
-            waypoint_id: dbWp.waypoint_id,
-            game_type: mapFrontendTypeToGameType(game.type),
-            config_json: game.minigame_config || null
-          }, { transaction });
-          wpObjMap[wp.id].gameIds[i] = mg.game_id;
+      if (wp.games !== undefined) {
+        if (Array.isArray(wp.games)) {
+          for (let i = 0; i < wp.games.length; i++) {
+            const game = wp.games[i];
+            const minigame = await Minigame.create({
+              waypoint_id: dbWp.waypoint_id,
+              game_type: mapFrontendTypeToGameType(game.type),
+              config_json: game.minigame_config || null
+            }, { transaction });
+            wpObjMap[wp.id].gameIds[i] = minigame.game_id;
+            if (i === 0) minigameMap[wp.id] = minigame.game_id;
+          }
         }
+      } else if (wp.type) {
+        // Legacy fallback
+        const mg = await Minigame.create({
+          waypoint_id: dbWp.waypoint_id,
+          game_type: mapFrontendTypeToGameType(wp.type)
+        }, { transaction });
+        minigameMap[wp.id] = mg.game_id;
       }
     }
 
@@ -126,11 +147,11 @@ exports.createArg = async (req, res) => {
     }
 
     await transaction.commit();
-    res.status(201).json(newArg);
+    res.status(201).json({ ...newArg.toJSON(), idMap, minigameMap, wpObjMap });
   } catch (error) {
     await transaction.rollback();
     console.error(error);
-    res.status(500).json({ error: 'Failed to create ARG' });
+    res.status(500).json({ error: 'Failed to create ARG', detail: error.message });
   }
 };
 
@@ -139,7 +160,7 @@ exports.updateArg = async (req, res) => {
   try {
     const arg_id = req.params.id;
     const { title, description, status, waypoints = [], edges = [] } = req.body;
-    
+
     const arg = await Arg.findByPk(arg_id);
     if (!arg) {
       await transaction.rollback();
@@ -148,14 +169,14 @@ exports.updateArg = async (req, res) => {
 
     const creator_id = req.user ? req.user.user_id : (req.body.creator_id || 1);
     if (arg.creator_id !== creator_id) {
-       await transaction.rollback();
-       return res.status(403).json({ error: 'Not authorized' });
+      await transaction.rollback();
+      return res.status(403).json({ error: 'Not authorized' });
     }
 
-    await arg.update({ 
-      title: title || arg.title, 
-      description: description || arg.description, 
-      status: status || arg.status 
+    await arg.update({
+      title: title || arg.title,
+      description: description || arg.description,
+      status: sanitizeStatus(status || arg.status)
     }, { transaction });
 
     // Delete missing waypoints
@@ -169,6 +190,7 @@ exports.updateArg = async (req, res) => {
     }
 
     const idMap = {};
+    const minigameMap = {};
     const wpObjMap = {};
     for (const wp of waypoints) {
       if (wp.waypoint_id) {
@@ -178,22 +200,57 @@ exports.updateArg = async (req, res) => {
           description: wp.description || '',
           location: sequelize.fn('ST_GeomFromText', `POINT(${wp.lat} ${wp.lng})`, 4326)
         }, { where: { waypoint_id: wp.waypoint_id }, transaction });
-        
+
         idMap[wp.id] = wp.waypoint_id;
         wpObjMap[wp.id] = { gameIds: [] };
 
-        // Replace all minigames for this waypoint
-        await Minigame.destroy({ where: { waypoint_id: wp.waypoint_id }, transaction });
-        if (wp.games && Array.isArray(wp.games)) {
-          for (let i = 0; i < wp.games.length; i++) {
-            const game = wp.games[i];
-            const mg = await Minigame.create({
-              waypoint_id: wp.waypoint_id,
-              game_type: mapFrontendTypeToGameType(game.type),
-              config_json: game.minigame_config || null
-            }, { transaction });
-            wpObjMap[wp.id].gameIds[i] = mg.game_id;
+        // Update existing minigames instead of destroying all
+        const existingMinigames = await Minigame.findAll({ where: { waypoint_id: wp.waypoint_id }, transaction });
+        const existingMgIds = existingMinigames.map(m => m.game_id);
+        const incomingMgIds = (wp.games || []).map(g => g.minigame_id).filter(id => id);
+        const toDeleteMgIds = existingMgIds.filter(id => !incomingMgIds.includes(id));
+        
+        if (toDeleteMgIds.length > 0) {
+          await Minigame.destroy({ where: { game_id: toDeleteMgIds }, transaction });
+        }
+
+        if (wp.games !== undefined) {
+          if (Array.isArray(wp.games)) {
+            for (let i = 0; i < wp.games.length; i++) {
+              const game = wp.games[i];
+              if (game.minigame_id) {
+                 const existing = await Minigame.findByPk(game.minigame_id, { transaction });
+                 if (existing) {
+                    let updatedConfig = existing.config_json || {};
+                    if (game.minigame_config) {
+                       updatedConfig = { ...updatedConfig, ...game.minigame_config };
+                    }
+                    await existing.update({
+                       game_type: mapFrontendTypeToGameType(game.type),
+                       config_json: updatedConfig
+                    }, { transaction });
+                    wpObjMap[wp.id].gameIds[i] = existing.game_id;
+                    if (i === 0) minigameMap[wp.id] = existing.game_id;
+                    continue;
+                 }
+              }
+              
+              const minigame = await Minigame.create({
+                waypoint_id: wp.waypoint_id,
+                game_type: mapFrontendTypeToGameType(game.type),
+                config_json: game.minigame_config || null
+              }, { transaction });
+              wpObjMap[wp.id].gameIds[i] = minigame.game_id;
+              if (i === 0) minigameMap[wp.id] = minigame.game_id;
+            }
           }
+        } else if (wp.type) {
+          // Legacy fallback for older clients that don't send wp.games but send wp.type
+          const mg = await Minigame.create({
+            waypoint_id: wp.waypoint_id,
+            game_type: mapFrontendTypeToGameType(wp.type)
+          }, { transaction });
+          minigameMap[wp.id] = mg.game_id;
         }
       } else {
         // Create new
@@ -203,31 +260,41 @@ exports.updateArg = async (req, res) => {
           description: wp.description || '',
           location: sequelize.fn('ST_GeomFromText', `POINT(${wp.lat} ${wp.lng})`, 4326)
         }, { transaction });
-        
+
         idMap[wp.id] = dbWp.waypoint_id;
         wpObjMap[wp.id] = { gameIds: [] };
 
-        if (wp.games && Array.isArray(wp.games)) {
-          for (let i = 0; i < wp.games.length; i++) {
-            const game = wp.games[i];
-            const mg = await Minigame.create({
-              waypoint_id: dbWp.waypoint_id,
-              game_type: mapFrontendTypeToGameType(game.type),
-              config_json: game.minigame_config || null
-            }, { transaction });
-            wpObjMap[wp.id].gameIds[i] = mg.game_id;
+        if (wp.games !== undefined) {
+          if (Array.isArray(wp.games)) {
+            for (let i = 0; i < wp.games.length; i++) {
+              const game = wp.games[i];
+              const minigame = await Minigame.create({
+                waypoint_id: dbWp.waypoint_id,
+                game_type: mapFrontendTypeToGameType(game.type),
+                config_json: game.minigame_config || null
+              }, { transaction });
+              wpObjMap[wp.id].gameIds[i] = minigame.game_id;
+              if (i === 0) minigameMap[wp.id] = minigame.game_id;
+            }
           }
+        } else if (wp.type) {
+          // Legacy fallback
+          const mg = await Minigame.create({
+            waypoint_id: dbWp.waypoint_id,
+            game_type: mapFrontendTypeToGameType(wp.type)
+          }, { transaction });
+          minigameMap[wp.id] = mg.game_id;
         }
       }
     }
 
     // Replace edges
     await WaypointEdge.destroy({ where: { arg_id }, transaction });
-    
+
     for (const edge of edges) {
       const fromId = idMap[edge.from] || edge.from_waypoint_id;
       const toId = idMap[edge.to] || edge.to_waypoint_id;
-      
+
       if (fromId && toId) {
         let conditions_json = null;
         if (edge.triggers && edge.triggers.length > 0) {
@@ -249,7 +316,7 @@ exports.updateArg = async (req, res) => {
     }
 
     await transaction.commit();
-    res.json(arg);
+    res.json({ ...arg.toJSON(), idMap, minigameMap, wpObjMap });
   } catch (error) {
     await transaction.rollback();
     console.error(error);
@@ -267,7 +334,7 @@ exports.voteArg = async (req, res) => {
     }
 
     const existingVote = await ArgVote.findOne({ where: { arg_id, user_id } });
-    
+
     let action = 'voted';
     if (existingVote) {
       if (existingVote.vote === vote) {
@@ -283,7 +350,7 @@ exports.voteArg = async (req, res) => {
 
     const like_count = await ArgVote.count({ where: { arg_id, vote: 'like' } });
     const dislike_count = await ArgVote.count({ where: { arg_id, vote: 'dislike' } });
-    
+
     await Arg.update({ like_count, dislike_count }, { where: { arg_id } });
 
     res.json({ success: true, action, like_count, dislike_count });
