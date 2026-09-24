@@ -58,7 +58,7 @@ function createApp() {
   };
 
   if (process.env.NODE_ENV !== 'test') {
-    // eslint-disable-next-line global-require
+     
     const MySQLStore = require('express-mysql-session')(session);
     const dbUrl = new URL(process.env.DATABASE_URL);
     const sessionStore = new MySQLStore({
@@ -97,6 +97,12 @@ function createApp() {
   app.use('/api/sessions', sessionRoutes);
   app.use('/api/comments', commentRoutes);
   app.use('/api/feedback', feedbackRoutes);
+
+  const aiRoutes = require('./routes/aiRoutes');
+  const minigameRoutes = require('./routes/minigameRoutes');
+
+  app.use('/api/ai', aiRoutes);
+  app.use('/api/minigames', minigameRoutes);
 
   const gameRoutes = require('./routes/gameRoutes');
   const requireAuth = (req, res, next) => {

@@ -1,8 +1,17 @@
 {
+  "cleanUrls": true,
   "rewrites": [
     {
       "source": "/",
       "destination": "/client/home.html"
+    },
+    {
+      "source": "/(styles|scripts|assets|test-results|tests|node_modules)/(.*)",
+      "destination": "/client/$1/$2"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/client/$1"
     }
   ]
 }

@@ -10,6 +10,7 @@ test.describe('signup page/script logic', () => {
     await expect(page.locator('button[type="submit"]')).toBeVisible();
   });
 
+
   test('should mock successful signup', async ({ page }) => {
     await page.goto('/signup.html');
     await page.fill('input#username', 'testuser');

@@ -5,14 +5,14 @@ const path = require('path');
 
 const test = base.extend({
   page: async ({ page, browserName }, use) => {
-    // Start coverage only if supported
+    // Start coverage only on Chromium
     if (browserName === 'chromium') {
       await page.coverage.startJSCoverage({ resetOnNavigation: false });
     }
     
     await use(page);
     
-    // Stop coverage
+    // Stop coverage only on Chromium
     if (browserName === 'chromium') {
       const coverage = await page.coverage.stopJSCoverage();
       
