@@ -39,6 +39,7 @@ const antiSpoofing = async (req, res, next) => {
     let isSuspicious = false;
     const flags = [];
     let deltaScore = 1.0; // Positive reinforcement for legitimate interaction
+    const parsedSteps = steps !== undefined ? parseInt(steps, 10) || 0 : 0;
 
     // 1. Drift Check
     if (buffer && Array.isArray(buffer) && buffer.length >= 5) {
@@ -80,8 +81,7 @@ const antiSpoofing = async (req, res, next) => {
       }
 
       // 3. Pedometer Check
-      if (steps !== undefined && distance > 20) { // Only evaluate for meaningful distances
-        const parsedSteps = parseInt(steps, 10);
+      if (parsedSteps !== undefined && distance > 20) { // Only evaluate for meaningful distances
         // Average step ~0.75m. If distance is more than 2.5x the theoretical max distance from steps, flag it.
         const theoreticalMaxDistance = parsedSteps * 1.5; // generous upper bound
         
@@ -104,6 +104,12 @@ const antiSpoofing = async (req, res, next) => {
       if (newScore < 50) {
         user.is_flagged = true;
       }
+      
+      // Accumulate steps as meters if the interaction was legitimate
+      if (!isSuspicious && parsedSteps > 0) {
+        user.distance_walked_m = (user.distance_walked_m || 0) + parsedSteps;
+      }
+      
       await user.save();
     }
 
