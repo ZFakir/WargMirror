@@ -408,3 +408,43 @@ exports.updateArgStatus = async (req, res) => {
     res.status(500).json({ error: 'Failed to update ARG status' });
   }
 };
+
+exports.uploadCoverImage = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!req.file) return res.status(400).json({ error: 'No image uploaded' });
+
+    const arg = await Arg.findByPk(id);
+    if (!arg) return res.status(404).json({ error: 'Arg not found' });
+
+    const creator_id = req.user ? req.user.user_id : (req.body.creator_id || 1);
+    if (arg.creator_id !== creator_id) {
+      return res.status(403).json({ error: 'Not authorized' });
+    }
+
+    arg.cover_image = req.file.buffer;
+    await arg.save();
+
+    res.json({ message: 'Cover image uploaded successfully' });
+  } catch (err) {
+    console.error('Error in uploadCoverImage:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+exports.getCoverImage = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const arg = await Arg.findByPk(id);
+    
+    if (!arg || !arg.cover_image) {
+      return res.status(404).json({ error: 'Cover image not found' });
+    }
+
+    res.set('Content-Type', 'image/jpeg');
+    res.send(arg.cover_image);
+  } catch (err) {
+    console.error('Error in getCoverImage:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
