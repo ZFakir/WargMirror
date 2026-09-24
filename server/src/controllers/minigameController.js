@@ -16,8 +16,9 @@ exports.uploadReference = async (req, res) => {
     const config = minigame.config_json || {};
     config.reference_image_url = `/api/minigames/${gameId}/reference/image`;
     
-    // Also save the local file path so we can read it easily during /attempt
-    config.reference_image_path = req.file.path;
+    // Convert buffer to base64 and store it
+    config.reference_image_base64 = req.file.buffer.toString('base64');
+    config.reference_image_mimetype = req.file.mimetype;
 
     minigame.config_json = config;
     minigame.changed('config_json', true);
@@ -34,16 +35,15 @@ exports.getReferenceImage = async (req, res) => {
   try {
     const { gameId } = req.params;
     const minigame = await Minigame.findByPk(gameId);
-    if (!minigame || !minigame.config_json || !minigame.config_json.reference_image_path) {
+    if (!minigame || !minigame.config_json || !minigame.config_json.reference_image_base64) {
       return res.status(404).json({ error: 'Reference image not found' });
     }
 
-    const filePath = minigame.config_json.reference_image_path;
-    if (fs.existsSync(filePath)) {
-      res.sendFile(path.resolve(filePath));
-    } else {
-      res.status(404).json({ error: 'File on disk not found' });
-    }
+    const imgBuffer = Buffer.from(minigame.config_json.reference_image_base64, 'base64');
+    const mimeType = minigame.config_json.reference_image_mimetype || 'image/jpeg';
+    
+    res.set('Content-Type', mimeType);
+    res.send(imgBuffer);
   } catch (err) {
     console.error('Error in getReferenceImage:', err);
     res.status(500).json({ error: 'Server error' });
@@ -93,18 +93,15 @@ exports.submitAttempt = async (req, res) => {
     formData.append('image', new Blob([attemptImage.buffer], { type: attemptImage.mimetype }), attemptImage.originalname);
 
     if (referenceKey) {
-      if (!minigame.config_json || !minigame.config_json.reference_image_path || !fs.existsSync(minigame.config_json.reference_image_path)) {
+      if (!minigame.config_json || !minigame.config_json.reference_image_base64) {
         return res.status(400).json({ error: 'Minigame does not have a reference image uploaded' });
       }
       
-      const refPath = minigame.config_json.reference_image_path;
-      const refBuffer = fs.readFileSync(refPath);
-      // Determine mimetype from extension
-      let ext = path.extname(refPath).toLowerCase();
-      let mime = 'image/jpeg';
-      if (ext === '.png') mime = 'image/png';
+      const refBuffer = Buffer.from(minigame.config_json.reference_image_base64, 'base64');
+      const mime = minigame.config_json.reference_image_mimetype || 'image/jpeg';
+      let ext = mime === 'image/png' ? '.png' : '.jpg';
       
-      formData.append(referenceKey, new Blob([refBuffer], { type: mime }), path.basename(refPath));
+      formData.append(referenceKey, new Blob([refBuffer], { type: mime }), `reference${ext}`);
     }
 
     const response = await fetch(`${AI_SERVICE_URL}${aiEndpoint}`, {

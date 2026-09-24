@@ -62,7 +62,7 @@ function createApp() {
      
     const MySQLStore = require('express-mysql-session')(session);
     const dbUrl = new URL(process.env.DATABASE_URL);
-    sessionOptions.store = new MySQLStore({
+    const sessionStore = new MySQLStore({
       host: dbUrl.hostname,
       port: dbUrl.port || 3306,
       user: dbUrl.username,
@@ -72,6 +72,12 @@ function createApp() {
       createDatabaseTable: true,
       expiration: 86400000 // 24 hours
     });
+
+    sessionStore.on('error', (error) => {
+      console.error('MySQL Session Store Error (Aiven spool down?):', error);
+    });
+
+    sessionOptions.store = sessionStore;
   }
 
   app.use(session(sessionOptions));
@@ -107,7 +113,13 @@ function createApp() {
   app.use('/api/game', requireAuth, gameRoutes);
 
   const path = require('path');
-  app.use('/client', express.static(path.join(__dirname, '../../client')));
+  const staticOptions = { extensions: ['html', 'htm'] };
+  
+  // Serve static files from the client directory at the root (e.g. /login)
+  app.use(express.static(path.join(__dirname, '../../client'), staticOptions));
+  
+  // Also serve them under /client for backwards compatibility (e.g. /client/login)
+  app.use('/client', express.static(path.join(__dirname, '../../client'), staticOptions));
 
   return app;
 }

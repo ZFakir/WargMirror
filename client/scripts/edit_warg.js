@@ -5,6 +5,8 @@
 
 import { MapModal } from './components/MapModal.js';
 
+/* global Html5QrcodeScanner */
+
 document.addEventListener('DOMContentLoaded', async () => {
   const API_BASE = window.API_BASE_URL || 'https://wargmirror.onrender.com';
 
@@ -461,6 +463,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                   const game = node.games[index];
                   if (game.gamemode === 'QnA / MCQ') {
                     openQnaModal(game.minigame_config, index);
+                  } else if (game.gamemode === 'Barcode Game') {
+                    openBarcodeModal(game.minigame_config, index);
                   } else {
                     openAlertModal('Editor for this game type is coming soon.');
                   }
@@ -903,6 +907,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         closeGameSelectorModal();
         if (gameType === 'qna') {
           openQnaModal(null, null); // Always new game when adding from selector
+        } else if (gameType === 'barcode') {
+          openBarcodeModal(null, null);
         } else {
           const node = nodes.find(n => n.id === selectedId);
           if (node) {
@@ -1002,4 +1008,105 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
     }
 
+    // ── Barcode Game Modal Logic ──
+    const barcodeModalOverlay = document.getElementById('barcode-modal-overlay');
+    const btnCloseBarcodeModal = document.getElementById('btn-close-barcode-modal');
+    const btnCancelBarcode = document.getElementById('btn-cancel-barcode');
+    const btnSaveBarcode = document.getElementById('btn-save-barcode');
+    const btnStartBarcodeScan = document.getElementById('btn-start-barcode-scan');
+    const barcodeValue = document.getElementById('barcode-value');
+    let barcodeHtml5QrcodeScanner = null;
+
+    function openBarcodeModal(existingConfig = null, editIndex = null) {
+      currentEditGameIndex = editIndex;
+      if (existingConfig && existingConfig.barcode_value) {
+        barcodeValue.value = existingConfig.barcode_value;
+      } else {
+        barcodeValue.value = '';
+      }
+      if (barcodeModalOverlay) barcodeModalOverlay.setAttribute('aria-hidden', 'false');
+    }
+
+    function closeBarcodeModal() {
+      if (barcodeModalOverlay) barcodeModalOverlay.setAttribute('aria-hidden', 'true');
+      currentEditGameIndex = null;
+      if (barcodeHtml5QrcodeScanner) {
+        barcodeHtml5QrcodeScanner.clear().catch(err => console.error("Failed to clear scanner", err));
+        barcodeHtml5QrcodeScanner = null;
+        if (btnStartBarcodeScan) btnStartBarcodeScan.style.display = 'inline-block';
+      }
+    }
+
+    if (btnCloseBarcodeModal) btnCloseBarcodeModal.addEventListener('click', closeBarcodeModal);
+    if (btnCancelBarcode) btnCancelBarcode.addEventListener('click', closeBarcodeModal);
+
+    if (btnSaveBarcode) {
+      btnSaveBarcode.addEventListener('click', () => {
+        const node = nodes.find(n => n.id === selectedId);
+        if (!node) return;
+
+        const codeText = barcodeValue.value.trim();
+        if (!codeText) {
+          openAlertModal('Please enter or scan a barcode.');
+          return;
+        }
+
+        const configJson = {
+          barcode_value: codeText
+        };
+
+        const newGame = {
+          gamemode: 'Barcode Game',
+          type: 'barcode',
+          minigame_config: configJson
+        };
+
+        if (currentEditGameIndex !== null && currentEditGameIndex !== undefined) {
+          const oldGame = node.games[currentEditGameIndex];
+          if (oldGame) {
+            newGame.minigame_id = oldGame.minigame_id;
+            newGame.reference_url = oldGame.reference_url;
+          }
+        }
+
+        if (!node.games) node.games = [];
+
+        if (currentEditGameIndex !== null && currentEditGameIndex !== undefined) {
+          node.games[currentEditGameIndex] = newGame;
+        } else {
+          node.games.push(newGame);
+        }
+
+        updatePanel(); 
+        closeBarcodeModal();
+      });
+    }
+
+    if (barcodeModalOverlay) {
+      barcodeModalOverlay.addEventListener('click', (e) => {
+        if (e.target === barcodeModalOverlay) closeBarcodeModal();
+      });
+    }
+
+    if (btnStartBarcodeScan) {
+      btnStartBarcodeScan.addEventListener('click', () => {
+        if (barcodeHtml5QrcodeScanner) return; // Already scanning
+        btnStartBarcodeScan.style.display = 'none';
+        barcodeHtml5QrcodeScanner = new Html5QrcodeScanner(
+          "barcode-scanner-container", 
+          { fps: 10, qrbox: {width: 250, height: 250} }, 
+          /* verbose= */ false
+        );
+        barcodeHtml5QrcodeScanner.render((decodedText) => {
+          barcodeValue.value = decodedText;
+          barcodeHtml5QrcodeScanner.clear().catch(err => console.error(err));
+          barcodeHtml5QrcodeScanner = null;
+          btnStartBarcodeScan.style.display = 'inline-block';
+        }, () => {
+          // parse errors are normal, just ignore
+        });
+      });
+    }
+
   });
+
