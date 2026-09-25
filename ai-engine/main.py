@@ -1,13 +1,36 @@
 from fastapi import FastAPI, UploadFile, File, Form
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from pydantic import BaseModel
 from vision import sam_extractor, hsv_matcher, mobilenet_extractor, then_vs_now, symmetry
 
 app = FastAPI(title="WARG AI Engine")
 
+# Allow the Express backend (on Render) to call this service
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 @app.get("/")
 async def root():
     return {"status": "ok", "message": "WARG AI Engine is running"}
+
+@app.get("/health")
+async def health():
+    """Health check for container orchestrators (Cloud Run, Lightsail, etc.)."""
+    return {
+        "status": "ok",
+        "models": {
+            "sam": sam_extractor.predictor is not None,
+            "mobilenet": mobilenet_extractor.mobilenet is not None,
+            "hsv": True,
+            "sift": True,
+            "symmetry": True,
+        }
+    }
 
 # ── Response Models ──────────────────────────────────────────────
 
