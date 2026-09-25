@@ -14,19 +14,21 @@ test.describe('Client-Side Anti-Spoofing Sensors', () => {
         { latitude: -26.192004, longitude: 28.030004, accuracy: 10 },
         { latitude: -26.192005, longitude: 28.030005, accuracy: 10 }
       ];
-      
-      navigator.geolocation = {
-        watchPosition: (success) => {
-          // Fire multiple coordinates to fill the buffer
-          coords.forEach(coord => {
-            setTimeout(() => success({ coords: coord }), geoCount++ * 100);
-          });
-          return 1; // watch ID
+      Object.defineProperty(navigator, 'geolocation', {
+        value: {
+          watchPosition: (success) => {
+            // Fire multiple coordinates to fill the buffer
+            coords.forEach((coord, i) => {
+              setTimeout(() => success({ coords: coord }), i * 10);
+            });
+            return 1; // watch ID
+          },
+          getCurrentPosition: (success) => {
+            success({ coords: coords[0] });
+          }
         },
-        getCurrentPosition: (success) => {
-          success({ coords: coords[0] });
-        }
-      };
+        configurable: true
+      });
       
       // Mock DeviceMotionEvent for pedometer
       window.DeviceMotionEvent = class DeviceMotionEvent extends Event {
@@ -39,6 +41,11 @@ test.describe('Client-Side Anti-Spoofing Sensors', () => {
   });
 
   test('should include buffer and steps in waypoint interaction payload', async ({ page }) => {
+    // Mock user session and game state to prevent redirect
+    await page.route('**/api/game/*/start', route => route.fulfill({ status: 200, body: '{}' }));
+    await page.route('**/api/game/*/state', route => route.fulfill({ status: 200, body: '{"waypoints": [], "progress": []}' }));
+    await page.route('**/api/args/*', route => route.fulfill({ status: 200, body: '{"title": "Test"}' }));
+
     // Go to a game page (assuming ARG ID 1)
     await page.goto('/game.html?id=1');
     
