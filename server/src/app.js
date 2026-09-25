@@ -10,6 +10,7 @@ const sessionRoutes = require('./routes/sessionRoutes');
 const authRoutes = require('./routes/authRoutes');
 const commentRoutes = require('./routes/commentRoutes');
 const feedbackRoutes = require('./routes/feedbackRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 
 /**
  * Builds and returns a configured Express app WITHOUT starting an HTTP
@@ -109,7 +110,10 @@ function createApp() {
     if (req.isAuthenticated()) return next();
     res.status(401).json({ error: 'Unauthorized' });
   };
+  const { requireAdmin } = require('./middleware/authMiddleware');
+
   app.use('/api/game', requireAuth, gameRoutes);
+  app.use('/api/admin', requireAuth, requireAdmin, adminRoutes);
 
   const path = require('path');
   const staticOptions = { extensions: ['html', 'htm'] };
