@@ -8,6 +8,7 @@ import playModal from './components/PlayModal.js';
 import { FlagModal } from './components/FlagModal.js';
 import mapModal from './components/MapModal.js';
 import { getMinigameHandler } from './components/minigame-handlers.js';
+import { startSensors, stopSensors, logPosition, getSensorDataAndReset } from './sensors.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   const API_BASE = window.API_BASE_URL || 'https://wargmirror.onrender.com';
@@ -50,6 +51,8 @@ document.addEventListener('DOMContentLoaded', () => {
       // Get full state
       const stateRes = await fetch(`${API_BASE}/api/game/${argId}/state`, { credentials: 'include' });
       if (!stateRes.ok) throw new Error('Failed to load game state');
+
+      startSensors();
 
       gameState = await stateRes.json();
 
@@ -116,6 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
         navigator.geolocation.watchPosition((position) => {
           const { latitude, longitude, accuracy } = position.coords;
           window.lastPlayerLocation = { latitude, longitude, accuracy };
+          logPosition(latitude, longitude);
           mapModal.updatePlayerLocation(latitude, longitude, accuracy);
         }, (error) => {
           console.warn("Player location not available:", error);
@@ -322,11 +326,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const processLocation = async (latitude, longitude, accuracy) => {
         try {
+          const sensorData = getSensorDataAndReset();
+          
           const arriveRes = await fetch(`${API_BASE}/api/game/${argId}/waypoint/${node.id}/arrive`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
-            body: JSON.stringify({ lat: latitude, lng: longitude, accuracy_m: accuracy })
+            body: JSON.stringify({ lat: latitude, lng: longitude, accuracy_m: accuracy, ...sensorData })
           });
 
           if (!arriveRes.ok) throw new Error('Arrive check failed');
@@ -663,3 +669,5 @@ document.addEventListener('DOMContentLoaded', () => {
 
   loadComments();
 });
+
+window.addEventListener('beforeunload', stopSensors);

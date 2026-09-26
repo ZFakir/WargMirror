@@ -36,6 +36,33 @@ In order to combat spoofing, we will employ various detection methods and compos
 - **Pedometer integration:** By requesting access to a player’s pedometer, we can detect basic spoofing technology which fails to spoof accelerometer readings. Thus, allowing us to flag spoofed journeys by detecting a lack of steps.
 - **Speed detection:** By performing a basic distance/time calculation, we can determine whether a player’s speed exceeds realistic speed expectations. We can use this to raise the suspicion score on users.
 
+**System Architecture Summary**
+```mermaid
+sequenceDiagram
+    participant C as Client (Leaflet/Sensors)
+    participant E as Express API
+    participant M as MySQL Database
+    
+    C->>C: watchPosition() buffers drift
+    C->>C: devicemotion counts steps
+    C->>E: POST /waypoint/interact {lat, lng, buffer, steps}
+    
+    E->>M: Query users & location_events (Last Loc, Timestamp)
+    M-->>E: return ProfileData
+    
+    E->>E: 1. Drift Check (Variance > Threshold?)
+    E->>E: 2. Speed Check (Distance / Time < MaxSpeed?)
+    E->>E: 3. Pedometer Check (Steps match Distance?)
+    
+    alt All Checks Pass
+        E->>M: Log location_event & trust_event (+Score)
+        E-->>C: Interaction Validated
+    else Check(s) Failed
+        E->>M: Log trust_event (-Score) & flag location
+        E-->>C: Interaction Denied / Flagged
+    end
+```
+
 ### 3.2 Offline Resilience
 To account for network dead-zones on campus, the client application will cache active puzzles (if the puzzle can be done offline). This caching will be implemented using Service Workers to intercept network requests and IndexedDB to persist puzzle states. If a player loses signal, their puzzle attempts will be held locally on the device and validated by the server as soon as the connection is restored, given the puzzle type is compatible with offline-play (live or co-op games will not be available offline).
 
