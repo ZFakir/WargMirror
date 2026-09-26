@@ -6,26 +6,34 @@ let stepCount = 0;
 let lastAccel = 0;
 const STEP_THRESHOLD = 1.2; // Adjust based on testing for typical walking bounce
 
-export function initSensors() {
+function handleMotion(event) {
+    if (!event.acceleration) return;
+    
+    const { x, y, z } = event.acceleration;
+    // Ignore null values
+    if (x === null || y === null || z === null) return;
+
+    const accel = Math.sqrt(x ** 2 + y ** 2 + z ** 2);
+    
+    // Basic peak detection
+    if (accel > STEP_THRESHOLD && lastAccel <= STEP_THRESHOLD) {
+        stepCount++;
+    }
+    lastAccel = accel;
+}
+
+export function startSensors() {
     // 1. Pedometer (Accelerometer)
     if (window.DeviceMotionEvent) {
-        window.addEventListener('devicemotion', (event) => {
-            if (!event.acceleration) return;
-            
-            const { x, y, z } = event.acceleration;
-            // Ignore null values
-            if (x === null || y === null || z === null) return;
-
-            const accel = Math.sqrt(x ** 2 + y ** 2 + z ** 2);
-            
-            // Basic peak detection
-            if (accel > STEP_THRESHOLD && lastAccel <= STEP_THRESHOLD) {
-                stepCount++;
-            }
-            lastAccel = accel;
-        });
+        window.addEventListener('devicemotion', handleMotion);
     } else {
         console.warn("DeviceMotionEvent not supported on this device.");
+    }
+}
+
+export function stopSensors() {
+    if (window.DeviceMotionEvent) {
+        window.removeEventListener('devicemotion', handleMotion);
     }
 }
 

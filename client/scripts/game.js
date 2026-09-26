@@ -7,10 +7,9 @@ import playModal from './components/PlayModal.js';
 import { FlagModal } from './components/FlagModal.js';
 import mapModal from './components/MapModal.js';
 import { getMinigameHandler } from './components/minigame-handlers.js';
-import { initSensors, logPosition, getSensorDataAndReset } from './sensors.js';
+import { startSensors, stopSensors, logPosition, getSensorDataAndReset } from './sensors.js';
 
 document.addEventListener('DOMContentLoaded', () => {
-  initSensors();
   const API_BASE = window.API_BASE_URL || 'https://wargmirror.onrender.com';
 
   // Initialize the reusable Flag Modal
@@ -51,6 +50,8 @@ document.addEventListener('DOMContentLoaded', () => {
       // Get full state
       const stateRes = await fetch(`${API_BASE}/api/game/${argId}/state`, { credentials: 'include' });
       if (!stateRes.ok) throw new Error('Failed to load game state');
+
+      startSensors();
 
       gameState = await stateRes.json();
 
@@ -635,3 +636,5 @@ document.addEventListener('DOMContentLoaded', () => {
 
   loadComments();
 });
+
+window.addEventListener('beforeunload', stopSensors);
