@@ -15,55 +15,7 @@ processing request pushes it over the limit, causing an OOM kill and a **502 Bad
 
 ---
 
-## Option A: Google Cloud Run (Free Tier) — Recommended
-
-### Prerequisites
-- A Google Cloud account (students: check for [Google Cloud for Education](https://cloud.google.com/edu/) credits)
-- [Google Cloud CLI (`gcloud`)](https://cloud.google.com/sdk/docs/install) installed
-
-### Free Tier Allowance (per month)
-| Resource         | Free Quota                          |
-|------------------|-------------------------------------|
-| CPU              | 180,000 vCPU-seconds (~50 hrs)      |
-| Memory           | 360,000 GiB-seconds (~100 GB-hrs)   |
-| Requests         | 2 million                           |
-| Container builds | 120 build-minutes                   |
-
-### Step-by-step
-
-```bash
-# 1. Authenticate and set project
-gcloud auth login
-gcloud config set project YOUR_PROJECT_ID
-
-# 2. Enable required APIs
-gcloud services enable run.googleapis.com
-gcloud services enable cloudbuild.googleapis.com
-gcloud services enable artifactregistry.googleapis.com
-
-# 3. Navigate to the ai-engine directory
-cd ai-engine
-
-# 4. Deploy directly from source (Cloud Build will use the Dockerfile)
-gcloud run deploy warg-ai-engine \
-  --source . \
-  --region africa-south1 \
-  --memory 2Gi \
-  --cpu 1 \
-  --timeout 120 \
-  --allow-unauthenticated \
-  --port 8080
-
-# 5. Note the Service URL printed at the end (e.g. https://warg-ai-engine-xxxxx-bq.a.run.app)
-```
-
-> **Note on cold starts:** Cloud Run scales to zero when idle. The first request after 
-> inactivity takes ~10-20 seconds while PyTorch loads. For a university demo this is 
-> acceptable. To eliminate cold starts, add `--min-instances 1` (costs ~$5-10/month).
-
----
-
-## Option B: AWS Lightsail (Container Service)
+## Deploying to AWS Lightsail (Container Service)
 
 ### Prerequisites
 - An AWS account with Lightsail access
@@ -77,39 +29,24 @@ gcloud run deploy warg-ai-engine \
 cd ai-engine
 docker build -t warg-ai-engine .
 
-# 2. Create a Lightsail container service (Micro = 1 GB RAM, $10/month)
-aws lightsail create-container-service \
-  --service-name warg-ai-engine \
-  --power micro \
-  --scale 1
+# 2. Create a Lightsail container service (Micro = 1 GB RAM)
+aws lightsail create-container-service --service-name warg-ai-engine --power micro --scale 1 --region eu-west-1
 
 # 3. Push the image to Lightsail
-aws lightsail push-container-image \
-  --service-name warg-ai-engine \
-  --label warg-ai \
-  --image warg-ai-engine:latest
+aws lightsail push-container-image --service-name warg-ai-engine --label warg-ai --image warg-ai-engine:latest --region eu-west-1
 
-# 4. Create a deployment (replace IMAGE_TAG with the output from step 3)
-aws lightsail create-container-service-deployment \
-  --service-name warg-ai-engine \
-  --containers '{
-    "warg-ai": {
-      "image": "IMAGE_TAG",
-      "ports": {"8080": "HTTP"},
-      "environment": {"PORT": "8080"}
-    }
-  }' \
-  --public-endpoint '{"containerName": "warg-ai", "containerPort": 8080}'
+# 4. Create a deployment (replace YOUR_IMAGE_TAG with the output from step 3, e.g. :warg-ai-engine.warg-ai.1)
+aws lightsail create-container-service-deployment --service-name warg-ai-engine --containers "{\"warg-ai\":{\"image\":\"YOUR_IMAGE_TAG\",\"ports\":{\"8080\":\"HTTP\"},\"environment\":{\"PORT\":\"8080\"}}}" --public-endpoint "{\"containerName\":\"warg-ai\",\"containerPort\":8080}" --region eu-west-1
 
 # 5. Get the public URL
-aws lightsail get-container-services --service-name warg-ai-engine
+aws lightsail get-container-services --service-name warg-ai-engine --region eu-west-1
 ```
 
 ---
 
 ## After Deploying: Connect Express to the AI Engine
 
-Once you have the AI Engine URL (from either platform), update the **Render dashboard**:
+Once you have the AI Engine URL from AWS, update the **Render dashboard**:
 
 1. Go to [Render Dashboard](https://dashboard.render.com) → your backend service
 2. Navigate to **Environment** → **Environment Variables**
