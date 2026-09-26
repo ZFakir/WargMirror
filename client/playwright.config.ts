@@ -15,6 +15,7 @@ export default defineConfig({
   testDir: './tests',
   /* Run tests in files in parallel */
   fullyParallel: true,
+  testMatch: /.*\.spec\.(js|ts)/,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
@@ -63,7 +64,7 @@ export default defineConfig({
 
   /* Run your local dev server before starting the tests */
   webServer: {
-    command: 'npx http-server ./ -p 8080 -a 127.0.0.1 -s',
+    command: 'npx --yes http-server ./ -p 8080 -a 127.0.0.1 -s',
     url: 'http://127.0.0.1:8080',
     reuseExistingServer: !process.env.CI,
   },
