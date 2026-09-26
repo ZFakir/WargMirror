@@ -114,6 +114,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }))
       });
 
+      if (gameState && gameState.session && gameState.session.status === 'completed') {
+        setTimeout(() => {
+          mapModal.showCompletedOverlay();
+        }, 500);
+      }
+
       // Start watching player location
       if (navigator.geolocation) {
         navigator.geolocation.watchPosition((position) => {
@@ -426,6 +432,11 @@ document.addEventListener('DOMContentLoaded', () => {
                       }, 2000);
                     } else {
                       mapModal.updateNodeStatus(node.id, 'completed');
+                      if (result.session_completed) {
+                        setTimeout(() => {
+                          mapModal.showCompletedOverlay();
+                        }, 1000); // Wait a second for popup to close / feedback to finish
+                      }
                     }
                   }
                 } catch (err) {

@@ -86,8 +86,10 @@ var api = (function () {
       : 0;
 
     // cover_image from the DB is a BLOB — the API sends it as a Buffer/null.
-    // Until the server serialises it as a data-URL we default to null (emoji fallback).
     var image = null;
+    if (arg.cover_image) {
+      image = API_BASE + '/api/args/' + arg.arg_id + '/cover-image';
+    }
 
     return {
       id: String(arg.arg_id),
