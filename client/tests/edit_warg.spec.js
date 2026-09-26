@@ -33,9 +33,6 @@ test.describe('edit_warg page logic', () => {
     // Wait for script to finish initializing by waiting for Leaflet map container
     await page.waitForSelector('.leaflet-container', { state: 'attached' });
 
-    // Wait for script to finish initializing by waiting for Leaflet map container
-    await page.waitForSelector('.leaflet-container', { state: 'attached' });
-
     // The script initializes asynchronously. The event listener on btn-add-game 
     // is attached at the end of the script. We poll the click until the modal opens.
     const selectorModal = page.locator('#game-selector-modal-overlay');
