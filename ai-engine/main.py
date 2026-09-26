@@ -5,6 +5,9 @@ from vision import sam_extractor, hsv_matcher, mobilenet_extractor, then_vs_now,
 
 app = FastAPI(title="WARG AI Engine")
 
+@app.get("/")
+async def root():
+    return {"status": "ok", "message": "WARG AI Engine is running"}
 
 # ── Response Models ──────────────────────────────────────────────
 

@@ -13,7 +13,8 @@ const LocationEvent = sequelize.define('LocationEvent', {
   flags_json: { type: DataTypes.JSON, allowNull: true }
 }, {
   tableName: 'location_events',
-  timestamps: false
+  timestamps: false,
+  indexes: [{ fields: ['user_id', 'recorded_at'] }]
 });
 
 module.exports = LocationEvent;

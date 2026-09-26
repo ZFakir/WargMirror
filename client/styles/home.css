@@ -807,6 +807,8 @@
     &:hover { color: var(--color-warning); }
   }
 
+
+
   .gc-rating {
     display: flex;
     align-items: center;
@@ -819,6 +821,9 @@
   }
 }
 
+body.admin-mode .gc-action--admin-delete {
+  display: flex !important;
+}
 
 /* ==========================================================================
    Right Panel — Friends

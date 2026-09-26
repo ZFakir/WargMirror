@@ -31,3 +31,4 @@ server/database.sqlite
 # Temporary/Backup Files
 old_*.js
 main_edit_warg.js
+*.log
