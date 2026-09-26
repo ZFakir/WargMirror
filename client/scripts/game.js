@@ -1,3 +1,4 @@
+/* global showToast */
 /**
  * WARG Platform — Game Page Script
  * Handles: Progress timeline rendering, game engine integration, and interactions.
@@ -7,6 +8,7 @@ import playModal from './components/PlayModal.js';
 import { FlagModal } from './components/FlagModal.js';
 import mapModal from './components/MapModal.js';
 import { getMinigameHandler } from './components/minigame-handlers.js';
+import { startSensors, stopSensors, logPosition, getSensorDataAndReset } from './sensors.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   const API_BASE = window.API_BASE_URL || 'https://wargmirror.onrender.com';
@@ -49,6 +51,8 @@ document.addEventListener('DOMContentLoaded', () => {
       // Get full state
       const stateRes = await fetch(`${API_BASE}/api/game/${argId}/state`, { credentials: 'include' });
       if (!stateRes.ok) throw new Error('Failed to load game state');
+
+      startSensors();
 
       gameState = await stateRes.json();
 
@@ -110,11 +114,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }))
       });
 
+      if (gameState && gameState.session && gameState.session.status === 'completed') {
+        setTimeout(() => {
+          mapModal.showCompletedOverlay();
+        }, 500);
+      }
+
       // Start watching player location
       if (navigator.geolocation) {
         navigator.geolocation.watchPosition((position) => {
           const { latitude, longitude, accuracy } = position.coords;
           window.lastPlayerLocation = { latitude, longitude, accuracy };
+          logPosition(latitude, longitude);
           mapModal.updatePlayerLocation(latitude, longitude, accuracy);
         }, (error) => {
           console.warn("Player location not available:", error);
@@ -321,11 +332,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const processLocation = async (latitude, longitude, accuracy) => {
         try {
+          const sensorData = getSensorDataAndReset();
+          
           const arriveRes = await fetch(`${API_BASE}/api/game/${argId}/waypoint/${node.id}/arrive`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
-            body: JSON.stringify({ lat: latitude, lng: longitude, accuracy_m: accuracy })
+            body: JSON.stringify({ lat: latitude, lng: longitude, accuracy_m: accuracy, ...sensorData })
           });
 
           if (!arriveRes.ok) throw new Error('Arrive check failed');
@@ -419,6 +432,11 @@ document.addEventListener('DOMContentLoaded', () => {
                       }, 2000);
                     } else {
                       mapModal.updateNodeStatus(node.id, 'completed');
+                      if (result.session_completed) {
+                        setTimeout(() => {
+                          mapModal.showCompletedOverlay();
+                        }, 1000); // Wait a second for popup to close / feedback to finish
+                      }
                     }
                   }
                 } catch (err) {
@@ -467,6 +485,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function loadComments() {
     try {
+      const user = await api.getCurrentUser();
+      const isAdmin = user && user.role === 'admin';
+
       const response = await fetch(`${API_BASE}/api/comments/arg/${argId}`, { credentials: 'include' });
       if (!response.ok) throw new Error('Failed to load comments');
       const comments = await response.json();
@@ -513,12 +534,41 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
             <p>${bodyHtml}</p>
             <button class="btn-reply" style="background: none; border: none; color: var(--color-brand); font-size: 12px; cursor: pointer; padding: 0; margin-top: 4px;">Reply</button>
+            ${isAdmin ? `<button class="btn-delete" style="background: none; border: none; color: var(--color-danger); font-size: 12px; cursor: pointer; padding: 0; margin-top: 4px; margin-left: 12px;">Delete</button>` : ''}
           </div>
         `;
 
         if (comment.is_spoiler) {
           const spoilerSpan = div.querySelector('.spoiler-text');
           spoilerSpan.addEventListener('click', () => spoilerSpan.classList.add('is-revealed'), { once: true });
+        }
+
+        if (isAdmin) {
+          const btnDelete = div.querySelector('.btn-delete');
+          if (btnDelete) {
+            btnDelete.addEventListener('click', async () => {
+              if (window.confirmModal) {
+                window.confirmModal.open({
+                  title: 'Delete Comment',
+                  desc: 'Are you sure you want to delete this comment?',
+                  confirmText: 'Delete',
+                  callback: async () => {
+                    try {
+                      const res = await fetch(`${API_BASE}/api/admin/comments/${comment.comment_id}`, { method: 'DELETE', credentials: 'include' });
+                      if (res.ok) {
+                        loadComments(); // refresh the list
+                      } else {
+                        if (typeof showToast !== 'undefined') showToast('Failed to delete comment.');
+                      }
+                    } catch (e) {
+                      console.error(e);
+                      if (typeof showToast !== 'undefined') showToast('Error deleting comment.');
+                    }
+                  }
+                });
+              }
+            });
+          }
         }
 
         const replyBtn = div.querySelector('.btn-reply');
@@ -595,9 +645,9 @@ document.addEventListener('DOMContentLoaded', () => {
           btnElement.innerHTML = originalBtnHTML;
         }
         if (response.status === 401) {
-          alert("You must be logged in to post a comment.");
+          if (typeof showToast !== 'undefined') showToast("You must be logged in to post a comment.");
         } else {
-          alert("Failed to post comment");
+          if (typeof showToast !== 'undefined') showToast("Failed to post comment");
         }
         return;
       }
@@ -630,3 +680,5 @@ document.addEventListener('DOMContentLoaded', () => {
 
   loadComments();
 });
+
+window.addEventListener('beforeunload', stopSensors);

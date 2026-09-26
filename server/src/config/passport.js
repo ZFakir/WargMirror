@@ -36,7 +36,10 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
         let user = await User.findOne({ where: { google_uid: profile.id } });
 
         if (user) {
-          // Existing user — return them
+          // Existing user — check if banned, then return them
+          if (user.is_flagged) {
+            return done(null, false, { message: 'Your account has been banned.' });
+          }
           return done(null, user);
         }
 
@@ -68,6 +71,10 @@ passport.use(new LocalStrategy(
       const user = await User.findOne({ where: { email } });
       if (!user) {
         return done(null, false, { message: 'Incorrect email or password.' });
+      }
+      
+      if (user.is_flagged) {
+        return done(null, false, { message: 'Your account has been banned.' });
       }
       
       // If user registered with google, they might not have a password

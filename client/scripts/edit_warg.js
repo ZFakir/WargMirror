@@ -45,8 +45,22 @@ document.addEventListener('DOMContentLoaded', async () => {
       const res = await fetch(`${API_BASE}/api/args/${currentArgId}`, { credentials: 'include' });
       if (res.ok) {
         const argData = await res.json();
-        if (titleEl) titleEl.textContent = argData.title;
-        if (descEl) descEl.textContent = argData.description || 'Add a description for your WARG…';
+        
+        const skeleton = document.getElementById('builder-header-skeleton');
+        const fields = document.getElementById('builder-header-fields');
+        if (skeleton) skeleton.style.display = 'none';
+        if (fields) fields.style.display = 'block';
+
+        if (titleEl) titleEl.textContent = argData.title || '';
+        if (descEl) descEl.textContent = argData.description || '';
+
+        if (argData.cover_image) {
+          const heroImg = document.getElementById('hero-banner-img');
+          if (heroImg) {
+            heroImg.src = `${API_BASE}/api/args/${currentArgId}/cover-image`;
+            heroImg.style.display = 'block';
+          }
+        }
 
         // Map Waypoints to nodes
         const idMap = {}; // mapping waypoint_id to frontend node id
@@ -121,6 +135,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   } else if (!isCreateMode) {
     // Demo data for visual testing if no ID provided in edit mode
+    const skeleton = document.getElementById('builder-header-skeleton');
+    const fields = document.getElementById('builder-header-fields');
+    if (skeleton) skeleton.style.display = 'none';
+    if (fields) fields.style.display = 'block';
+
+    if (titleEl) titleEl.textContent = 'Operation: Midnight Sun';
+    if (descEl) descEl.textContent = 'A fast-paced urban scavenger hunt across the downtown district, challenging players to uncover hidden corporate secrets.';
+
     nodes = [
       { id: 'wp1', lat: -26.19233, lng: 28.02987, title: 'The Great Hall', description: 'Find the plaque near the entrance.', games: [{ gamemode: 'GPS Location', type: 'gps' }] },
       { id: 'wp2', lat: -26.19075, lng: 28.03215, title: 'Library Archway', description: 'Scan the historic archway to reveal the hidden message.', games: [{ gamemode: 'AR Object Scan', type: 'ar' }] },
@@ -708,6 +730,60 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
           }
         );
+      });
+    }
+
+    // ── Hero Banner Image Upload ──
+    const btnChangeHeroImage = document.getElementById('btn-change-hero-image');
+    const heroBannerImg = document.getElementById('hero-banner-img');
+
+    if (btnChangeHeroImage && heroBannerImg) {
+      btnChangeHeroImage.addEventListener('click', () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.onchange = async (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+
+          if (!currentArgId) {
+            try {
+              await saveArg('draft');
+            } catch (err) {
+              console.error(err);
+              openAlertModal('Failed to automatically save WARG before uploading cover image.');
+              return;
+            }
+          }
+
+          const origContent = btnChangeHeroImage.innerHTML;
+          btnChangeHeroImage.innerHTML = '<span style="font-size:10px; font-weight:bold;">Up...</span>';
+          btnChangeHeroImage.disabled = true;
+
+          try {
+            const formData = new FormData();
+            formData.append('image', file);
+            const res = await fetch(`${API_BASE}/api/args/${currentArgId}/cover-image`, {
+              method: 'POST',
+              body: formData,
+              credentials: 'include'
+            });
+            if (!res.ok) throw new Error('Upload failed');
+            await res.json();
+            
+            heroBannerImg.src = `${API_BASE}/api/args/${currentArgId}/cover-image?ts=${Date.now()}`;
+            heroBannerImg.style.display = 'block';
+            const heroContainer = document.getElementById('hero-banner-container');
+            if (heroContainer) heroContainer.style.background = 'transparent';
+          } catch (err) {
+            console.error(err);
+            openAlertModal('Failed to upload cover image.');
+          } finally {
+            btnChangeHeroImage.innerHTML = origContent;
+            btnChangeHeroImage.disabled = false;
+          }
+        };
+        input.click();
       });
     }
 
