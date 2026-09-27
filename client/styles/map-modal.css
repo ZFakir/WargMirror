@@ -753,26 +753,27 @@
 
 @media (max-width: 768px) {
   .map-modal {
-    width: 95vw;
-    height: 90vh;
+    width: 100vw;
+    height: 100vh;
+    border-radius: 0;
   }
 
   .map-modal .wrap {
-    flex-direction: column;
+    flex-direction: column-reverse; /* Puts the map on top, field log on bottom */
   }
 
   .map-modal .fieldlog {
     width: 100%;
     flex-shrink: 1;
     border-right: none;
-    border-bottom: 1px solid var(--color-border);
+    border-top: 1px solid var(--color-border);
   }
 
   .map-modal .fieldlog__list {
-    max-height: 30vh;
+    max-height: 40vh;
   }
 
   .map-modal .maparea {
-    min-height: 40vh;
+    min-height: 50vh;
   }
 }
