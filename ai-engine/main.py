@@ -1,13 +1,54 @@
-from fastapi import FastAPI, UploadFile, File, Form
-from fastapi.responses import Response
+import os
+from fastapi import FastAPI, UploadFile, File, Security, HTTPException, status
+from fastapi.security.api_key import APIKeyHeader
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from vision import sam_extractor, hsv_matcher, mobilenet_extractor, then_vs_now, symmetry
 
 app = FastAPI(title="WARG AI Engine")
 
+# ── Security ──────────────────────────────────────────────────────
+API_KEY = os.getenv("AI_KEY", "dev-secret-key")
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=True)
+
+async def verify_api_key(api_key: str = Security(api_key_header)):
+    if api_key != API_KEY:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or missing API Key",
+        )
+    return api_key
+
+# Allow the Express backend (on Render) to call this service
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://warg-mirror.vercel.app",
+        "https://wargmirror.onrender.com",
+        "http://localhost:3000",
+        "http://localhost:8080",
+    ],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 @app.get("/")
 async def root():
     return {"status": "ok", "message": "WARG AI Engine is running"}
+
+@app.get("/health")
+async def health():
+    """Health check for container orchestrators (Cloud Run, Lightsail, etc.)."""
+    return {
+        "status": "ok",
+        "models": {
+            "sam": sam_extractor.predictor is not None,
+            "mobilenet": mobilenet_extractor.mobilenet is not None,
+            "hsv": True,
+            "sift": True,
+            "symmetry": True,
+        }
+    }
 
 # ── Response Models ──────────────────────────────────────────────
 
@@ -33,7 +74,7 @@ class TextureEmbeddingResult(BaseModel):
 # ══════════════════════════════════════════════════════════════════
 
 @app.post("/api/v1/sam-extract", response_model=EvaluationResult)
-async def evaluate_shape(image: UploadFile = File(...), target_mask: UploadFile = File(...)):
+async def evaluate_shape(image: UploadFile = File(...), target_mask: UploadFile = File(...), api_key: str = Security(verify_api_key)):
     """
     Receives image payloads from Express.
     Runs Meta's SAM and calculates the Aligned Jaccard Index.
@@ -51,7 +92,7 @@ async def evaluate_shape(image: UploadFile = File(...), target_mask: UploadFile 
     )
 
 @app.post("/api/v1/hsv-match", response_model=EvaluationResult)
-async def evaluate_colour(image: UploadFile = File(...), reference_image: UploadFile = File(...)):
+async def evaluate_colour(image: UploadFile = File(...), reference_image: UploadFile = File(...), api_key: str = Security(verify_api_key)):
     """
     Evaluates Bhattacharyya distance using HSV color-space histograms.
     
@@ -69,7 +110,7 @@ async def evaluate_colour(image: UploadFile = File(...), reference_image: Upload
     )
 
 @app.post("/api/v1/texture-match", response_model=EvaluationResult)
-async def evaluate_texture(image: UploadFile = File(...), reference_image: UploadFile = File(...)):
+async def evaluate_texture(image: UploadFile = File(...), reference_image: UploadFile = File(...), api_key: str = Security(verify_api_key)):
     image_bytes = await image.read()
     reference_bytes = await reference_image.read()
     
@@ -83,7 +124,7 @@ async def evaluate_texture(image: UploadFile = File(...), reference_image: Uploa
     )
 
 @app.post("/api/v1/sift-match", response_model=EvaluationResult)
-async def evaluate_sift(image: UploadFile = File(...), archival_image: UploadFile = File(...)):
+async def evaluate_sift(image: UploadFile = File(...), archival_image: UploadFile = File(...), api_key: str = Security(verify_api_key)):
     image_bytes = await image.read()
     archival_bytes = await archival_image.read()
     
@@ -96,7 +137,7 @@ async def evaluate_sift(image: UploadFile = File(...), archival_image: UploadFil
     )
 
 @app.post("/api/v1/symmetry", response_model=EvaluationResult)
-async def evaluate_symmetry_endpoint(image: UploadFile = File(...)):
+async def evaluate_symmetry_endpoint(image: UploadFile = File(...), api_key: str = Security(verify_api_key)):
     image_bytes = await image.read()
     
     result = symmetry.evaluate_symmetry(image_bytes)
