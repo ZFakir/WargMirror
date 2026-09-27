@@ -64,7 +64,8 @@ const mapFrontendTypeToGameType = (type) => {
     'sift_match': 'sift_match',
     'symmetry_finder': 'symmetry_finder',
     'photo_submit': 'photo_submit',
-    'text_answer': 'text_answer' // Map QnA
+    'text_answer': 'text_answer', // Map QnA
+    'plaque_scan': 'plaque_scan'
   };
   return map[type] || 'gps_proximity';
 };

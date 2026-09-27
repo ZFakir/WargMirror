@@ -3,7 +3,7 @@ from fastapi import FastAPI, UploadFile, File, Security, HTTPException, status
 from fastapi.security.api_key import APIKeyHeader
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from vision import sam_extractor, hsv_matcher, mobilenet_extractor, then_vs_now, symmetry
+from vision import sam_extractor, hsv_matcher, mobilenet_extractor, then_vs_now, symmetry, ocr_matcher
 
 app = FastAPI(title="WARG AI Engine")
 
@@ -47,6 +47,7 @@ async def health():
             "hsv": True,
             "sift": True,
             "symmetry": True,
+            "ocr": True,
         }
     }
 
@@ -147,3 +148,10 @@ async def evaluate_symmetry_endpoint(image: UploadFile = File(...), api_key: str
         passed=result["passed"],
         message="Symmetry evaluation complete."
     )
+
+@app.post("/api/v1/ocr-match", response_model=EvaluationResult)
+async def evaluate_plaque_endpoint(image: UploadFile = File(...), reference_image: UploadFile = File(...), api_key: str = Security(verify_api_key)):
+    image_bytes = await image.read()
+    reference_bytes = await reference_image.read()
+    result = ocr_matcher.evaluate_plaque(image_bytes, reference_bytes)
+    return EvaluationResult(**result)

@@ -127,6 +127,64 @@ export function getMinigameHandler(gameType) {
           });
         }
       };
+    case 'plaque_scan':
+      return {
+        render: (container, config, onSubmit) => {
+          container.innerHTML = `
+            <div style="text-align: center; padding: 1rem;">
+               <p style="margin-bottom: 1rem; color: var(--color-text-muted);">Take a photo of the plaque or sign to read its text.</p>
+               <input type="file" id="plaque-photo-input" accept="image/*" capture="environment" style="display: none;" />
+               <button id="btn-take-photo" class="btn btn--primary" style="margin-top: 1rem;">
+                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px; margin-right: 6px; vertical-align: middle;"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                 <span style="vertical-align: middle;">Take Photo</span>
+               </button>
+               <div id="plaque-preview-container" style="display: none; margin-top: 1rem;">
+                 <img id="plaque-preview-img" style="max-width: 100%; max-height: 250px; border-radius: 8px; border: 1px solid var(--color-border);" />
+                 <div style="margin-top: 1rem; display: flex; gap: 0.5rem; justify-content: center;">
+                   <button id="btn-retake-photo" class="btn btn--outline">Retake</button>
+                   <button id="btn-submit-photo" class="btn btn--primary">Submit Photo</button>
+                 </div>
+               </div>
+            </div>
+          `;
+          
+          const btnTake = container.querySelector('#btn-take-photo');
+          const fileInput = container.querySelector('#plaque-photo-input');
+          const previewContainer = container.querySelector('#plaque-preview-container');
+          const previewImg = container.querySelector('#plaque-preview-img');
+          const btnRetake = container.querySelector('#btn-retake-photo');
+          const btnSubmit = container.querySelector('#btn-submit-photo');
+          let base64Data = null;
+
+          btnTake.addEventListener('click', () => {
+            fileInput.click();
+          });
+
+          btnRetake.addEventListener('click', () => {
+            fileInput.click();
+          });
+
+          fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+              const reader = new FileReader();
+              reader.onload = (evt) => {
+                base64Data = evt.target.result;
+                previewImg.src = base64Data;
+                btnTake.style.display = 'none';
+                previewContainer.style.display = 'block';
+              };
+              reader.readAsDataURL(file);
+            }
+          });
+
+          btnSubmit.addEventListener('click', () => {
+            if (base64Data) {
+              onSubmit(base64Data);
+            }
+          });
+        }
+      };
     default:
       return {
         render: (container, config, onSubmit) => {

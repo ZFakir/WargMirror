@@ -35,7 +35,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       'sift_match': { type: 'sift_match', label: 'Then & Now (SIFT)' },
       'symmetry_finder': { type: 'symmetry_finder', label: 'Symmetry Finder' },
       'photo_submit': { type: 'photo_submit', label: 'Photo Submit' },
-      'text_answer': { type: 'text_answer', label: 'QnA / MCQ' }
+      'text_answer': { type: 'text_answer', label: 'QnA / MCQ' },
+      'plaque_scan': { type: 'plaque_scan', label: 'Plaque Scanner' }
     };
     return map[gameType] || { type: 'gps', label: 'GPS Location' };
   };
@@ -352,7 +353,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             node.games.forEach((game, index) => {
               const config = game.minigame_config || {};
               const unlimitedChecked = config.allow_multiple_attempts ? 'checked' : '';
-              const isCVGame = ['shape_match', 'colour_match', 'texture_match', 'sift_match', 'symmetry_finder'].includes(game.type);
+              const isCVGame = ['shape_match', 'colour_match', 'texture_match', 'sift_match', 'symmetry_finder', 'plaque_scan'].includes(game.type);
 
               html += `
                 <div class="sub-card" style="position: relative; flex-direction: column; align-items: stretch;" tabindex="0">
