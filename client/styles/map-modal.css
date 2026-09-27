@@ -756,31 +756,40 @@
     width: 100vw;
     height: 100dvh;
     border-radius: 0;
-    overflow-y: auto; /* Allow the entire modal to scroll */
+    overflow: hidden; /* Prevent page scrolling, use strict flex layout */
   }
 
   .map-modal .wrap {
-    flex-direction: column-reverse;
-    height: auto; /* Let it grow based on content */
-    min-height: 100%;
+    display: flex;
+    flex-direction: column-reverse; /* Map on top, Field Log on bottom */
+    height: 100%;
   }
 
   .map-modal .fieldlog {
     width: 100%;
-    flex: none; /* Do not shrink/grow */
-    height: auto;
+    flex: 1; /* Take remaining space */
+    display: flex;
+    flex-direction: column;
     border-right: none;
     border-top: 1px solid var(--color-border);
-    overflow: visible; /* Let content dictate height */
+    overflow: hidden; /* Prevent overflow, let list scroll */
   }
 
   .map-modal .fieldlog__list {
-    max-height: none; /* Remove max height */
-    overflow-y: visible; /* Prevent inner scrolling, use page scroll */
+    flex: 1;
+    max-height: none; 
+    overflow-y: auto; /* Internal scrolling for the list */
   }
 
   .map-modal .maparea {
-    height: 55vh; /* Fixed height for the map at the top */
+    height: 55vh; /* Fixed percentage for map */
+    min-height: 55vh;
     flex: none;
+  }
+
+  /* Fix Leaflet popup being too tall on mobile */
+  .map-modal .leaflet-popup-content {
+    max-height: 35vh;
+    overflow-y: auto;
   }
 }
