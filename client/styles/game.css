@@ -460,6 +460,44 @@
   border: 1px solid var(--color-border);
 }
 
+.feedback-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  padding-bottom: var(--spacing-sm);
+  user-select: none;
+}
+
+.feedback-header h3 {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.feedback-toggle-icon {
+  color: var(--color-text-muted);
+  transition: transform 0.3s var(--ease-out);
+}
+
+.feedback-toggle-icon.is-rotated {
+  transform: rotate(180deg);
+}
+
+.feedback-content {
+  display: block;
+  overflow: hidden;
+  transition: all 0.3s var(--ease-out);
+  /* The height transition relies on max-height for smoothness, but since content length varies, we just use a simple display toggle or a max-height hack */
+  opacity: 1;
+}
+
+.feedback-content.is-hidden {
+  display: none;
+  opacity: 0;
+}
+
 .game-actions-bar {
   display: flex;
   align-items: center;
