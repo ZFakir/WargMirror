@@ -753,6 +753,11 @@
 @media (max-width: 768px) {
   /* Keep the map visible at the top */
   .game-map-wrapper {
+    height: 300px; 
+    border-radius: var(--radius-lg);
+  }
+
+  body:has(.modal-overlay[aria-hidden="false"]) .game-map-wrapper {
     height: 40vh; 
     border-radius: 0 0 var(--radius-lg) var(--radius-lg);
     border-top: none;
