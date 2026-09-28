@@ -753,10 +753,12 @@
 
 @media (max-width: 768px) {
   .map-modal {
-    width: 100vw;
-    height: 100dvh;
-    border-radius: 0;
     overflow: hidden; /* Prevent page scrolling, use strict flex layout */
+  }
+
+  /* Only remove border-radius when it is actually fullscreen */
+  .map-modal.is-fullscreen {
+    border-radius: 0;
   }
 
   .map-modal .wrap {
@@ -782,9 +784,9 @@
   }
 
   .map-modal .maparea {
-    height: 55vh; /* Fixed percentage for map */
-    min-height: 55vh;
-    flex: none;
+    flex: 1.2; /* Map takes slightly more space than fieldlog */
+    min-height: 0; /* Let flex handle height */
+    height: auto;
   }
 
   /* Fix Leaflet popup being too tall on mobile */
