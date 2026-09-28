@@ -116,6 +116,10 @@
     z-index: 100;
   }
 
+  body:has(.map-modal.is-fullscreen) .topbar {
+    z-index: 0;
+  }
+
   .topbar__hamburger {
     flex-shrink: 0;
   }
