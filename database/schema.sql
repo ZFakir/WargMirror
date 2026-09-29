@@ -219,7 +219,12 @@ CREATE TABLE IF NOT EXISTS minigames (
                     'ar_object_scan',  -- Advanced: AR object recognition
                     'colour_match',    -- Advanced: HSV colour matching
                     'shape_match',     -- Advanced: Jaccard shape index
-                    'photo_submit'     -- Intermediate: photo upload
+                    'photo_submit',    -- Intermediate: photo upload
+                    'texture_match',
+                    'sift_match',
+                    'symmetry_finder',
+                    'word_scramble',
+                    'plaque_scan'
                 ) NOT NULL,
     -- Flexible per-type config stored as JSON.
     -- Examples:
@@ -227,6 +232,7 @@ CREATE TABLE IF NOT EXISTS minigames (
     --   colour_match: { "target_hsv": [210, 0.8, 0.9], "tolerance": 0.12 }
     --   qr_barcode:   { "barcode_value": "WARG-2026-A3" }
     --   shape_match:  { "shape_svg": "...", "jaccard_threshold": 0.75 }
+    --   plaque_scan:  { "reference_image_base64": "...", "reference_image_mimetype": "..." }
     config_json  JSON             NULL,
     points_value SMALLINT UNSIGNED NOT NULL DEFAULT 10,
     created_at   DATETIME         NOT NULL DEFAULT CURRENT_TIMESTAMP,

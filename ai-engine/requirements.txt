@@ -9,3 +9,4 @@ torchvision>=0.15.2
 Pillow>=9.5.0
 timm
 git+https://github.com/ChaoningZhang/MobileSAM.git
+pytesseract

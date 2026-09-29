@@ -25,11 +25,11 @@ test.describe('login page/script logic', () => {
       });
     });
 
-    const dialogPromise = page.waitForEvent('dialog');
-    await page.click('button[type="submit"]');
+    page.once('dialog', async dialog => {
+      expect(dialog.message()).toContain('Incorrect email or password');
+      await dialog.dismiss();
+    });
 
-    const dialog = await dialogPromise;
-    expect(dialog.message()).toContain('Incorrect email or password');
-    await dialog.dismiss();
+    await page.click('button[type="submit"]');
   });
 });
