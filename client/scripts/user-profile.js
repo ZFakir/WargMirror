@@ -68,6 +68,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   const statPoints = document.getElementById('stat-total-points');
   if (statPoints) statPoints.textContent = (profile.total_points || 0).toLocaleString();
 
+  const statGamesCompleted = document.getElementById('stat-games-completed');
+  if (statGamesCompleted) statGamesCompleted.textContent = (profile.games_completed || 0).toLocaleString();
+
   const statDistance = document.getElementById('stat-distance-walked');
   if (statDistance) {
     const km = ((profile.distance_walked_m || 0) / 1000).toFixed(1);

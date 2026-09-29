@@ -76,10 +76,28 @@ export class CameraCapture {
       if (!this.videoElement.videoWidth) {
         return reject(new Error('Video not ready'));
       }
-      this.canvasElement.width = this.videoElement.videoWidth;
-      this.canvasElement.height = this.videoElement.videoHeight;
+
+      const MAX_WIDTH = 800;
+      const MAX_HEIGHT = 800;
+      let width = this.videoElement.videoWidth;
+      let height = this.videoElement.videoHeight;
+
+      if (width > height) {
+        if (width > MAX_WIDTH) {
+          height = Math.round(height * (MAX_WIDTH / width));
+          width = MAX_WIDTH;
+        }
+      } else {
+        if (height > MAX_HEIGHT) {
+          width = Math.round(width * (MAX_HEIGHT / height));
+          height = MAX_HEIGHT;
+        }
+      }
+
+      this.canvasElement.width = width;
+      this.canvasElement.height = height;
       const ctx = this.canvasElement.getContext('2d');
-      ctx.drawImage(this.videoElement, 0, 0, this.canvasElement.width, this.canvasElement.height);
+      ctx.drawImage(this.videoElement, 0, 0, width, height);
       
       this.canvasElement.toBlob((blob) => {
         if (blob) {
@@ -87,7 +105,7 @@ export class CameraCapture {
         } else {
           reject(new Error('Failed to create blob from canvas'));
         }
-      }, 'image/jpeg', 0.9);
+      }, 'image/jpeg', 0.7);
     });
   }
 }

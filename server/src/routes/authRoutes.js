@@ -95,15 +95,27 @@ router.get('/logout', (req, res) => {
 });
 
 // Get the currently authenticated user
-router.get('/me', (req, res) => {
+router.get('/me', async (req, res) => {
   if (req.isAuthenticated()) {
-    return res.json({
-      user_id: req.user.user_id,
-      username: req.user.username,
-      email: req.user.email,
-      role: req.user.role,
-      profile_picture: req.user.profile_picture_url || null
-    });
+    try {
+      const { GameSession } = require('../models');
+      const gamesCompleted = await GameSession.count({
+        where: { user_id: req.user.user_id, status: 'completed' },
+        distinct: true,
+        col: 'arg_id'
+      });
+      return res.json({
+        user_id: req.user.user_id,
+        username: req.user.username,
+        email: req.user.email,
+        role: req.user.role,
+        games_completed: gamesCompleted,
+        profile_picture: req.user.profile_picture_url || null
+      });
+    } catch (e) {
+      console.error(e);
+      return res.status(500).json({ error: 'Server error fetching user profile' });
+    }
   }
   return res.status(401).json({ error: 'Not authenticated' });
 });

@@ -19,7 +19,6 @@ if (!window.API_BASE_URL) {
 }
 var API_BASE = window.API_BASE_URL;
 
-// eslint-disable-next-line no-unused-vars
 var api = (function () {
 
   /* ── Generic fetch wrapper ──────────────────────────────── */
@@ -87,8 +86,10 @@ var api = (function () {
       : 0;
 
     // cover_image from the DB is a BLOB — the API sends it as a Buffer/null.
-    // Until the server serialises it as a data-URL we default to null (emoji fallback).
     var image = null;
+    if (arg.cover_image) {
+      image = API_BASE + '/api/args/' + arg.arg_id + '/cover-image';
+    }
 
     return {
       id: String(arg.arg_id),
@@ -292,3 +293,32 @@ var api = (function () {
   };
 
 })();
+
+// --- Global Admin Dashboard Link Injector ---
+document.addEventListener('DOMContentLoaded', async () => {
+  try {
+    const user = await api.getCurrentUser();
+    if (user && user.role === 'admin') {
+      window._isAdmin = true;
+      document.body.classList.add('admin-mode');
+      const navs = document.querySelectorAll('.sidebar__nav');
+      navs.forEach(nav => {
+        if (!nav.querySelector('#nav-admin')) {
+          const adminLink = document.createElement('a');
+          adminLink.href = 'admin.html';
+          adminLink.id = 'nav-admin';
+          adminLink.className = 'nav-item' + (window.location.pathname.includes('admin.html') ? ' active' : '');
+          adminLink.innerHTML = `
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+            <span class="nav-item__label">Admin Dashboard</span>
+          `;
+          nav.appendChild(adminLink);
+        }
+      });
+    }
+  } catch {
+    // Ignore errors for unauthenticated users
+  }
+});

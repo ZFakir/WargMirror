@@ -116,6 +116,10 @@
     z-index: 100;
   }
 
+  body:has(.map-modal.is-fullscreen) .topbar {
+    z-index: 0;
+  }
+
   .topbar__hamburger {
     flex-shrink: 0;
   }
@@ -807,6 +811,8 @@
     &:hover { color: var(--color-warning); }
   }
 
+
+
   .gc-rating {
     display: flex;
     align-items: center;
@@ -819,6 +825,9 @@
   }
 }
 
+body.admin-mode .gc-action--admin-delete {
+  display: flex !important;
+}
 
 /* ==========================================================================
    Right Panel — Friends

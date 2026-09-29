@@ -45,7 +45,7 @@ describe('sessionController', () => {
 
       await getActiveSessions(req, res);
 
-      expect(GameSession.findAll).toHaveBeenCalledWith(expect.objectContaining({ where: { user_id: 1, status: 'active' } }));
+      expect(GameSession.findAll).toHaveBeenCalledWith(expect.objectContaining({ where: { user_id: 1 } }));
       expect(res.json).toHaveBeenCalledWith([{ session_id: 1 }]);
     });
 

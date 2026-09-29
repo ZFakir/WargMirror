@@ -26,7 +26,7 @@ test.describe('home page/script logic', () => {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify([
-          { id: 101, title: 'Mystery at Origins', description: 'Find the hidden truth.', status: 'active', author: { username: 'creator1' } }
+          { arg_id: 101, title: 'Mystery at Origins', caption: 'Find the hidden truth.', status: 'active', Creator: { username: 'creator1' }, created_at: new Date().toISOString() }
         ])
       });
     });

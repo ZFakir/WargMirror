@@ -8,7 +8,16 @@ exports.getUserProfile = async (req, res) => {
       include: [{ model: Badge, attributes: ['badge_id', 'name', 'description'], through: { attributes: ['awarded_at'] } }]
     });
     if (!user) return res.status(404).json({ error: 'User not found' });
-    res.json(user);
+
+    const gamesCompleted = await GameSession.count({
+      where: { user_id: req.params.id, status: 'completed' },
+      distinct: true,
+      col: 'arg_id'
+    });
+    const userJSON = user.toJSON();
+    userJSON.games_completed = gamesCompleted;
+
+    res.json(userJSON);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to fetch user profile' });

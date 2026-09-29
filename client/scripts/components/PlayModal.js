@@ -55,7 +55,11 @@ export class PlayModal {
     this.resetReadMore();
 
     this.overlay.setAttribute('aria-hidden', 'false');
-    document.body.style.overflow = 'hidden'; // Prevent background scrolling
+    
+    // Only lock background scrolling on desktop. On mobile, we want the map scrollable.
+    if (!window.matchMedia('(max-width: 768px)').matches) {
+      document.body.style.overflow = 'hidden'; 
+    }
 
     // Check if we need the read more button after rendering
     // A small delay ensures the DOM has painted the new text

@@ -9,6 +9,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (!catalogueGrid || typeof GameCard === 'undefined' || typeof api === 'undefined') return;
 
   // ── Loading skeleton ──
+  const titleEl = document.getElementById('catalogue-title');
+  const urlParams = new URLSearchParams(window.location.search);
+  const categoryParam = urlParams.get('category');
+  
+  if (titleEl && categoryParam === 'trending') {
+    titleEl.textContent = 'Trending Games';
+  }
   let skeletonHtml = '';
   for (let i = 0; i < 12; i++) {
     skeletonHtml +=
@@ -36,11 +43,41 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   let activeFilter = 'all'; // track active filter chip
+  const sortSelect = document.getElementById('sort-select');
 
   // ── Render helpers ──
   function getFilteredArgs() {
-    if (activeFilter === 'all') return allArgs;
-    return allArgs.filter(a => a.mode === activeFilter);
+    let filtered = allArgs.slice(); // copy array
+
+    // Apply category param
+    if (categoryParam === 'trending') {
+      const oneWeekAgo = new Date();
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+      filtered = filtered.filter(a => new Date(a._raw.created_at) >= oneWeekAgo);
+    }
+
+    if (activeFilter !== 'all') {
+      filtered = filtered.filter(a => a.mode === activeFilter);
+    }
+
+    // Sort
+    const sortVal = sortSelect ? sortSelect.value : 'popular';
+    filtered.sort((a, b) => {
+      if (categoryParam === 'trending' && sortVal === 'popular') {
+        // Trending overrides popular to sort specifically by likes
+        return (b.likes || 0) - (a.likes || 0);
+      }
+      
+      if (sortVal === 'newest') {
+        return new Date(b._raw.created_at) - new Date(a._raw.created_at);
+      } else if (sortVal === 'rating') {
+        return (b.rating || 0) - (a.rating || 0);
+      } else { // popular
+        return (b.likes || 0) - (a.likes || 0); // basic popular sort
+      }
+    });
+
+    return filtered;
   }
 
   function renderGrid() {
@@ -57,6 +94,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const frag = document.createDocumentFragment();
     filtered.forEach(game => frag.appendChild(GameCard.create(game)));
     catalogueGrid.appendChild(frag);
+  }
+
+  // Wire up sort select
+  if (sortSelect) {
+    sortSelect.addEventListener('change', renderGrid);
   }
 
   // Initial render

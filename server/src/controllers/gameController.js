@@ -109,6 +109,48 @@ exports.getGameState = async (req, res) => {
 
     const edges = await WaypointEdge.findAll({ where: { arg_id } });
 
+    // Dynamic Start Node Allocation / Lockout Prevention
+    if (session.status === 'active' && waypoints.length > 0) {
+      let hasUnlocked = progress.some(p => p.status === 'unlocked');
+      
+      if (!hasUnlocked) {
+        const toNodes = new Set(edges.map(e => e.to_waypoint_id));
+        const rootNodes = waypoints.filter(w => !toNodes.has(w.waypoint_id));
+        const roots = rootNodes.length > 0 ? rootNodes : waypoints;
+        
+        const newProgressPromises = roots.map(async w => {
+          const existing = progress.find(p => p.waypoint_id === w.waypoint_id);
+          if (existing && existing.status === 'completed') {
+            return;
+          }
+          
+          if (existing) {
+            existing.status = 'unlocked';
+            existing.unlocked_at = new Date();
+            await existing.save();
+            hasUnlocked = true;
+          } else {
+            const newProg = await WaypointProgress.create({
+              user_id,
+              waypoint_id: w.waypoint_id,
+              status: 'unlocked',
+              unlocked_at: new Date()
+            });
+            progress.push(newProg);
+            hasUnlocked = true;
+          }
+        });
+        await Promise.all(newProgressPromises);
+
+        // If STILL no unlocked nodes and they have completed nodes, the game is actually over!
+        if (!hasUnlocked && progress.some(p => p.status === 'completed')) {
+          session.status = 'completed';
+          session.completed_at = new Date();
+          await session.save();
+        }
+      }
+    }
+
     res.json({ session, waypoints, progress, attempts, edges });
   } catch (error) {
     console.error(error);
@@ -251,8 +293,10 @@ exports.submitMinigame = async (req, res) => {
     
     const sessionProgress = activeProgress.filter(p => argWpIds.includes(p.waypoint_id));
     const hasUnlocked = sessionProgress.some(p => p.status === 'unlocked');
+    let session_completed = false;
     
     if (!hasUnlocked && sessionProgress.some(p => p.status === 'completed')) {
+      session_completed = true;
       await GameSession.update({ status: 'completed', completed_at: new Date() }, {
         where: { user_id, arg_id },
         transaction
@@ -260,7 +304,7 @@ exports.submitMinigame = async (req, res) => {
     }
 
     await transaction.commit();
-    res.json({ outcome, unlockedNodes });
+    res.json({ outcome, unlockedNodes, session_completed });
   } catch (error) {
     await transaction.rollback();
     console.error(error);

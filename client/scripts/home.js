@@ -244,10 +244,18 @@ async function initHomeData() {
     // Fetch user profile for stats
     try {
       var profile = await api.getUserProfile(currentUser.user_id);
-      var statPoints = document.querySelector('.stat-block__value--green');
+      
+      var statPlayed = document.querySelector('.activity-card__stats .stat-block:nth-child(1) .stat-block__value');
+      if (statPlayed) statPlayed.textContent = profile.games_played || 0; // Using view field if available
+      
+      var statPoints = document.querySelector('.activity-card__stats .stat-block:nth-child(2) .stat-block__value');
       if (statPoints) statPoints.textContent = (profile.total_points || 0).toLocaleString();
-      var statDist = document.querySelector('[data-stat="distance"]');
-      if (statDist) statDist.textContent = Math.round((profile.distance_walked_m || 0) / 1000) + ' km';
+      
+      var statCompleted = document.getElementById('sidebar-stat-completed');
+      if (statCompleted) statCompleted.textContent = profile.games_completed || 0;
+      
+      var statBadges = document.querySelector('.activity-card__stats .stat-block:nth-child(4) .stat-block__value');
+      if (statBadges) statBadges.textContent = (profile.Badges || []).length;
     } catch { /* profile stats are non-critical */ }
 
     // Fetch and render friends & requests
@@ -266,7 +274,7 @@ async function initHomeData() {
     try {
       var sessions = await api.getActiveSessions(currentUser.user_id);
       sessions.forEach(function (s) {
-        if (s.Arg && s.Arg.arg_id) sessionArgIds.add(String(s.Arg.arg_id));
+        if (s.arg_id) sessionArgIds.add(String(s.arg_id));
       });
     } catch { /* fallback handled below */ }
 
@@ -315,9 +323,14 @@ async function initHomeData() {
     }
   }
 
-  // ── New & Trending — sorted by created_at desc ──
-  var trendingArgs = args.slice().sort(function (a, b) {
-    return new Date(b._raw.created_at) - new Date(a._raw.created_at);
+  // ── New & Trending — published in last week, sorted by likes ──
+  var oneWeekAgo = new Date();
+  oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+  var trendingArgs = args.filter(function (a) {
+    return new Date(a._raw.created_at) >= oneWeekAgo;
+  }).sort(function (a, b) {
+    return (b.likes || 0) - (a.likes || 0);
   }).slice(0, 10);
   if (trendingArgs.length === 0) {
     showRowEmpty('row-new', 'No new games yet.');

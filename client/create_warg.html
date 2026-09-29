@@ -117,24 +117,22 @@
 
         <!-- Editor Header -->
         <section class="builder-header">
-          <div class="builder-header__image">
+          <div class="builder-header__image" id="hero-banner-container">
             <!-- Placeholder banner image -->
             <img src="https://picsum.photos/seed/newwarg/1200/300" alt="New WARG Banner" id="hero-banner-img" />
             <button class="btn-change-image" id="btn-change-hero-image" aria-label="Change banner image"
               title="Change Image">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2"
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                 stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="1"></circle>
-                <circle cx="19" cy="12" r="1"></circle>
-                <circle cx="5" cy="12" r="1"></circle>
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                <line x1="12" y1="10" x2="12" y2="16" />
+                <line x1="9" y1="13" x2="15" y2="13" />
               </svg>
             </button>
           </div>
           <div class="builder-header__content">
-            <h1 class="builder-header__title" id="arg-title" contenteditable="true" spellcheck="false"
-              data-placeholder="Untitled WARG">Untitled WARG</h1>
-            <p class="builder-header__desc" id="arg-desc" contenteditable="true" spellcheck="false"
-              data-placeholder="Add a description for your WARG…">Add a description for your WARG…</p>
+            <h1 class="builder-header__title" id="arg-title" contenteditable="true" spellcheck="false" data-placeholder="Untitled WARG"></h1>
+            <p class="builder-header__desc" id="arg-desc" contenteditable="true" spellcheck="false" data-placeholder="Add a description for your WARG…"></p>
           </div>
         </section>
 
