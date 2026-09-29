@@ -78,4 +78,20 @@ describe('gameController - submitMinigame', () => {
     );
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ outcome: 'fail' }));
   });
+
+  it('should evaluate gps_proximity minigame correctly (pass for Geofence/GPS)', async () => {
+    req.body.submission = {};
+    Minigame.findByPk.mockResolvedValue({
+      game_type: 'gps_proximity',
+      config_json: { subtype: 'geofence' }
+    });
+
+    await submitMinigame(req, res);
+
+    expect(MinigameAttempt.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ outcome: 'pass', score: 1 }),
+      expect.anything()
+    );
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ outcome: 'pass' }));
+  });
 });
