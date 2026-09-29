@@ -6,6 +6,20 @@ module.exports = {
   //   npm run test:integration
   projects: [
     {
+      // Mocked model/controller/route/config tests: no DB, so no globalSetup.
+      displayName: 'mocked',
+      testEnvironment: 'node',
+      setupFiles: ['<rootDir>/tests/setup/loadEnv.js'],
+      testMatch: ['<rootDir>/tests/{models,controllers,routes,config}/**/*.test.js'],
+      testPathIgnorePatterns: [
+        '/node_modules/',
+        'tests/controllers/argController.test.js',
+        'tests/controllers/userController.test.js',
+        'tests/routes/authRoutes.test.js'
+      ]
+    },
+    {
+
       displayName: 'unit',
       testEnvironment: 'node',
       setupFiles: ['<rootDir>/tests/setup/loadEnv.js'],

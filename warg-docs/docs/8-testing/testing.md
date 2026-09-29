@@ -12,21 +12,23 @@ This document outlines the testing strategy, policies, and formal user feedback 
 
 ## Automated Testing Procedure
 
-Our automated testing suite ensures the functionality of both the frontend and backend components of the WARG Platform.
+Our automated testing suite strictly ensures the functionality of both the frontend (Playwright) and backend (Jest) components of the WARG Platform. We prioritize not just pass/fail rates, but robust code coverage metrics to guarantee system stability.
 
-### Running Tests Locally
+### Backend Testing (Server)
 
-To run the test suite locally, navigate to the respective directory (`client` or `server`) and execute the following command:
+The backend uses Jest and is split into `unit`, `mocked`, and `integration` test projects. 
+- **Standard Run:** `npm run test` executes all three projects.
+- **Coverage Run:** To generate coverage, you **must** run `npx jest --coverage --runInBand`. The `--runInBand` flag is critical because our integration tests share a local testing database; running them concurrently will cause database collisions and false failures (e.g., 401s during authentication tests).
 
-```bash
-# Run backend tests
-cd server
-npm run test
+### Frontend Testing (Client)
 
-# Run frontend tests
-cd ../client
-npm run test
-```
+The frontend uses Playwright for end-to-end UI testing and is configured to capture native V8 JavaScript coverage to ensure edge cases and error states are genuinely tested.
+- **Standard Run:** `npm run test:ui` executes the tests and automatically outputs a code coverage table to the console.
+- **HTML Report:** Detailed line-by-line coverage is generated at `client/coverage-reports/index.html` via the `monocart-reporter`.
+
+> [!WARNING]
+> **Playwright & Dialogs:** When V8 coverage profiling is active, Chromium's CDP thread can deadlock if a native JS `alert()` blocks the page. **Always** attach dialog listeners *before* the action that triggers them (e.g., `page.once('dialog', ...)`) rather than awaiting them afterward to prevent 30-second timeouts.
+
 
 ### Continuous Integration (CI)
 
