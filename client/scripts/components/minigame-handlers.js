@@ -9,15 +9,25 @@ export function getMinigameHandler(gameType) {
     case 'gps_proximity':
       return {
         render: (container, config, onSubmit) => {
-          container.innerHTML = `
-            <div style="text-align: center; padding: 1rem;">
-              <p style="margin-bottom: 1rem; color: var(--color-text-muted);">Ensure you are physically at this location.</p>
-              <button id="btn-verify-location" class="btn btn--primary">Verify Location</button>
-            </div>
-          `;
+          if (config && config.subtype === 'geofence') {
+            container.innerHTML = `
+              <div style="text-align: center; padding: 1rem;">
+                <p style="margin-bottom: 1rem; color: var(--color-text-muted);">Your location has been verified by the Geofence checker.</p>
+                <button id="btn-verify-location" class="btn btn--primary">Complete Check</button>
+              </div>
+            `;
+          } else {
+            container.innerHTML = `
+              <div style="text-align: center; padding: 1rem;">
+                <p style="margin-bottom: 1rem; color: var(--color-text-muted);">Ensure you are physically at this location.</p>
+                <button id="btn-verify-location" class="btn btn--primary">Verify Location</button>
+              </div>
+            `;
+          }
+          
           container.querySelector('#btn-verify-location').addEventListener('click', () => {
-             // In GPS proximity, we just submit an empty payload. The server validates proximity before this, 
-             // but we can also just do an empty submit since /arrive passed.
+             // In GPS proximity (and Geofence), the server /arrive endpoint already validated proximity.
+             // We just do an empty submit to pass the minigame step.
              onSubmit({}); 
           });
         }
