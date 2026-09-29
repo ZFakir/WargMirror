@@ -16,16 +16,29 @@ Our automated testing suite ensures the functionality of both the frontend and b
 
 ### Running Tests Locally
 
-To run the test suite locally, navigate to the respective directory (`client` or `server`) and execute the following command:
+To run the test suite locally, navigate to the respective directory (`client` or `server`) and execute the appropriate command:
+
+#### Backend (Jest)
 
 ```bash
-# Run backend tests
 cd server
 npm run test
+```
 
-# Run frontend tests
-cd ../client
-npm run test
+#### Frontend (Playwright E2E)
+
+The frontend uses Playwright for End-to-End (E2E) testing. To run the UI tests:
+
+```bash
+cd client
+# Run tests in headless mode (default)
+npm run test:ui
+
+# Run tests in UI mode (interactive trace viewer)
+npx playwright test --ui
+
+# Show the HTML report from the last run
+npx playwright show-report
 ```
 
 ### Continuous Integration (CI)
