@@ -17,39 +17,55 @@ When a user submits an image for a minigame, the request goes through the follow
 
 ## Endpoints
 
-### 1. `POST /api/ai/evaluate`
+All endpoints require authentication (Valid Session or Token) and expect `multipart/form-data`. They all proxy the request to the corresponding `/api/v1/*` endpoint on the AI Engine.
 
-Evaluates an image for a specific minigame.
+### 1. `POST /api/ai/sam-extract`
+Evaluates shapes using SAM (Segment Anything Model) extraction.
+- **Request Body:**
+  - `image` (file, required): The image captured by the user.
+  - `target_mask` (file, required): The mask identifying the target shape.
+- **Response:** JSON payload from the AI service containing score and validation status.
 
-**Authentication:** Required (Valid Session or Token)
-**Content-Type:** `multipart/form-data`
+### 2. `POST /api/ai/hsv-match`
+Evaluates color matching using HSV (Hue, Saturation, Value) histograms.
+- **Request Body:**
+  - `image` (file, required): The captured image.
+  - `reference_image` (file, required): The image to compare colors against.
+- **Response:** JSON payload from the AI service containing score and validation status.
 
-**Request Body:**
-- `minigame_id` (integer, required): The ID of the minigame being attempted.
-- `image` (file, required): The image captured by the user's camera (limit 50MB).
+### 3. `POST /api/ai/texture-match`
+Evaluates texture similarities.
+- **Request Body:**
+  - `image` (file, required): The captured image.
+  - `reference_image` (file, required): The texture reference image.
+- **Response:** JSON payload from the AI service containing score and validation status.
 
-**Response (200 OK):**
-```json
-{
-  "success": true,
-  "passed": true,
-  "score": 92.5,
-  "feedback": "Object recognized successfully.",
-  "attempt_id": 1045
-}
-```
+### 4. `POST /api/ai/sift-match`
+Evaluates structural features using SIFT (Scale-Invariant Feature Transform).
+- **Request Body:**
+  - `image` (file, required): The captured image.
+  - `archival_image` (file, required): The historical or archival image to match structural features.
+- **Response:** JSON payload from the AI service containing score and validation status.
+
+### 5. `POST /api/ai/symmetry`
+Evaluates the geometric symmetry of the captured subject.
+- **Request Body:**
+  - `image` (file, required): The captured image.
+- **Response:** JSON payload from the AI service containing score and validation status.
+
+## Error Handling
 
 **Response (400 Bad Request):**
 ```json
 {
-  "error": "No image provided"
+  "error": "Missing required files: [file_names]"
 }
 ```
 
-**Response (502 Bad Gateway):**
+**Response (500 Internal Server Error):**
 ```json
 {
-  "error": "AI Engine is unreachable or returned an error."
+  "error": "Failed to process [type] evaluation"
 }
 ```
 
