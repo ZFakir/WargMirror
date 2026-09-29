@@ -10,6 +10,7 @@ This document covers the full hosting setup for the WARG Platform across its thr
 |-------|---------|------|
 | Database | [Aiven for MySQL](https://aiven.io) | Managed MySQL with spatial extensions & SSL |
 | Backend | [Render](https://render.com) | Node.js / Express API server |
+| AI Engine | [AWS Lightsail](https://aws.amazon.com/lightsail/) | Ubuntu Linux instance running Docker for ML models |
 | Frontend | [Vercel](https://vercel.com) | Static HTML/CSS/JS client delivery |
 
 ### Architecture Overview
@@ -29,6 +30,14 @@ flowchart LR
         API[Node.js / Express API]
     end
 
+    subgraph AWS [AWS Lightsail]
+        Ubuntu[Ubuntu Linux]
+        subgraph Docker [Docker Container]
+            AIEngine[AI Engine - Python/FastAPI]
+        end
+        Ubuntu --- Docker
+    end
+
     subgraph Aiven [Aiven]
         DB[(MySQL Spatial DB)]
     end
@@ -39,6 +48,7 @@ flowchart LR
     Frontend -->|REST / WebSocket| API
     
     API -->|TCP/SSL| DB
+    API -->|HTTPS| AIEngine
 ```
 
 ---
@@ -172,7 +182,38 @@ From the Render dashboard, select your service and click the **Logs** tab. Live 
 
 ---
 
-## 3. Vercel — Frontend Hosting
+## 3. AWS Lightsail — AI Engine
+
+The AI Engine for shape matching, texture matching, and visual validations is hosted on AWS Lightsail. It runs on an Ubuntu Linux instance and is containerised using Docker.
+
+### 3.1 Instance Setup
+
+1. Create an AWS Lightsail instance running **Ubuntu 22.04 LTS**.
+2. Allocate a static IP address to the instance.
+3. SSH into the instance and install Docker and Docker Compose.
+
+### 3.2 Docker Deployment
+
+The AI Engine is deployed as a Docker container, exposing a REST API via FastAPI or Flask.
+
+```bash
+# Clone the repository
+git clone <repository_url> warg-ai-engine
+cd warg-ai-engine
+
+# Build and run the Docker container
+docker-compose up -d --build
+```
+
+### 3.3 Network & Security Configuration
+
+1. In the AWS Lightsail networking tab, ensure that HTTP (port 80) and HTTPS (port 443) are open.
+2. Use an Nginx reverse proxy alongside Let's Encrypt (Certbot) to secure the API endpoint.
+3. Restrict access to the API so that it only accepts requests coming from the Render Backend's IP addresses or by requiring an internal API key.
+
+---
+
+## 4. Vercel — Frontend Hosting
 
 Vercel hosts the static HTML/CSS/JS client located in the `/client` directory. It provides global CDN delivery, automatic HTTPS, and preview deployments for every pull request.
 
