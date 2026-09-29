@@ -32,16 +32,17 @@ Log of check-ins with our assigned tutor (client). Per the Methodology, we meet 
 **Attendees:** Full team, tutor
 
 **Discussed:**
-- Demonstrated the initial map rendering and basic user registration flow.
-- Discussed the schema for Waypoints and Arg instances.
+- Demonstrated the initial map rendering, user registration flow, and basic ARG placement.
+- Showcased the initial Creator Studio, including the ARG editor and basic analytics page.
+- Discussed the Admin Dashboard and profile/friend pages.
 
 **Feedback / Decisions:**
 - Tutor suggested adding buffer coordinates to the waypoint interaction for future anti-spoofing logic.
-- We agreed to prioritize the core ARG node placement before social features.
+- We agreed to prioritize connecting the template data on profiles and friends pages to the real database in the next sprint.
 
 **Action items:**
 - Implement anti-spoofing basic framework.
-- Finalize the core database schema.
+- Finalize the core database schema for social features (friends, badges).
 
 ---
 
@@ -50,15 +51,17 @@ Log of check-ins with our assigned tutor (client). Per the Methodology, we meet 
 **Attendees:** Full team, tutor
 
 **Discussed:**
-- Showcased the new PlayModal and basic minigame integration.
-- Discussed integration issues with the AI Engine microservice.
+- Demonstrated the newly implemented social features: recursive commenting, flagging, and liking/disliking ARGs.
+- Showcased dynamic population of the Friends page and Badges from the database.
+- Discussed the integration of the Docusaurus site for project documentation.
 
 **Feedback / Decisions:**
-- AI Engine should be separated via HTTP requests (FastAPI) instead of direct imports to maintain loose coupling.
-- Tutor approved the UI mockups for the feedback mechanism.
+- Tutor approved the UI for the feedback mechanism (comments/flags).
+- Agreed that the documentation should be expanded to include detailed Git policies and development processes.
 
 **Action items:**
-- Fix CI pipeline which was broken due to testing timeouts.
+- Expand Docusaurus documentation.
+- Begin integrating the AI Engine for minigame computer vision.
 
 ---
 
@@ -67,12 +70,13 @@ Log of check-ins with our assigned tutor (client). Per the Methodology, we meet 
 **Attendees:** Full team, tutor
 
 **Discussed:**
-- Demonstrated the fully working AI backend and camera UI.
+- Demonstrated the modular MapModal component and the reworked Warg editor interface for authoring.
+- Showcased the working AI backend (FastAPI proxy) for SAM extraction and HSV matching.
 - Discussed testing coverage and the need to reach >60%.
 
 **Feedback / Decisions:**
 - Tutor stressed the importance of extensive user testing for the final Sprint 3 rubric.
-- We agreed to organize a formal playtesting session with classmates.
+- We agreed to organize a formal playtesting session with classmates to test the new map and AI features.
 
 **Action items:**
 - Set up Playwright for E2E testing to increase coverage.
@@ -85,8 +89,9 @@ Log of check-ins with our assigned tutor (client). Per the Methodology, we meet 
 **Attendees:** Full team, tutor
 
 **Discussed:**
-- Reviewed feedback from the initial user testing session (UI overlaps, MapModal scrolling issues).
+- Reviewed feedback from the initial user testing session (Feedback UI overlaps, MapModal scrolling issues, HUD blocking waypoint info).
 - Discussed polishing the mobile UI based on the feedback.
+- Confirmed that the remaining AI endpoints (SIFT, Symmetry, Texture) are fully functional.
 
 **Feedback / Decisions:**
 - Tutor confirmed the playtesting documentation looks good and meets the requirement.
@@ -102,16 +107,16 @@ Log of check-ins with our assigned tutor (client). Per the Methodology, we meet 
 **Attendees:** Full team, tutor
 
 **Discussed:**
-- Final walkthrough of the app on mobile simulators.
+- Final walkthrough of the app on mobile simulators, highlighting the fixed UI overlaps and responsive design.
 - Confirmed that anti-spoofing speed and teleportation blocks are active.
-- Reviewed final coverage reports (>60% achieved).
+- Reviewed final coverage reports (>60% achieved) and Lighthouse performance scores.
 
 **Feedback / Decisions:**
-- Tutor is satisfied with the progress. No major structural changes needed.
+- Tutor is satisfied with the progress and the breadth of features implemented (Creator Studio, Social, AI, Admin).
 - Confirmed all features match the "Advanced" tier of the rubric.
 
 **Action items:**
-- Finalize documentation in `warg-docs/`.
+- Finalize documentation in `warg-docs/` (AI Engine endpoints, Rubric gap analysis).
 - Ensure all CI checks are green before the final merge.
 
 ---
