@@ -9,8 +9,9 @@
     "seed": "node seed.js",
     "lint": "eslint .",
     "test:unit": "cross-env NODE_ENV=test jest --selectProjects unit",
+    "test:mocked": "cross-env NODE_ENV=test jest --selectProjects mocked",
     "test:integration": "cross-env NODE_ENV=test jest --selectProjects integration --runInBand",
-    "test": "npm run test:unit && npm run test:integration"
+    "test": "npm run test:unit && npm run test:mocked && npm run test:integration"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

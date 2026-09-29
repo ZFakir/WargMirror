@@ -70,6 +70,7 @@ curl https://your-ai-engine-url.com/health
 ## Local Development (unchanged)
 
 For local development, nothing changes. Run the AI engine as before:
+(Note: You will need the tesseract binary installed locally. e.g. `brew install tesseract` on macOS or `apt install tesseract-ocr` on Linux)
 
 ```bash
 cd ai-engine
