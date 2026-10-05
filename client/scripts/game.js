@@ -391,9 +391,14 @@ document.addEventListener('DOMContentLoaded', () => {
               // Show loading spinner
               const originalContent = gameWrapper.innerHTML;
               gameWrapper.innerHTML = `
-              <div style="text-align: center; padding: 2rem;">
-                <div class="spinner" style="margin: 0 auto 1rem; width: 40px; height: 40px; border: 4px solid var(--color-bg-elevated); border-top: 4px solid var(--color-brand); border-radius: 50%; animation: spin 1s linear infinite;"></div>
-                <p>Verifying...</p>
+              <div class="minigame-feedback-container" style="text-align: center; padding: 2rem;">
+                <div class="spinner-container" style="position: relative; width: 60px; height: 60px; margin: 0 auto 1rem;">
+                  <div class="spinner" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 4px solid var(--color-bg-elevated); border-top: 4px solid var(--color-brand); border-radius: 50%; animation: spin 1s linear infinite; box-sizing: border-box;"></div>
+                  <div class="feedback-icon" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0); transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); display: flex; align-items: center; justify-content: center;"></div>
+                </div>
+                <div class="feedback-text-container" style="min-height: 2.5rem; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+                  <p class="feedback-text" style="margin: 0; color: var(--color-text-muted);">Verifying...</p>
+                </div>
               </div>
             `;
 
@@ -413,7 +418,39 @@ document.addEventListener('DOMContentLoaded', () => {
                 const result = await submitRes.json();
 
                 const isLastGame = index === minigames.length - 1;
-                playModal.showFeedback(result.outcome, isLastGame);
+                
+                const spinner = gameWrapper.querySelector('.spinner');
+                const feedbackIcon = gameWrapper.querySelector('.feedback-icon');
+                const feedbackTextContainer = gameWrapper.querySelector('.feedback-text-container');
+                
+                if (spinner) {
+                  spinner.style.animation = 'none';
+                  spinner.style.borderTopColor = 'var(--color-bg-elevated)';
+                }
+                
+                if (result.outcome === 'pass') {
+                  if (spinner) spinner.style.borderColor = 'var(--color-green, #4ade80)';
+                  if (feedbackIcon) {
+                    feedbackIcon.innerHTML = '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--color-green, #4ade80)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+                    requestAnimationFrame(() => {
+                      feedbackIcon.style.transform = 'translate(-50%, -50%) scale(1)';
+                    });
+                  }
+                  if (feedbackTextContainer) {
+                    feedbackTextContainer.innerHTML = '<p style="color: var(--color-green, #4ade80); font-weight: bold; margin: 0; font-size: 1.1rem;">Success</p>';
+                  }
+                } else {
+                  if (spinner) spinner.style.borderColor = 'var(--color-red, #ef4444)';
+                  if (feedbackIcon) {
+                    feedbackIcon.innerHTML = '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--color-red, #ef4444)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+                    requestAnimationFrame(() => {
+                      feedbackIcon.style.transform = 'translate(-50%, -50%) scale(1)';
+                    });
+                  }
+                  if (feedbackTextContainer) {
+                    feedbackTextContainer.innerHTML = `<p style="color: var(--color-red, #ef4444); font-weight: bold; margin: 0; font-size: 1.1rem;">Game Failed</p>${result.can_retry ? '<p style="color: var(--color-text-muted); margin: 0.25rem 0 0 0; font-size: 0.9rem;">try again</p>' : ''}`;
+                  }
+                }
 
                   if (result.can_retry && result.outcome === 'fail') {
                     setTimeout(() => {
@@ -437,6 +474,9 @@ document.addEventListener('DOMContentLoaded', () => {
                           mapModal.showCompletedOverlay();
                         }, 1000); // Wait a second for popup to close / feedback to finish
                       }
+                      setTimeout(() => {
+                        playModal.close();
+                      }, 2000);
                     }
                   }
                 } catch (err) {
