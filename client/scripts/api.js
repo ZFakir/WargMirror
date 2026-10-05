@@ -222,8 +222,28 @@ var api = (function () {
   }
 
   async function getMinigameReference(gameId) {
-    const res = await fetch(API_BASE + '/api/minigames/' + gameId + '/reference/image', { credentials: 'include' });
-    if (!res.ok) throw new Error('Failed to fetch reference');
+    const url = API_BASE + '/api/minigames/' + gameId + '/reference/image';
+    const req = new Request(url, { credentials: 'include' });
+    
+    let res;
+    try {
+      res = await fetch(req);
+      if (!res.ok) throw new Error('Failed to fetch reference');
+      
+      // Explicitly cache it for offline use (protects against SW bypass)
+      if ('caches' in window) {
+         const resClone = res.clone();
+         caches.open('warg-dynamic-cache').then(cache => cache.put(req, resClone)).catch(console.error);
+      }
+    } catch (err) {
+      // If we are offline or fetch fails, manually fallback to cache!
+      if ('caches' in window) {
+         res = await caches.match(req, { ignoreSearch: true, ignoreVary: true });
+         if (!res) throw err;
+      } else {
+         throw err;
+      }
+    }
 
     const contentType = res.headers.get('content-type');
     if (contentType && contentType.includes('application/json')) {
@@ -233,19 +253,44 @@ var api = (function () {
   }
 
   async function submitMinigameAttempt(gameId, imageBlob) {
+    const apiUrl = API_BASE + '/api/minigames/' + gameId + '/attempt';
+
+    // Helper to save offline
+    const saveOffline = async () => {
+      if (window.offlineDB) {
+        await window.offlineDB.addPendingAttempt({ gameId, imageBlob, apiUrl });
+        if ('serviceWorker' in navigator && 'SyncManager' in window) {
+          const registration = await navigator.serviceWorker.ready;
+          await registration.sync.register('sync-attempts').catch(console.error);
+        }
+      }
+      return { offline: true, message: "Attempt saved offline. It will be synced when you reconnect." };
+    };
+
+    if (!navigator.onLine) {
+      return saveOffline();
+    }
+
     const formData = new FormData();
     formData.append('image', imageBlob, 'attempt.jpg');
 
-    const res = await fetch(API_BASE + '/api/minigames/' + gameId + '/attempt', {
-      method: 'POST',
-      body: formData,
-      credentials: 'include'
-    });
-    if (!res.ok) {
-      const errText = await res.text();
-      throw new Error(errText || 'Failed to submit attempt');
+    try {
+      const res = await fetch(apiUrl, {
+        method: 'POST',
+        body: formData,
+        credentials: 'include'
+      });
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(errText || 'Failed to submit attempt');
+      }
+      return res.json();
+    } catch (err) {
+      if (!navigator.onLine || err.name === 'TypeError' || err.message === 'Failed to fetch') {
+        return saveOffline();
+      }
+      throw err;
     }
-    return res.json();
   }
 
   async function uploadMinigameReference(gameId, imageBlob) {
