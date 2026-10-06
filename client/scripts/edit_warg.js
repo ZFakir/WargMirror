@@ -879,6 +879,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     let geofenceEditIndex = null;
 
+    // eslint-disable-next-line no-unused-vars
     function openGeofenceModal(existingConfig = null, editIndex = null) {
       geofenceEditIndex = editIndex;
       if (geofenceModalOverlay) geofenceModalOverlay.setAttribute('aria-hidden', 'false');
