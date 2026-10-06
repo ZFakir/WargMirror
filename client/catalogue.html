@@ -13,6 +13,14 @@
   <link rel="stylesheet" href="styles/home.css" />
   <link rel="stylesheet" href="styles/catalogue.css" />
   <script src="scripts/config.js"></script>
+  <script>
+    (function() {
+      var savedTheme = localStorage.getItem("warg_theme");
+      if (savedTheme === "light") {
+        document.documentElement.setAttribute("data-theme", "light");
+      }
+    })();
+  </script>
 </head>
 <body>
 

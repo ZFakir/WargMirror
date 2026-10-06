@@ -14,6 +14,14 @@
   <link rel="stylesheet" href="styles/analytics.css" />
   <link rel="stylesheet" href="styles/admin.css" />
   <script src="scripts/config.js"></script>
+  <script>
+    (function() {
+      var savedTheme = localStorage.getItem("warg_theme");
+      if (savedTheme === "light") {
+        document.documentElement.setAttribute("data-theme", "light");
+      }
+    })();
+  </script>
 </head>
 <body>
 
