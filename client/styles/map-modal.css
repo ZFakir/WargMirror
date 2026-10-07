@@ -502,6 +502,12 @@
   box-shadow: 0 0 14px var(--color-secondary-glow);
 }
 
+.map-modal .node-marker.failed .node-marker__core {
+  border-color: var(--color-danger, #ef4444);
+  color: var(--color-danger, #ef4444);
+  box-shadow: 0 0 14px rgba(239, 68, 68, 0.4);
+}
+
 .map-modal .node-marker.current .node-marker__core {
   border-color: var(--color-accent);
   color: var(--color-accent);

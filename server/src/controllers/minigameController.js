@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
+const AI_KEY = process.env.AI_KEY || 'dev-secret-key';
 
 exports.uploadReference = async (req, res) => {
   try {
@@ -106,6 +107,7 @@ exports.submitAttempt = async (req, res) => {
 
     const response = await fetch(`${AI_SERVICE_URL}${aiEndpoint}`, {
       method: 'POST',
+      headers: { 'X-API-Key': AI_KEY },
       body: formData
     });
 

@@ -122,7 +122,7 @@ exports.getGameState = async (req, res) => {
         
         const newProgressPromises = roots.map(async w => {
           const existing = progress.find(p => p.waypoint_id === w.waypoint_id);
-          if (existing && existing.status === 'completed') {
+          if (existing && (existing.status === 'completed' || existing.status === 'failed')) {
             return;
           }
           
@@ -145,7 +145,7 @@ exports.getGameState = async (req, res) => {
         await Promise.all(newProgressPromises);
 
         // If STILL no unlocked nodes and they have completed nodes, the game is actually over!
-        if (!hasUnlocked && progress.some(p => p.status === 'completed')) {
+        if (!hasUnlocked && progress.some(p => p.status === 'completed' || p.status === 'failed')) {
           session.status = 'completed';
           session.completed_at = new Date();
           await session.save();
@@ -222,6 +222,7 @@ exports.submitMinigame = async (req, res) => {
     if (game.game_type === 'gps_proximity') {
       outcome = 'pass'; // the /arrive endpoint already confirmed proximity if they were allowed to submit
     } else if (game.game_type === 'text_answer') {
+      console.log(`[DEBUG] Evaluating QnA text_answer minigame. Submission: "${submission}"`);
       if (config.is_mcq) {
         const submittedIndex = parseInt(submission, 10);
         if (!isNaN(submittedIndex) && submittedIndex === config.correct_index) {
@@ -293,11 +294,13 @@ exports.submitMinigame = async (req, res) => {
 
     let unlockedNodes = [];
 
+    const finalStatus = outcome === 'pass' ? 'completed' : 'failed';
+
     // Always update waypoint progress regardless of pass or fail
     await WaypointProgress.upsert({
       user_id,
       waypoint_id,
-      status: 'completed',
+      status: finalStatus,
       completed_at: new Date()
     }, { transaction });
 
@@ -332,7 +335,7 @@ exports.submitMinigame = async (req, res) => {
     const hasUnlocked = sessionProgress.some(p => p.status === 'unlocked');
     let session_completed = false;
     
-    if (!hasUnlocked && sessionProgress.some(p => p.status === 'completed')) {
+    if (!hasUnlocked && sessionProgress.some(p => p.status === 'completed' || p.status === 'failed')) {
       session_completed = true;
       await GameSession.update({ status: 'completed', completed_at: new Date() }, {
         where: { user_id, arg_id },

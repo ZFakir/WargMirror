@@ -140,24 +140,8 @@ navItems.forEach(item => {
   });
 });
 
-/* ── Search: focus expansion ── */
-const searchInput = document.getElementById('search-input');
+/* ── Search handled globally in config.js ── */
 
-searchInput?.addEventListener('focus', () => {
-  searchInput.closest('.topbar__search')?.style.setProperty('max-inline-size', '560px');
-});
-searchInput?.addEventListener('blur', () => {
-  searchInput.closest('.topbar__search')?.style.removeProperty('max-inline-size');
-});
-
-/* '/' shortcut to focus search */
-document.addEventListener('keydown', e => {
-  const tag = document.activeElement.tagName.toLowerCase();
-  if (e.key === '/' && tag !== 'input' && tag !== 'textarea') {
-    e.preventDefault();
-    searchInput?.focus();
-  }
-});
 
 /* ── Friends search: live filter ── */
 const friendsSearchInput = document.getElementById('friends-search-input');

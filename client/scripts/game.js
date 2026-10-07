@@ -67,6 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
           let progressPercent = 0;
           if (status === 'unlocked') { progLabel = 'Available'; progressPercent = 10; }
           if (status === 'completed') { progLabel = 'Completed'; progressPercent = 100; }
+          if (status === 'failed') { progLabel = 'Failed'; progressPercent = 100; }
 
           nodes.push({
             id: wp.waypoint_id.toString(),
@@ -271,13 +272,38 @@ document.addEventListener('DOMContentLoaded', () => {
             // Show result overlay
             const overlay = document.createElement('div');
             overlay.className = `camera-result-overlay ${result.passed ? 'pass' : 'fail'}`;
-            overlay.innerHTML = `
-              <h2>${result.passed ? 'Match Found!' : 'Not Quite...'}</h2>
-              <p>Score: ${Math.round(result.confidence_score * 100)}%</p>
-              <p>+${result.points_awarded} Points</p>
-              <p>${result.message || ''}</p>
-            `;
+            
+            if (result.passed) {
+              overlay.innerHTML = `
+                <h2>Match Found!</h2>
+                <p>Score: ${Math.round(result.confidence_score * 100)}%</p>
+                <p>+${result.points_awarded} Points</p>
+                <p>${result.message || ''}</p>
+              `;
+            } else {
+              overlay.innerHTML = `
+                <h2>Not Quite...</h2>
+                <p>Score: ${Math.round(result.confidence_score * 100)}%</p>
+                <p>${result.message || ''}</p>
+                <button id="btn-retry-ar" class="btn btn--outline" style="margin-top: 1rem; border-color: white; color: white;">Try Again</button>
+              `;
+            }
             container.appendChild(overlay);
+
+            if (!result.passed) {
+              const retryBtn = overlay.querySelector('#btn-retry-ar');
+              if (retryBtn) {
+                retryBtn.addEventListener('click', () => {
+                  overlay.remove();
+                  feedbackDiv.textContent = 'Aligning...';
+                });
+              }
+            } else {
+              setTimeout(() => {
+                if (typeof playModal !== 'undefined') playModal.close();
+                if (typeof openMapModal !== 'undefined') openMapModal(argId);
+              }, 2000);
+            }
 
           } catch (err) {
             console.error(err);
@@ -416,9 +442,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 if (!submitRes.ok) throw new Error('Submission failed');
                 const result = await submitRes.json();
-
-                const isLastGame = index === minigames.length - 1;
                 
+                const isLastGame = index === minigames.length - 1;
+
                 const spinner = gameWrapper.querySelector('.spinner');
                 const feedbackIcon = gameWrapper.querySelector('.feedback-icon');
                 const feedbackTextContainer = gameWrapper.querySelector('.feedback-text-container');
@@ -437,18 +463,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                   }
                   if (feedbackTextContainer) {
-                    feedbackTextContainer.innerHTML = '<p style="color: var(--color-green, #4ade80); font-weight: bold; margin: 0; font-size: 1.1rem;">Success</p>';
+                    feedbackTextContainer.innerHTML = '<p style="color: var(--color-green, #4ade80); font-weight: bold; margin: 0; font-size: 1.1rem;">Correct!</p>';
                   }
                 } else {
-                  if (spinner) spinner.style.borderColor = 'var(--color-red, #ef4444)';
+                  if (spinner) spinner.style.borderColor = 'var(--color-danger, #ef4444)';
                   if (feedbackIcon) {
-                    feedbackIcon.innerHTML = '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--color-red, #ef4444)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+                    feedbackIcon.innerHTML = '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--color-danger, #ef4444)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
                     requestAnimationFrame(() => {
                       feedbackIcon.style.transform = 'translate(-50%, -50%) scale(1)';
                     });
                   }
                   if (feedbackTextContainer) {
-                    feedbackTextContainer.innerHTML = `<p style="color: var(--color-red, #ef4444); font-weight: bold; margin: 0; font-size: 1.1rem;">Game Failed</p>${result.can_retry ? '<p style="color: var(--color-text-muted); margin: 0.25rem 0 0 0; font-size: 0.9rem;">try again</p>' : ''}`;
+                    feedbackTextContainer.innerHTML = `<p style="color: var(--color-danger, #ef4444); font-weight: bold; margin: 0; font-size: 1.1rem;">Incorrect</p>${result.can_retry ? '<p style="color: var(--color-text-muted); margin: 0.25rem 0 0 0; font-size: 0.9rem;">Try again...</p>' : '<p style="color: var(--color-text-muted); margin: 0.25rem 0 0 0; font-size: 0.9rem;">Out of attempts</p>'}`;
                   }
                 }
 
@@ -468,7 +494,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         renderMinigame(index + 1);
                       }, 2000);
                     } else {
-                      mapModal.updateNodeStatus(node.id, 'completed');
+                      const nodeStatus = result.outcome === 'fail' ? 'failed' : 'completed';
+                      mapModal.updateNodeStatus(node.id, nodeStatus);
                       if (result.session_completed) {
                         setTimeout(() => {
                           mapModal.showCompletedOverlay();
