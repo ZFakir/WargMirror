@@ -3,7 +3,7 @@ const { sequelize, Waypoint, WaypointEdge, Minigame, GameSession, WaypointProgre
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
 
 // Helper to evaluate branching conditions
-const evaluateConditions = async (user_id, rawConditions, transaction = null) => {
+exports.evaluateConditions = async (user_id, rawConditions, transaction = null) => {
   let conditions = rawConditions;
   if (typeof conditions === 'string') {
     try { conditions = JSON.parse(conditions); } catch { /* ignore parse error */ }
@@ -308,7 +308,7 @@ exports.submitMinigame = async (req, res) => {
     const edges = await WaypointEdge.findAll({ where: { from_waypoint_id: waypoint_id }, transaction });
     
     for (const edge of edges) {
-      const canUnlock = await evaluateConditions(user_id, edge.conditions_json, transaction);
+      const canUnlock = await exports.evaluateConditions(user_id, edge.conditions_json, transaction);
       if (canUnlock) {
         await WaypointProgress.upsert({
           user_id,
