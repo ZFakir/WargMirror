@@ -313,6 +313,36 @@ var api = (function () {
     return _post('/api/feedback', feedbackData);
   }
 
+  /**
+   * Clears a specific game and the game catalogue from the local cache.
+   * Useful when a developer updates a game and needs to bust the Stale-While-Revalidate cache.
+   */
+  async function clearGameCache(gameId) {
+    if (!('caches' in window)) return;
+    try {
+      const cacheNames = await caches.keys();
+      for (const name of cacheNames) {
+        const cache = await caches.open(name);
+        
+        // Clear specific ARG
+        if (gameId) {
+          const gameUrl = new URL(API_BASE + '/api/args/' + gameId);
+          await cache.delete(gameUrl.href, { ignoreSearch: true });
+        }
+        
+        // Clear lists
+        const argsUrl = new URL(API_BASE + '/api/args');
+        await cache.delete(argsUrl.href, { ignoreSearch: true });
+        
+        const minigamesUrl = new URL(API_BASE + '/api/minigames');
+        await cache.delete(minigamesUrl.href, { ignoreSearch: true });
+      }
+      console.log('Cleared game cache for gameId:', gameId);
+    } catch (e) {
+      console.warn('Failed to clear cache', e);
+    }
+  }
+
   /* ── Public API ─────────────────────────────────────────── */
   return {
     getCurrentUser,
@@ -335,6 +365,7 @@ var api = (function () {
     submitMinigameAttempt,
     uploadMinigameReference,
     submitFeedback,
+    clearGameCache,
   };
 
 })();

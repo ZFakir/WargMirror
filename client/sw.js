@@ -47,50 +47,104 @@ self.addEventListener('activate', event => {
   self.clients.claim();
 });
 
+// Strategy 1: Network First (Current implementation)
+async function networkFirstStrategy(request) {
+  try {
+    const response = await fetch(request);
+    if (response.ok) {
+      const cache = await caches.open(CACHE_NAME);
+      cache.put(request, response.clone());
+    }
+    return response;
+  } catch (err) {
+    let cachedResponse = await caches.match(request, { ignoreVary: true });
+    
+    // Fallback for HTML pages with query params
+    if (!cachedResponse) {
+      const reqUrl = new URL(request.url);
+      if (reqUrl.pathname.endsWith('.html') || reqUrl.pathname === '/') {
+        cachedResponse = await caches.match(request, { ignoreVary: true, ignoreSearch: true });
+      }
+    }
+    
+    return cachedResponse || Response.error();
+  }
+}
+
+// Strategy 2: Stale-While-Revalidate (Fast UI, background update)
+async function staleWhileRevalidateStrategy(request) {
+  const cache = await caches.open(CACHE_NAME);
+  const cachedResponse = await cache.match(request, { ignoreVary: true });
+  
+  const fetchPromise = fetch(request).then(networkResponse => {
+    if (networkResponse.ok) {
+      cache.put(request, networkResponse.clone());
+    }
+    return networkResponse;
+  }).catch(err => console.warn('SWR network failure', err));
+
+  // Return cache immediately if available, otherwise wait for network
+  return cachedResponse || fetchPromise;
+}
+
+// Strategy 3: Cache First (Instant load for static files)
+async function cacheFirstStrategy(request) {
+  const cache = await caches.open(CACHE_NAME);
+  let cachedResponse = await cache.match(request, { ignoreVary: true });
+  
+  // Fallback for HTML query params
+  if (!cachedResponse && request.mode === 'navigate') {
+    cachedResponse = await cache.match(request, { ignoreVary: true, ignoreSearch: true });
+  }
+
+  if (cachedResponse) return cachedResponse;
+
+  try {
+    const networkResponse = await fetch(request);
+    if (networkResponse.ok) {
+      cache.put(request, networkResponse.clone());
+    }
+    return networkResponse;
+  } catch (err) {
+    return Response.error();
+  }
+}
+
 self.addEventListener('fetch', event => {
   // Only cache GET requests and HTTP/HTTPS schemes (ignore chrome-extension://)
   if (event.request.method !== 'GET' || !event.request.url.startsWith('http')) return;
 
-  // Do not cache sensitive dynamic user routes
   const url = new URL(event.request.url);
-  const bypassCache = ['/api/users/profile', '/auth/me', '/api/sessions'].some(path => url.pathname.startsWith(path));
-  if (bypassCache) {
-    event.respondWith(fetch(event.request));
+
+  // 1. NETWORK-FIRST: Highly dynamic routes (Sessions, Auth, user profile)
+  const networkFirstRoutes = ['/api/sessions', '/auth/me', '/api/users/profile', '/api/users/search'];
+  if (networkFirstRoutes.some(path => url.pathname.startsWith(path))) {
+    event.respondWith(networkFirstStrategy(event.request));
     return;
   }
 
-  // Network first, fallback to cache
-  event.respondWith(
-    fetch(event.request).then(response => {
-      // Allow caching of any successful response (200-299), ignoring strict type checks
-      // as some APIs might return unexpected types. 
-      if (!response || !response.ok) {
-        return response;
-      }
-      const responseToCache = response.clone();
-      caches.open(CACHE_NAME).then(cache => {
-        cache.put(event.request, responseToCache);
-      });
-      return response;
-    }).catch(async () => {
-      // Use ignoreVary to prevent strict header mismatches from breaking the cache lookup
-      let cachedResponse = await caches.match(event.request, { ignoreVary: true });
-      
-      // Fallback for HTML pages with query params (e.g. game.html?id=4)
-      if (!cachedResponse) {
-        const reqUrl = new URL(event.request.url);
-        if (reqUrl.pathname.endsWith('.html') || reqUrl.pathname === '/') {
-          cachedResponse = await caches.match(event.request, { ignoreVary: true, ignoreSearch: true });
-        }
-      }
+  // 2. STALE-WHILE-REVALIDATE: Catalogue, Game Data, Library
+  const swrRoutes = ['/api/minigames', '/api/users/']; // Assuming catalogue includes these
+  // Wait, the artifact said '/api/args', but I need to make sure I use the right endpoints.
+  // We'll use '/api/args' if it's an ARG platform, or '/api/minigames', '/api/users/'.
+  // Let's use the ones mentioned.
+  if (url.pathname.startsWith('/api/args') || url.pathname.startsWith('/api/minigames') || url.pathname.includes('/library')) {
+    event.respondWith(staleWhileRevalidateStrategy(event.request));
+    return;
+  }
 
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-      // If not in cache and network fails, return an error response
-      return Response.error();
-    })
-  );
+  // 3. CACHE-FIRST: Static assets, Map Tiles, Avatars, local images
+  if (
+    url.hostname === location.hostname || // Local HTML/CSS/JS (if it didn't match API routes above)
+    url.hostname.includes('tile.openstreetmap.org') || // Map tiles
+    url.hostname.includes('dicebear.com') // Avatars
+  ) {
+    event.respondWith(cacheFirstStrategy(event.request));
+    return;
+  }
+  
+  // Default to Network First for anything else
+  event.respondWith(networkFirstStrategy(event.request));
 });
 
 // Background Sync
