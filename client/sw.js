@@ -1,3 +1,4 @@
+/* global importScripts */
 importScripts('scripts/db.js');
 
 const CACHE_NAME = 'warg-cache-v4';
@@ -57,6 +58,7 @@ async function networkFirstStrategy(request) {
     }
     return response;
   } catch (err) {
+    console.warn('Network fetch failed, falling back to cache:', err);
     let cachedResponse = await caches.match(request, { ignoreVary: true });
     
     // Fallback for HTML pages with query params
@@ -106,6 +108,7 @@ async function cacheFirstStrategy(request) {
     }
     return networkResponse;
   } catch (err) {
+    console.warn('Network fetch failed:', err);
     return Response.error();
   }
 }
@@ -124,11 +127,9 @@ self.addEventListener('fetch', event => {
   }
 
   // 2. STALE-WHILE-REVALIDATE: Catalogue, Game Data, Library
-  const swrRoutes = ['/api/minigames', '/api/users/']; // Assuming catalogue includes these
-  // Wait, the artifact said '/api/args', but I need to make sure I use the right endpoints.
-  // We'll use '/api/args' if it's an ARG platform, or '/api/minigames', '/api/users/'.
-  // Let's use the ones mentioned.
-  if (url.pathname.startsWith('/api/args') || url.pathname.startsWith('/api/minigames') || url.pathname.includes('/library')) {
+  const swrRoutes = ['/api/args', '/api/minigames', '/api/users/']; 
+  
+  if (swrRoutes.some(path => url.pathname.startsWith(path)) || url.pathname.includes('/library')) {
     event.respondWith(staleWhileRevalidateStrategy(event.request));
     return;
   }
