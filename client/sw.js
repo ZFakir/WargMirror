@@ -51,6 +51,14 @@ self.addEventListener('fetch', event => {
   // Only cache GET requests and HTTP/HTTPS schemes (ignore chrome-extension://)
   if (event.request.method !== 'GET' || !event.request.url.startsWith('http')) return;
 
+  // Do not cache sensitive dynamic user routes
+  const url = new URL(event.request.url);
+  const bypassCache = ['/api/users/profile', '/auth/me', '/api/sessions'].some(path => url.pathname.startsWith(path));
+  if (bypassCache) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
   // Network first, fallback to cache
   event.respondWith(
     fetch(event.request).then(response => {
@@ -66,7 +74,16 @@ self.addEventListener('fetch', event => {
       return response;
     }).catch(async () => {
       // Use ignoreVary to prevent strict header mismatches from breaking the cache lookup
-      const cachedResponse = await caches.match(event.request, { ignoreVary: true });
+      let cachedResponse = await caches.match(event.request, { ignoreVary: true });
+      
+      // Fallback for HTML pages with query params (e.g. game.html?id=4)
+      if (!cachedResponse) {
+        const reqUrl = new URL(event.request.url);
+        if (reqUrl.pathname.endsWith('.html') || reqUrl.pathname === '/') {
+          cachedResponse = await caches.match(event.request, { ignoreVary: true, ignoreSearch: true });
+        }
+      }
+
       if (cachedResponse) {
         return cachedResponse;
       }
@@ -79,6 +96,12 @@ self.addEventListener('fetch', event => {
 // Background Sync
 self.addEventListener('sync', event => {
   if (event.tag === 'sync-attempts') {
+    event.waitUntil(syncAttempts());
+  }
+});
+
+self.addEventListener('message', event => {
+  if (event.data && event.data.type === 'MANUAL_SYNC') {
     event.waitUntil(syncAttempts());
   }
 });
@@ -116,6 +139,14 @@ async function syncAttempts() {
           result: result
         });
         bc.close();
+
+        // Check for open clients; if none, show notification
+        const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+        if (clients.length === 0) {
+          self.registration.showNotification('WARG Offline Sync', {
+            body: result.passed ? `Offline attempt passed! +${result.points_awarded} pts` : 'Offline attempt analyzed: Not Quite...'
+          });
+        }
       } else {
         console.error(`Failed to sync attempt ${attempt.id}: Server returned ${response.status}`);
         
@@ -132,6 +163,13 @@ async function syncAttempts() {
           error: `Server returned ${response.status}`
         });
         bc.close();
+        
+        const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+        if (clients.length === 0 && response.status >= 400) {
+          self.registration.showNotification('WARG Offline Sync', {
+            body: 'Offline sync failed: ' + response.status
+          });
+        }
       }
     } catch (err) {
       console.error(`Error syncing attempt ${attempt.id}:`, err);

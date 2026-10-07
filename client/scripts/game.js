@@ -26,6 +26,15 @@ function setupConnectionBanner() {
     } else {
       banner.textContent = 'Back Online! Syncing progress...';
       banner.style.backgroundColor = 'var(--color-success, #5cb85c)';
+      
+      // Fallback for browsers without Background Sync API
+      if (!('SyncManager' in window) && navigator.serviceWorker && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({ type: 'MANUAL_SYNC' });
+      }
+
+      // Dispatch reconnect event for state reconciliation
+      window.dispatchEvent(new Event('warg:reconnect'));
+
       setTimeout(() => {
         banner.style.display = 'none';
       }, 3000);
@@ -111,6 +120,14 @@ document.addEventListener('DOMContentLoaded', () => {
       flagModal.open('Issue with this WARG');
     });
   }
+  
+  // Re-fetch game state when coming back online
+  window.addEventListener('warg:reconnect', () => {
+    if (argId && gameState) {
+      loadGameStateAndInitMap();
+    }
+  });
+
   // Get the ARG ID from the URL parameters
   const urlParams = new URLSearchParams(window.location.search);
   const argId = urlParams.get('id');
