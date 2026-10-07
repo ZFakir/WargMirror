@@ -98,6 +98,10 @@ exports.submitAttempt = async (req, res) => {
         aiEndpoint = '/api/v1/symmetry';
         referenceKey = null; // Doesn't need a reference image
         break;
+      case 'plaque_scan':
+        aiEndpoint = '/api/v1/ocr-match';
+        referenceKey = 'reference_image';
+        break;
       default:
         return res.status(400).json({ error: 'Game type does not support AI evaluation via this endpoint' });
     }
@@ -150,17 +154,27 @@ exports.submitAttempt = async (req, res) => {
       }, { transaction });
 
       if (outcome === 'fail') {
-        await transaction.commit();
-        return res.json(data);
+        const config = minigame.config_json || {};
+        if (config.allow_multiple_attempts) {
+          await transaction.commit();
+          return res.json({ ...data, can_retry: true });
+        } else {
+          await WaypointProgress.upsert({
+            user_id,
+            waypoint_id,
+            status: 'failed',
+            completed_at: new Date()
+          }, { transaction });
+        }
+      } else {
+        // If passed, unlock waypoint
+        await WaypointProgress.upsert({
+          user_id,
+          waypoint_id,
+          status: 'completed',
+          completed_at: new Date()
+        }, { transaction });
       }
-
-      // If passed, unlock waypoint
-      await WaypointProgress.upsert({
-        user_id,
-        waypoint_id,
-        status: 'completed',
-        completed_at: new Date()
-      }, { transaction });
 
       const edges = await WaypointEdge.findAll({ where: { from_waypoint_id: waypoint_id }, transaction });
       for (const edge of edges) {

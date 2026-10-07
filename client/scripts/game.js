@@ -223,7 +223,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Launch the game's actual Play Modal using the node's data
     playModal.open(node.name, node.desc);
 
-    const cvGameTypes = ['shape_match', 'colour_match', 'texture_match', 'sift_match', 'symmetry_finder'];
+    const cvGameTypes = ['shape_match', 'colour_match', 'texture_match', 'sift_match', 'symmetry_finder', 'plaque_scan'];
 
     // Check if the node has a CV minigame
     let cvMinigame = null;

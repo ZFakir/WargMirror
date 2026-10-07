@@ -205,15 +205,19 @@ exports.submitMinigame = async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
     const user_id = req.user.user_id;
-    const arg_id = req.params.argId;
-    const waypoint_id = req.params.waypointId;
     const { game_id, submission } = req.body;
 
-    const game = await Minigame.findByPk(game_id, { transaction });
+    const game = await Minigame.findByPk(game_id, { 
+      include: [{ model: Waypoint }],
+      transaction 
+    });
     if (!game) {
        await transaction.rollback();
        return res.status(404).json({ error: 'Minigame not found' });
     }
+
+    const waypoint_id = game.waypoint_id;
+    const arg_id = game.Waypoint ? game.Waypoint.arg_id : null;
 
     // Validate submission based on game type
     let outcome = 'fail';
@@ -237,44 +241,9 @@ exports.submitMinigame = async (req, res) => {
     } else if (game.game_type === 'qr_barcode') {
       const correctCode = config.barcode_value || '';
       if (correctCode && submission === correctCode) outcome = 'pass';
-    } else if (game.game_type === 'plaque_scan') {
-      if (!config.reference_image_base64 || !config.reference_image_mimetype) {
-        await transaction.rollback();
-        return res.status(400).json({ error: 'This plaque scanner has no reference photo configured.' });
-      }
-      if (!submission) {
-        await transaction.rollback();
-        return res.status(400).json({ error: 'No image submitted.' });
-      }
-
-      const playerBase64 = submission.replace(/^data:image\/\w+;base64,/, '');
-      const playerBuffer = Buffer.from(playerBase64, 'base64');
-      const referenceBuffer = Buffer.from(config.reference_image_base64, 'base64');
-
-      const formData = new FormData();
-      formData.append('image', new Blob([playerBuffer], { type: 'image/jpeg' }), 'player.jpg');
-      formData.append('reference_image', new Blob([referenceBuffer], { type: config.reference_image_mimetype }), 'reference.jpg');
-
-      try {
-        const response = await fetch(`${AI_SERVICE_URL}/api/v1/ocr-match`, {
-          method: 'POST',
-          headers: {
-            'X-API-Key': process.env.AI_API_KEY || 'dev-secret-key'
-          },
-          body: formData
-        });
-        if (!response.ok) {
-          throw new Error(`AI engine returned ${response.status}`);
-        }
-        const data = await response.json();
-        outcome = data.passed ? 'pass' : 'fail';
-      } catch (err) {
-        await transaction.rollback();
-        return res.status(502).json({ error: 'Failed to contact AI evaluation service.' });
-      }
     } else {
       // Fallback stub for advanced types
-      outcome = 'pass';
+      outcome = 'fail';
     }
 
     // Upsert MinigameAttempt
