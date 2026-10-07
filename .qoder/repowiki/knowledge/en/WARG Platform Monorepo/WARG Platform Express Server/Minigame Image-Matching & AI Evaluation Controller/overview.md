@@ -1,0 +1,1 @@
+Express controller and Sequelize models for minigames that evaluate player-submitted images against reference assets via an external AI service, covering upload, retrieval, and attempt submission.

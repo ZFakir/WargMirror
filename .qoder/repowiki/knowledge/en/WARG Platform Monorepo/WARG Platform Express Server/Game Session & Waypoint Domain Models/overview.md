@@ -1,0 +1,1 @@
+Defines the GameSession controller and Sequelize models for waypoints and waypoint edges that represent geospatial puzzle locations and their traversal conditions.

@@ -1,0 +1,1 @@
+Sequelize ORM with MySQL spatial types (`GEOMETRY('POINT', 4326)` SRID 4326 WGS84 coordinates); Express request/response shape assumed by the controller.

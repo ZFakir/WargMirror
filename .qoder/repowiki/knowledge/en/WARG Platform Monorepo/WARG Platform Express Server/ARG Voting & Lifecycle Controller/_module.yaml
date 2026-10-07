@@ -1,0 +1,13 @@
+schema_version: 1
+module_path: server/args_voting
+title: ARG Voting & Lifecycle Controller
+scope:
+    - server/src/controllers/argController.js
+    - server/src/models/Arg.js
+    - server/src/models/ArgVote.js
+source_files: []
+depends_on: []
+related_to:
+    - path: client/catalogue
+    - path: client/game_play
+    - path: client/studio_and_create_warg

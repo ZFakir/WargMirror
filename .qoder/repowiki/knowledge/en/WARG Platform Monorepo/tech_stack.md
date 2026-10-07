@@ -1,0 +1,1 @@
+Node.js 18+ Express + Socket.io (server), Python FastAPI + OpenCV/SAM/MobileNet (ai_engine), vanilla HTML/CSS/JS SPA (client), Docusaurus (docs), MySQL 8+ with spatial extensions on Aiven, deployed on Render (backend) + Vercel (frontend). Root `package.json` centralizes shared auth deps: `express-session`, `passport`, `passport-google-oauth20`.

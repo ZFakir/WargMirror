@@ -1,0 +1,1 @@
+Vanilla JS + HTML/CSS served statically; Playwright for E2E testing; Monocart reporter for coverage; Service Worker for offline caching and Background Sync; IndexedDB via the shared `scripts/db.js` wrapper.

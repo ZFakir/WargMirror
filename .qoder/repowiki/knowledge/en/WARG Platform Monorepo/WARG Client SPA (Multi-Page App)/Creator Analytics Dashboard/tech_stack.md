@@ -1,0 +1,1 @@
+Vanilla HTML/CSS/JS with no framework; dark color scheme via `<meta name="color-scheme" content="dark">`; inline SVG icons throughout; Google Fonts preconnect hints.

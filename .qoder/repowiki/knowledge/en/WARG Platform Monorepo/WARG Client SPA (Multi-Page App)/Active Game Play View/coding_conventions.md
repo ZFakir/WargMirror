@@ -1,0 +1,5 @@
+- DOM elements are wired by `document.getElementById(...)` selectors at the top of the `DOMContentLoaded` handler rather than via event delegation or component frameworks.
+- Network calls go through `fetch` against `${API_BASE}/api/...` URLs built from the `window.API_BASE_URL` global, with `credentials: 'include'` for authenticated endpoints.
+- User-facing feedback is shown via the shared `showToast(message)` helper (or inline `alert` / `confirm` for critical flows), never via `console.log` alone.
+- Component responsibilities are split into separate ES module files under `scripts/components/` (PlayModal, FlagModal, MapModal, CameraCapture, minigame handlers) and composed by importing them at the top of `game.js`.
+- Offline resilience is handled by posting a `MANUAL_SYNC` message to the service worker controller and dispatching a custom `warg:reconnect` event that triggers state reload.

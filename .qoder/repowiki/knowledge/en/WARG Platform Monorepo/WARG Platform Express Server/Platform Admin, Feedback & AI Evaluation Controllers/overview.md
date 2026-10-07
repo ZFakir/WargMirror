@@ -1,0 +1,1 @@
+Express route handlers for user feedback submission, admin moderation (flags, users, games, comments), and proxying image-analysis requests to a separate AI service.

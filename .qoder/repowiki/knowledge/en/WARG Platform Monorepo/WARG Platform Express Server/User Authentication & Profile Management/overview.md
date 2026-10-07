@@ -1,0 +1,1 @@
+Handles local user signup/login, profile retrieval, friend requests, and user search against the Sequelize User model.

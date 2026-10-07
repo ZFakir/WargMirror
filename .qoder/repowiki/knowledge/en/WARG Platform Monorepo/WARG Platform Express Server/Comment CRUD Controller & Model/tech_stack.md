@@ -1,0 +1,1 @@
+Sequelize ORM with MySQL-style UNSIGNED INTEGER columns and BOOLEAN storage; Express Router for HTTP routing; Passport-style `req.isAuthenticated()` / `req.user.user_id` session state assumed by the controller.

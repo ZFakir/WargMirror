@@ -1,0 +1,1 @@
+`node server.js` boots the HTTP+Socket.io server; `npm test` runs Jest across unit, model, route, and integration suites using `.env.test` and a separate test DB; `node seed.js` / `node make_admin.js` populate initial data.

@@ -1,0 +1,11 @@
+schema_version: 1
+module_path: client/analytics
+title: Creator Analytics Dashboard
+scope:
+    - client/analytics.html
+    - client/scripts/analytics.js
+    - client/styles/analytics.css
+source_files: []
+depends_on: []
+related_to:
+    - path: server/platform_tools

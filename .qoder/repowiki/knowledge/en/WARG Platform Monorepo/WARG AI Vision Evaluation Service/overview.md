@@ -1,0 +1,1 @@
+FastAPI microservice that scores player-uploaded images against reference assets using SAM segmentation, HSV color histograms, MobileNet texture embeddings, SIFT, symmetry analysis, and OCR.

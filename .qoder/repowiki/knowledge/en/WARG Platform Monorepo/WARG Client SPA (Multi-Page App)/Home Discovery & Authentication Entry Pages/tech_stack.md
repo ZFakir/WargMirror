@@ -1,0 +1,1 @@
+Plain HTML5 + CSS custom properties (`styles/tokens.css`) with no framework; Google Fonts preconnect; DiceBear avatars (`api.dicebear.com/9.x/pixel-art/svg` and `identicon/svg`); Google OAuth delegated to the backend via `API_BASE_URL + '/auth/google'`.

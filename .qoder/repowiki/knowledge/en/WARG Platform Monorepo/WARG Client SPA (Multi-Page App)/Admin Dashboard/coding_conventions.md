@@ -1,0 +1,6 @@
+- Network requests target `${window.API_BASE_URL || ''}/api/admin/...` with `{ credentials: 'include' }` so session cookies are sent to the backend.
+- User interactions use event delegation on parent containers (e.g., `flagsList.addEventListener('click', ...)`) rather than per-element listeners, matching buttons via `e.target.closest('.btn-...')`.
+- Long-running operations show inline skeleton loaders built from repeated HTML fragments with a `pulse` animation before the async call resolves.
+- Destructive actions (delete game, ban/unban user) are gated through the shared `window.confirmModal.open({ title, desc, confirmText, callback })` singleton instead of native `confirm`.
+- UI feedback after API calls goes through the global `showToast` helper when available, falling back silently if the script isn't loaded.
+- CSS classes follow BEM-style naming with double underscores for modifiers (e.g., `.admin-section__title`, `.flag-item--high`, `.admin-search-input-wrapper`).

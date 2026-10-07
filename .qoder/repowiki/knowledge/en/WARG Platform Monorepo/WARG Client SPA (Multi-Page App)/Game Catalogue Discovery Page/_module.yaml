@@ -1,0 +1,11 @@
+schema_version: 1
+module_path: client/catalogue
+title: Game Catalogue Discovery Page
+scope:
+    - client/catalogue.html
+    - client/scripts/catalogue.js
+    - client/styles/catalogue.css
+source_files: []
+depends_on: []
+related_to:
+    - path: server/args_voting

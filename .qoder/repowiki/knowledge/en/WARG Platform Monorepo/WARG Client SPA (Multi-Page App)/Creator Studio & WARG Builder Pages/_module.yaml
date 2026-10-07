@@ -1,0 +1,11 @@
+schema_version: 1
+module_path: client/studio_and_create_warg
+title: Creator Studio & WARG Builder Pages
+scope:
+    - client/studio.html
+    - client/create_warg.html
+    - client/edit_warg.html
+source_files: []
+depends_on: []
+related_to:
+    - path: server/args_voting

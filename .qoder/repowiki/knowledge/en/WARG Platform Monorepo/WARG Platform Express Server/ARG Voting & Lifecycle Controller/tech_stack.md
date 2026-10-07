@@ -1,0 +1,1 @@
+Sequelize ORM with MySQL spatial functions (`ST_GeomFromText` POINT(...), SRID 4326) for waypoint locations; ENUM columns for `status` ('unpublished','published','retired'), `mode` ('solo','coop','pvp','live'), and `vote` ('like','dislike'); BLOB storage for cover images.

@@ -1,0 +1,3 @@
+- Each Sequelize model file defines one model via `sequelize.define(...)` and exports it as the module default, sharing a single `sequelize` instance imported from `../config/database`.
+- Primary keys use `DataTypes.INTEGER.UNSIGNED` with `autoIncrement: true` and explicit `tableName` overrides in the model options.
+- Controller handlers wrap body in try/catch, log errors via `console.error`, and return a uniform `{ error: '...' }` JSON payload on failure.

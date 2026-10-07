@@ -1,0 +1,1 @@
+Standalone analytics page for a WARG/ARG creator to monitor performance metrics and manage player-reported flags with an interactive modal workflow.

@@ -1,0 +1,1 @@
+Plain HTML5 + CSS custom properties (`--surface`, `--text-1`, etc.) from `styles/tokens.css`; vanilla JavaScript loaded as ES modules (`type="module"`) for `studio.js` and `edit_warg.js`; barcode scanning via the external `html5-qrcode` library loaded from `unpkg.com`. Game cards are rendered through a reusable `GameCard` component.

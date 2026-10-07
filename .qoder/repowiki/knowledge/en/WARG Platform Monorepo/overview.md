@@ -1,0 +1,1 @@
+Top-level monorepo wiring a Node.js Express backend, a Python AI vision microservice, a static HTML client SPA, and a Docusaurus docs site behind Vercel rewrites and shared Google OAuth.

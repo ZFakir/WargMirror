@@ -1,0 +1,6 @@
+- Each page wraps its UI in an `app-shell` div containing a fixed-left `sidebar`, a `topbar` banner, a `main-content` region, and an optional right-panel aside, giving consistent chrome across studio and builder pages.
+- Navigation links inside the sidebar use BEM-style classes (`nav-item`, `nav-item__label`) and mark the active route with both an `active` class and `aria-current="page"`.
+- Interactive SVG icons are declared inline with `aria-hidden="true"` and paired with visible text or `aria-label` attributes on their host buttons for accessibility.
+- Modals follow a uniform structure: a `modal-overlay` wrapper with `aria-hidden`, a `.modal` container split into `modal__header` / `modal__body` / `modal__footer`, and close buttons carrying `aria-label="Close ..."`.
+- Builder-specific DOM regions are identified by stable IDs (`#game-map`, `#waypoint-editor`, `#edge-editor`, `#panel-empty-state`) and toggled visibility via the `hidden` attribute rather than CSS display changes.
+- Game type selection is driven by `<button>` elements carrying a `data-game-type` attribute (e.g. `gps`, `ar`, `barcode`, `qna`, `plaque_scan`), which the JS reads to branch into the appropriate configuration modal.

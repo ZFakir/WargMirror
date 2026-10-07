@@ -1,0 +1,1 @@
+No build step — pages are served directly by the static file server. The barcode scanner requires internet access to load `https://unpkg.com/html5-qrcode` at runtime.

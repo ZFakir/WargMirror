@@ -1,0 +1,1 @@
+Standalone HTML entry and profile pages for the WARG client: a redirector to login, a static friend-profile view, and a dynamic user-profile view driven by scripts.

@@ -1,0 +1,10 @@
+schema_version: 1
+module_path: client/other_pages
+title: Static Client Pages (Entry, Friend & User Profiles)
+scope:
+    - client/index.html
+    - client/friend-profile.html
+    - client/user-profile.html
+source_files: []
+depends_on: []
+related_to: []

@@ -1,0 +1,4 @@
+- Each controller exports its handlers as named properties on `exports` / `module.exports` rather than using class-based controllers.
+- Handlers wrap their body in `try/catch`, log errors via `console.error`, and return a `{ error: ... }` JSON response on failure (typically 500, with 404 when a record is not found).
+- Authenticated mutations read the actor from `req.user.user_id` (e.g. attaching `user_id` on feedback, setting `resolved_by` on flag resolution) instead of reading session data inline.
+- AI evaluation handlers validate required files from `req.files` first, then construct a `FormData` body with `new Blob([file.buffer], { type: file.mimetype })` before forwarding to the external AI service.

@@ -1,0 +1,1 @@
+Vanilla ES modules loaded via `<script>` tags; relies on the project's shared `api` client for data fetching and a reusable `GameCard` component factory for rendering.

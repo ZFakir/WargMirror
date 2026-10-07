@@ -1,0 +1,5 @@
+Three-file MVC slice under server/src:
+- `routes/commentRoutes.js` declares two Express routes (`GET /arg/:argId`, `POST /arg/:argId`) bound to the comment controller.
+- `controllers/commentController.js` implements the handlers: `getCommentsForArg` queries comments via Sequelize with an eager `User` include (username only) ordered by `created_at ASC`; `postComment` enforces authentication via `req.isAuthenticated()`, validates body presence, and persists a new comment mapping `is_spoiler` to a boolean column.
+- `models/Comment.js` defines the Sequelize model on table `comments` with columns `comment_id`, `arg_id`, `user_id`, `parent_id`, `body`, `is_spoiler`, `edited_at`, `deleted_at`, plus `created_at` timestamp; `updatedAt` is disabled.
+Dependency direction is one-way: routes → controller → models. The controller imports both `Comment` and `User` from the shared `../models` barrel, while the model depends only on `../config/database` for the Sequelize instance.

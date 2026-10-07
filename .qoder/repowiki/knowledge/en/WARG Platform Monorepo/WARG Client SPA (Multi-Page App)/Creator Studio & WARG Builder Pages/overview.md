@@ -1,0 +1,1 @@
+Three client HTML pages that compose the Creator Studio dashboard and the visual map-based builder for creating and editing location-based ARGs (WARGs).

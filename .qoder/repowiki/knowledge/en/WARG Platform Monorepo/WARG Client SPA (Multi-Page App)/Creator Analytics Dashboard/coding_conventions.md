@@ -1,0 +1,4 @@
+- DOM elements are cached at the top of the script via `document.getElementById` and guarded with `if (element)` checks before attaching listeners.
+- List rendering is done by building an array of template-literal strings and joining them into `innerHTML`, with a special empty-state branch when the list is empty.
+- Modal visibility is toggled by setting `aria-hidden` on the overlay element rather than adding/removing classes, with CSS selectors like `.modal-overlay[aria-hidden="false"]` driving the visible state.
+- CSS follows BEM naming (`block__element--modifier`) and derives all visual tokens (colors, spacing, radii, fonts) from CSS custom properties defined in `styles/tokens.css`.

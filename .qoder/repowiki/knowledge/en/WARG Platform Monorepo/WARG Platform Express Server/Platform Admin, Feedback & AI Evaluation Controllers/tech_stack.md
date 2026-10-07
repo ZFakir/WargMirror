@@ -1,0 +1,1 @@
+Express.js controllers over Sequelize ORM; `aiController` uses Node's native `fetch` + `FormData`/`Blob` to call a separate Python-based AI service (SAM extract, HSV match, texture/SIFT/symmetry matching).

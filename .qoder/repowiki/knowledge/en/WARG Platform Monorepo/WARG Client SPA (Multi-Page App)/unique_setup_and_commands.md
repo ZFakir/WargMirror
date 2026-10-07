@@ -1,0 +1,1 @@
+`npm run test:ui` runs Playwright against all pages under `tests/`; `npm run lint` runs ESLint on the client tree; pages can be served locally via the devDependencies `serve` or `http-server`.

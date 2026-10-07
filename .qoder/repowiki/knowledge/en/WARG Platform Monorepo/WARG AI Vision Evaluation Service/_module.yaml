@@ -1,0 +1,11 @@
+schema_version: 1
+module_path: ai_engine
+title: WARG AI Vision Evaluation Service
+scope:
+    - ai-engine/
+source_files: []
+depends_on: []
+related_to:
+    - path: server/games
+    - path: server/minigames
+    - path: server/platform_tools

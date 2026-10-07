@@ -1,0 +1,1 @@
+Express + Passport (local strategy) + express-session with MySQLStore + Sequelize ORM + Socket.io + Jest + Supertest for integration tests.

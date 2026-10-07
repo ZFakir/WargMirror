@@ -1,0 +1,12 @@
+schema_version: 1
+module_path: server/games
+title: ARG Game Session & Minigame Controller
+scope:
+    - server/src/controllers/gameController.js
+    - server/src/models/GameSession.js
+    - server/src/routes/gameRoutes.js
+source_files: []
+depends_on: []
+related_to:
+    - path: ai_engine
+    - path: client/game_play

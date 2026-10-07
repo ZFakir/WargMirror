@@ -1,0 +1,4 @@
+- Controllers export named async functions per route handler and wrap each handler in try/catch that logs errors and returns `{ error }` JSON responses.
+- Uniqueness checks use Sequelize's `Op.or` operator to match either email or username across signup validation and duplicate-friend-request guards.
+- Sensitive User fields (`google_uid`, `session_token`) are excluded at read time via `attributes.exclude` rather than stripped post-hoc.
+- Role and provider values are constrained by Sequelize `ENUM` types (`player|creator|admin`, `local|google`) instead of runtime string checks.

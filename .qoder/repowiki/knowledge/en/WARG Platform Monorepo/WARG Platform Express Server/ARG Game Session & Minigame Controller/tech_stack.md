@@ -1,0 +1,1 @@
+Sequelize ORM with PostgreSQL spatial extensions (PostGIS) — raw SQL uses `ST_GeomFromText` / `ST_Distance_Sphere` with SRID 4326 for geofencing. External OCR/AI evaluation via `fetch` to a separate service configured through `AI_SERVICE_URL` and `AI_API_KEY`.

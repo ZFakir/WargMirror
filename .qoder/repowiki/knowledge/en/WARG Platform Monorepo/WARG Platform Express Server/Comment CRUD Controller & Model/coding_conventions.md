@@ -1,0 +1,4 @@
+- Controller handlers are exported as named functions on `module.exports` and receive `(req, res)` signatures consumed directly by Express routes.
+- Each async controller handler wraps its logic in try/catch, logs errors via `console.error`, and returns a `{ error }` JSON payload with an appropriate HTTP status code.
+- Model definitions use Sequelize `DataTypes` with explicit `allowNull` constraints and map timestamps to custom column names (`createdAt: 'created_at'`, `updatedAt: false`).
+- Boolean fields like `is_spoiler` are persisted as numeric booleans (1/0) when created through the controller.

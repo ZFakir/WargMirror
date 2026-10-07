@@ -1,0 +1,1 @@
+Vanilla ES modules loaded as classic `<script>` tags; CSS custom properties from a shared token system; inline SVG icons; no framework — relies on DOM APIs, `fetch`, and shared component globals.

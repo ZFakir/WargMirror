@@ -1,0 +1,1 @@
+Express controller and Sequelize models for ARG (adventure game) CRUD, waypoint/minigame graph management, user voting, flagging, and cover-image upload.

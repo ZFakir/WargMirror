@@ -1,0 +1,1 @@
+Vanilla ES modules loaded via `<script type="module">`; uses the Web APIs `navigator.geolocation.watchPosition`, `BroadcastChannel`, `ServiceWorkerController.postMessage` for manual sync, and `html5-qrcode` (loaded from unpkg CDN) for barcode scanning; camera-based minigames use `MediaDevices.getUserMedia` through `CameraCapture`.

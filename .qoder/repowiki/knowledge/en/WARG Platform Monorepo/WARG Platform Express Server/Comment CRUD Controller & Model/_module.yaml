@@ -1,0 +1,11 @@
+schema_version: 1
+module_path: server/comments
+title: Comment CRUD Controller & Model
+scope:
+    - server/src/controllers/commentController.js
+    - server/src/models/Comment.js
+    - server/src/routes/commentRoutes.js
+source_files: []
+depends_on: []
+related_to:
+    - path: client/game_play

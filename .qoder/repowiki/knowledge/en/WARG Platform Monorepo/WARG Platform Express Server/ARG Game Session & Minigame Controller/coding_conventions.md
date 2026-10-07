@@ -1,0 +1,4 @@
+- Mutating controller handlers open a `sequelize.transaction()` at entry and pair every early return or error path with `transaction.rollback()`, committing only after all writes succeed.
+- Route handlers are exported as plain `exports.<name>` functions on the controller module and referenced directly in `gameRoutes.js` without an intermediate service layer.
+- Error handling in controllers follows a uniform shape: `console.error(error)` followed by `res.status(500).json({ error: '<message>' })`.
+- Branching between waypoints is driven by `WaypointEdge.conditions_json` evaluated through the shared `evaluateConditions` helper, which groups outcomes per `game_id` and treats them as OR.

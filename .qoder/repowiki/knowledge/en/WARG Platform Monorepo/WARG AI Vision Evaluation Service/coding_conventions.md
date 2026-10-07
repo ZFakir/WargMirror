@@ -1,0 +1,4 @@
+- Each vision algorithm lives in its own `vision/<algorithm>.py` module exposing a single top-level function (e.g. `extract_and_compare`, `compare_histograms`, `evaluate_texture`) that accepts raw `bytes` and returns a numeric score — HTTP layer never touches OpenCV or torch tensors directly.
+- Endpoints share a uniform shape: they read two `UploadFile` payloads, call the corresponding vision function, and wrap the result in the shared `EvaluationResult` Pydantic model with `confidence_score`, `passed` (thresholded boolean), and a human-readable `message`.
+- All endpoints are protected by the `verify_api_key` dependency injected via `Security(api_key_header)`, reading the key from the `X-API-Key` request header and raising HTTP 401 on mismatch.
+- Heavyweight models (MobileNet, MobileSAM) are instantiated at module import time so they are warm when the first request arrives, rather than lazily loaded per request.

@@ -1,0 +1,1 @@
+Client-side admin dashboard for monitoring flagged games, reviewing flag reports, and managing users (search, ban/unban) via the WARG platform API.

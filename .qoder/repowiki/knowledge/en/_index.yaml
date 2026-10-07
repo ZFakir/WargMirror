@@ -1,0 +1,254 @@
+# 知识卡导出索引文件
+schema_version: 1
+locale: en-US
+branch: feet-/Offline-Compatibility
+nodes_managed: true
+exported_at: "2026-10-07T11:00:14Z"
+modules:
+    "":
+        dir_name: WARG Platform Monorepo
+        title: WARG Platform Monorepo
+        scope:
+            - README.md
+            - package.json
+            - package-lock.json
+            - vercel.json
+            - .gitignore
+            - guidance_output.txt
+        source_files: []
+        children:
+            - ai_engine
+            - client
+            - docs
+            - server
+        depends_on: []
+        related_to: []
+    ai_engine:
+        dir_name: WARG AI Vision Evaluation Service
+        title: WARG AI Vision Evaluation Service
+        scope:
+            - ai-engine/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: server/games
+            - path: server/minigames
+            - path: server/platform_tools
+    client:
+        dir_name: WARG Client SPA (Multi-Page App)
+        title: WARG Client SPA (Multi-Page App)
+        scope:
+            - client/
+        source_files: []
+        children:
+            - client/admin
+            - client/analytics
+            - client/catalogue
+            - client/game_play
+            - client/home_and_auth
+            - client/other_pages
+            - client/studio_and_create_warg
+        depends_on: []
+        related_to: []
+    client/admin:
+        dir_name: Admin Dashboard
+        title: Admin Dashboard
+        scope:
+            - client/admin.html
+            - client/scripts/admin.js
+            - client/styles/admin.css
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: server/platform_tools
+    client/analytics:
+        dir_name: Creator Analytics Dashboard
+        title: Creator Analytics Dashboard
+        scope:
+            - client/analytics.html
+            - client/scripts/analytics.js
+            - client/styles/analytics.css
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: server/platform_tools
+    client/catalogue:
+        dir_name: Game Catalogue Discovery Page
+        title: Game Catalogue Discovery Page
+        scope:
+            - client/catalogue.html
+            - client/scripts/catalogue.js
+            - client/styles/catalogue.css
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: server/args_voting
+    client/game_play:
+        dir_name: Active Game Play View
+        title: Active Game Play View
+        scope:
+            - client/game.html
+            - client/scripts/game.js
+            - client/styles/game.css
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: server/args_voting
+            - path: server/comments
+            - path: server/games
+            - path: server/minigames
+    client/home_and_auth:
+        dir_name: Home Discovery & Authentication Entry Pages
+        title: Home Discovery & Authentication Entry Pages
+        scope:
+            - client/home.html
+            - client/login.html
+            - client/signup.html
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: server/auth_users
+    client/other_pages:
+        dir_name: Static Client Pages (Entry, Friend & User Profiles)
+        title: Static Client Pages (Entry, Friend & User Profiles)
+        scope:
+            - client/index.html
+            - client/friend-profile.html
+            - client/user-profile.html
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []
+    client/studio_and_create_warg:
+        dir_name: Creator Studio & WARG Builder Pages
+        title: Creator Studio & WARG Builder Pages
+        scope:
+            - client/studio.html
+            - client/create_warg.html
+            - client/edit_warg.html
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: server/args_voting
+    docs:
+        dir_name: WARG Platform Documentation Site
+        title: WARG Platform Documentation Site
+        scope:
+            - warg-docs/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []
+    server:
+        dir_name: WARG Platform Express Server
+        title: WARG Platform Express Server
+        scope:
+            - server/
+            - database/
+        source_files: []
+        children:
+            - server/args_voting
+            - server/auth_users
+            - server/comments
+            - server/games
+            - server/minigames
+            - server/platform_tools
+            - server/sessions
+        depends_on: []
+        related_to: []
+    server/args_voting:
+        dir_name: ARG Voting & Lifecycle Controller
+        title: ARG Voting & Lifecycle Controller
+        scope:
+            - server/src/controllers/argController.js
+            - server/src/models/Arg.js
+            - server/src/models/ArgVote.js
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: client/catalogue
+            - path: client/game_play
+            - path: client/studio_and_create_warg
+    server/auth_users:
+        dir_name: User Authentication & Profile Management
+        title: User Authentication & Profile Management
+        scope:
+            - server/src/controllers/authController.js
+            - server/src/controllers/userController.js
+            - server/src/models/User.js
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: client/home_and_auth
+    server/comments:
+        dir_name: Comment CRUD Controller & Model
+        title: Comment CRUD Controller & Model
+        scope:
+            - server/src/controllers/commentController.js
+            - server/src/models/Comment.js
+            - server/src/routes/commentRoutes.js
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: client/game_play
+    server/games:
+        dir_name: ARG Game Session & Minigame Controller
+        title: ARG Game Session & Minigame Controller
+        scope:
+            - server/src/controllers/gameController.js
+            - server/src/models/GameSession.js
+            - server/src/routes/gameRoutes.js
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: ai_engine
+            - path: client/game_play
+    server/minigames:
+        dir_name: Minigame Image-Matching & AI Evaluation Controller
+        title: Minigame Image-Matching & AI Evaluation Controller
+        scope:
+            - server/src/controllers/minigameController.js
+            - server/src/models/Minigame.js
+            - server/src/models/MinigameAttempt.js
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: ai_engine
+            - path: client/game_play
+    server/platform_tools:
+        dir_name: Platform Admin, Feedback & AI Evaluation Controllers
+        title: Platform Admin, Feedback & AI Evaluation Controllers
+        scope:
+            - server/src/controllers/feedbackController.js
+            - server/src/controllers/adminController.js
+            - server/src/controllers/aiController.js
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: ai_engine
+            - path: client/admin
+            - path: client/analytics
+    server/sessions:
+        dir_name: Game Session & Waypoint Domain Models
+        title: Game Session & Waypoint Domain Models
+        scope:
+            - server/src/controllers/sessionController.js
+            - server/src/models/Waypoint.js
+            - server/src/models/WaypointEdge.js
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []

@@ -1,0 +1,1 @@
+Standalone HTML entry points for WARG platform features, wired together by shared scripts, a service worker, and Playwright E2E tests.

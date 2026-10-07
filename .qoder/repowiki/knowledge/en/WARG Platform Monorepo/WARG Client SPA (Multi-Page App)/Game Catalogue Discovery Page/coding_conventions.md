@@ -1,0 +1,4 @@
+- Page scripts bootstrap by listening for `DOMContentLoaded` and early-returning when required globals (`GameCard`, `api`) are unavailable.
+- User-facing text is injected via `innerHTML` template literals using CSS custom properties (e.g. `var(--color-text-muted)`) instead of inline color values.
+- Filter state is tracked in a local variable (`activeFilter`) and UI updates recompute a filtered copy of the full dataset via `Array.prototype.slice()` before sorting.
+- DOM lists are built with `document.createDocumentFragment()` and appended in a single operation to avoid layout thrashing.

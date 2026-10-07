@@ -1,0 +1,1 @@
+Docusaurus-based documentation site hosting the WARG Platform's architecture, API reference, deployment guide, blog, and policy pages.

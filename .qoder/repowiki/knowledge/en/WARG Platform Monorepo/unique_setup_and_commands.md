@@ -1,0 +1,1 @@
+`npm install` at the repo root installs shared auth dependencies; per-child services have their own `npm install` / `python -m uvicorn ...` commands. Production deployment targets three separate hosts (Aiven MySQL, Render Express, Vercel client) as documented in README.md.

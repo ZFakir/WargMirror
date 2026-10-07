@@ -1,0 +1,6 @@
+- Each page declares `<meta name="color-scheme" content="dark" />` and links `styles/tokens.css` before its page-specific stylesheet, establishing dark mode as the default theme.
+- Interactive SVG icons use inline `<svg>` elements with `aria-hidden="true"` while their parent buttons carry descriptive `aria-label` attributes for accessibility.
+- Dynamic content regions are empty `<div>` containers with semantic IDs (e.g. `row-recent`, `row-new`, `row-creators`, `online-friends-list`) that page scripts populate at runtime rather than hard-coding markup.
+- Modals share a common structure — a `.feedback-modal-overlay` wrapper, a `.feedback-modal` dialog with `role="dialog" aria-modal="true"`, a header with a close icon button, and a footer action bar — reused for both the feedback and friend-profile dialogs.
+- Client-side scripts are loaded in dependency order at the bottom of the page: shared `config.js` first, then feature modules (`api.js`, `components/GameCard.js`), then the page-specific controller (`home.js` / `login.js` / `signup.js`).
+- Forms post directly to `home.html` as their `action`, relying on the server-side auth flow rather than intercepting submission in the page script.

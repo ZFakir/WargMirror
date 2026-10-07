@@ -1,0 +1,1 @@
+FastAPI + Uvicorn ASGI server; CPU-only PyTorch >=2.0 with torchvision MobileNet-V2; Meta MobileSAM (`git+https://github.com/ChaoningZhang/MobileSAM.git`) with `vit_t` checkpoint at `weights/mobile_sam.pt`; OpenCV headless for HSV/SIFT/symmetry; PyTesseract for OCR; Pillow for image I/O.

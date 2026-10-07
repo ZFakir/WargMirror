@@ -1,0 +1,1 @@
+Docusaurus 3.10.2 with preset-classic, @docusaurus/theme-mermaid for Mermaid diagrams, React 19, Prism syntax highlighting (github/dracula themes), and Cloudflare Pages (wrangler).

@@ -1,0 +1,11 @@
+schema_version: 1
+module_path: client/admin
+title: Admin Dashboard
+scope:
+    - client/admin.html
+    - client/scripts/admin.js
+    - client/styles/admin.css
+source_files: []
+depends_on: []
+related_to:
+    - path: server/platform_tools

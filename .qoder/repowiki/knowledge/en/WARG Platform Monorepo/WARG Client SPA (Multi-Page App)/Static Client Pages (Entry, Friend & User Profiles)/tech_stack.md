@@ -1,0 +1,1 @@
+Plain HTML5 + CSS custom properties (via `styles/tokens.css`) and vanilla JavaScript; avatars are fetched from DiceBear's public API (`api.dicebear.com/9.x/identicon/svg`).

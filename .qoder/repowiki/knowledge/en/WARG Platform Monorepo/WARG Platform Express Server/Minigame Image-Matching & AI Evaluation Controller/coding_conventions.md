@@ -1,0 +1,4 @@
+- Error paths return structured JSON `{ error: '...' }` with appropriate HTTP status codes rather than throwing unhandled exceptions.
+- Game-type-specific behavior is dispatched through a `switch` on `minigame.game_type` mapping each enum value to an AI endpoint path and a reference-image key.
+- Uploaded images are kept as Node `Buffer`s in memory and converted to/from base64 when persisted or forwarded to the AI service.
+- Sequelize models define their own `tableName` and explicitly set `timestamps`/`createdAt`/`updatedAt` rather than relying on defaults.

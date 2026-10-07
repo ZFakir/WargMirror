@@ -1,0 +1,5 @@
+- Each feature page is a self-contained triplet of `<page>.html` + `scripts/<page>.js` + `styles/<page>.css`.
+- Shared HTTP calls go through `scripts/api.js` rather than raw `fetch` from page scripts.
+- Offline persistence and IndexedDB access go through the shared `scripts/db.js` wrapper so both page code and the service worker use the same DB contract.
+- Reusable UI widgets live in `scripts/components/` and are imported by multiple page scripts instead of being duplicated.
+- Playwright specs mirror the page layout one-to-one under `tests/<page>.spec.js`.

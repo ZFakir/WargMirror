@@ -1,0 +1,11 @@
+schema_version: 1
+module_path: client/home_and_auth
+title: Home Discovery & Authentication Entry Pages
+scope:
+    - client/home.html
+    - client/login.html
+    - client/signup.html
+source_files: []
+depends_on: []
+related_to:
+    - path: server/auth_users

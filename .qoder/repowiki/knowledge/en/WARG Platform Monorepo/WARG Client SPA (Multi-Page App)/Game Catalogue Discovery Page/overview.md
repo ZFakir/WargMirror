@@ -1,0 +1,1 @@
+Client-side catalogue page that fetches published ARGs from the API and renders them as a filterable, sortable grid of GameCard components.

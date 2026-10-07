@@ -1,0 +1,2 @@
+- Each child module is an independently deployable service with its own dependency graph and start command, rather than a shared build pipeline.
+- Cross-service contracts are expressed as HTTP APIs (REST/FastAPI) rather than shared libraries, keeping the Express server and AI engine decoupled.

@@ -1,0 +1,4 @@
+- Profile pages reuse a common layout skeleton: an outer `<div class="app-shell">` wrapping a `.sidebar` aside, a `.topbar` header, and a `.main-content` main element containing a `.profile-container`.
+- Shared UI chrome (sidebar, topbar, drawer overlay) is wired up by including `scripts/home.js` rather than duplicating event handlers per page.
+- Dynamic data surfaces use empty container elements with `id` attributes (e.g. `#profile-stats-grid`, `#profile-badges-grid`, `#profile-library-grid`) that are filled by the page-specific script at runtime.
+- Icons are embedded inline as SVGs with `aria-hidden="true"` and consistent stroke styling instead of using an icon font or sprite sheet.

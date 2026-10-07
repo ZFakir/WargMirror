@@ -1,0 +1,3 @@
+- Documentation content is written as MDX files inside numbered topic directories under `docs/` (e.g. `1-overview/`, `2-architecture-and-design/`) so sidebar ordering follows directory names.
+- Site configuration lives in `docusaurus.config.js` using JSDoc `@type` annotations with `@ts-check` for editor autocompletion instead of TypeScript config files.
+- Blog posts are stored as dated folders or `.mdx` files under `blog/` with shared metadata in `authors.yml` and `tags.yml`.

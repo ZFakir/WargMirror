@@ -1,0 +1,1 @@
+Client page for playing an active WARG: renders the interactive map, progress timeline, minigame modal flow with geofencing and camera capture, plus comments and social actions.

@@ -1,0 +1,3 @@
+- Each feature lives as a trio of `routes/<feature>Routes.js`, `controllers/<feature>Controller.js`, and one-or-more Sequelize models under `src/models/`, then gets mounted in `app.js`.
+- Protected endpoints are gated by the shared `requireAuth` / `requireAdmin` middleware from `src/middleware/authMiddleware.js` rather than per-route checks.
+- Environment-sensitive behavior (CORS origins, session store, cookie flags) is selected via `process.env.NODE_ENV` and `CLIENT_URL` rather than separate config files.

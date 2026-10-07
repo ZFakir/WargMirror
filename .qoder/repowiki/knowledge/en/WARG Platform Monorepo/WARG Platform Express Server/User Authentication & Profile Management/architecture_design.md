@@ -1,0 +1,5 @@
+Two Express controllers sit on top of a single Sequelize model:
+- `models/User.js` defines the `users` table schema (user_id PK, unique username/email, ENUM role/auth_provider, trust_score, flags) via `sequelize.define`, exposing only the User class.
+- `controllers/authController.js` owns account lifecycle: `signup` hashes passwords with bcryptjs, creates a `local`-provider user, then delegates session creation to Passport's `req.logIn`; `checkUserExists` validates uniqueness of email/username via query params.
+- `controllers/userController.js` owns profile and social features: profile lookup with Badge inclusion and GameSession count, library listing, friend request CRUD (`sendFriendRequest`, `getFriendRequests`, `respondToFriendRequest`, `removeFriend`) over the FriendRequest model, plus fuzzy username search.
+Dependency direction is one-way: controllers → models; no cross-import between authController and userController. Session handling is delegated to Passport middleware (not in scope), while data access goes straight through Sequelize queries using `Op.or`, `Op.like`, `Op.in` from sequelize.

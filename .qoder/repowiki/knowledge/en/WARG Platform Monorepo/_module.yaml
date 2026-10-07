@@ -1,0 +1,13 @@
+schema_version: 1
+module_path: ""
+title: WARG Platform Monorepo
+scope:
+    - README.md
+    - package.json
+    - package-lock.json
+    - vercel.json
+    - .gitignore
+    - guidance_output.txt
+source_files: []
+depends_on: []
+related_to: []

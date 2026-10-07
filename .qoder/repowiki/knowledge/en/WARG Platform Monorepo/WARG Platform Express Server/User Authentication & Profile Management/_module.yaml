@@ -1,0 +1,11 @@
+schema_version: 1
+module_path: server/auth_users
+title: User Authentication & Profile Management
+scope:
+    - server/src/controllers/authController.js
+    - server/src/controllers/userController.js
+    - server/src/models/User.js
+source_files: []
+depends_on: []
+related_to:
+    - path: client/home_and_auth

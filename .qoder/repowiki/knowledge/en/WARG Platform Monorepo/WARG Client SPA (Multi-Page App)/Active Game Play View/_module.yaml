@@ -1,0 +1,14 @@
+schema_version: 1
+module_path: client/game_play
+title: Active Game Play View
+scope:
+    - client/game.html
+    - client/scripts/game.js
+    - client/styles/game.css
+source_files: []
+depends_on: []
+related_to:
+    - path: server/args_voting
+    - path: server/comments
+    - path: server/games
+    - path: server/minigames

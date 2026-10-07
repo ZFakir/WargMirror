@@ -1,0 +1,1 @@
+Express controller and routes that manage ARG game sessions, waypoint arrival with geofencing, minigame submission evaluation, and branching progression across waypoints.

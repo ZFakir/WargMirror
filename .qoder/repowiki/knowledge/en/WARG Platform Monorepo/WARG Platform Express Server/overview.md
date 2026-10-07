@@ -1,0 +1,1 @@
+Express/Socket.io server that wires per-feature route/controller/model bundles behind shared auth, session, CORS, and Sequelize database layers.

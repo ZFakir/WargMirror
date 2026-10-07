@@ -1,0 +1,5 @@
+- Read endpoints attach the current user's vote by including `ArgVote` with a `where: { user_id }` filter and then flattening it onto the response as `user_vote` before deleting the nested `ArgVotes` array.
+- Multi-row mutations (Arg + Waypoints + Minigames + Edges) are wrapped in a `sequelize.transaction()` block with explicit `commit()` on success and `rollback()` in both the catch path and early-return authorization failures.
+- Status values are normalized through a local `sanitizeStatus` helper that whitelists `['unpublished','published','retired']` and falls back to `'unpublished'` for unknown inputs.
+- Frontend game-type strings are translated to backend `game_type` values via the `mapFrontendTypeToGameType` lookup, defaulting to `'gps_proximity'` for unmapped types.
+- Legacy client payloads are supported by checking for either the modern `wp.games[]` array or the older `wp.type` fallback when creating/updating waypoints.

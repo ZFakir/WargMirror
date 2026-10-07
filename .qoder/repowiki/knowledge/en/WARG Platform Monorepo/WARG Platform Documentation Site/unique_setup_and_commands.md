@@ -1,0 +1,1 @@
+Requires Node ≥20. Standard Docusaurus scripts: `npm start` for dev server, `npm run build` to generate the static site, `npm run serve` to preview the build, `npm run swizzle` to eject theme components, and `npm run deploy` for publishing.

@@ -1,0 +1,1 @@
+Node.js + Express controller; Sequelize ORM with `DataTypes.ENUM` and `JSON` columns; in-memory `multer` storage assumed for uploaded buffers; native `fetch` to call an external Python AI microservice; base64-encoded images stored inline in `config_json`.

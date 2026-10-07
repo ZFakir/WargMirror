@@ -1,0 +1,1 @@
+Standalone HTML entry points for the WARG platform's game discovery home page, login form, and sign-up form, each paired with its own client-side script.

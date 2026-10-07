@@ -1,0 +1,1 @@
+Sequelize ORM with MySQL dialect (UNSIGNED INT, ENUM, BLOB('medium'), DECIMAL(5,2)), bcryptjs for password hashing, Passport-style `req.logIn` callback for session binding.
