@@ -10,19 +10,28 @@ import { MapModal } from './components/MapModal.js';
 document.addEventListener('DOMContentLoaded', async () => {
   const API_BASE = window.API_BASE_URL || 'https://wargmirror.onrender.com';
 
+  // ── Auth guard: saves would 401 for guests — bounce to login instead ──
+  const currentUser = await window.api.getCurrentUser();
+  if (!currentUser) {
+    window.location.href = 'login.html';
+    return;
+  }
+
   // ── Create vs Edit mode ──
   const isCreateMode = window.location.pathname.includes('create_warg');
   const urlParams = new URLSearchParams(window.location.search);
   let currentArgId = urlParams.get('id');
+  let currentStatus = 'unpublished';
 
   let nodes = [];
   let edges = [];
   let nextId = 1;
   let nextEdgeId = 1;
 
-  // UI Elements for Title/Desc
+  // UI Elements for Title/Desc/Mode
   const titleEl = document.getElementById('arg-title');
   const descEl = document.getElementById('arg-desc');
+  const modeEl = document.getElementById('arg-mode');
 
   const mapBackendGameTypeToFrontend = (gameType) => {
     const map = {
@@ -54,6 +63,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (titleEl) titleEl.textContent = argData.title || '';
         if (descEl) descEl.textContent = argData.description || '';
+        if (modeEl && argData.mode) modeEl.value = argData.mode;
+        currentStatus = argData.status || 'unpublished';
 
         if (argData.cover_image) {
           const heroImg = document.getElementById('hero-banner-img');
@@ -401,7 +412,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                   if (!currentArgId || !game.minigame_id) {
                     try {
-                      await saveArg('draft');
+                      await saveArg();
                     } catch (err) {
                       console.error(err);
                       openAlertModal('Failed to automatically save WARG before setting reference photo.');
@@ -628,10 +639,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       const title = titleEl ? titleEl.textContent.trim() : 'Untitled WARG';
       const description = descEl ? descEl.textContent.trim() : '';
 
+      // "Save Changes" preserves the WARG's existing status — editing a
+      // published WARG must not silently unpublish it. Only the explicit
+      // Publish action (or a brand-new draft) passes a status in.
+      const effectiveStatus = status || currentStatus;
+
       const payload = {
         title,
         description,
-        status,
+        status: effectiveStatus,
+        mode: modeEl ? modeEl.value : undefined,
         waypoints: nodes,
         edges: edges
       };
@@ -657,6 +674,8 @@ document.addEventListener('DOMContentLoaded', async () => {
           currentArgId = data.arg_id;
           window.history.pushState({}, '', `edit_warg?id=${currentArgId}`);
         }
+
+        currentStatus = effectiveStatus;
 
         // Update nodes with their DB IDs
         if (data.idMap || data.minigameMap || data.wpObjMap) {
@@ -697,7 +716,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const origText = btnGlobalSave.textContent;
         setLoadingState(btnGlobalSave, true, origText);
         try {
-          await saveArg('unpublished');
+          await saveArg();
           const msg = isCreateMode && !currentArgId
             ? 'Your new WARG has been saved as a draft.'
             : 'All changes have been successfully saved to the server.';
@@ -749,7 +768,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
           if (!currentArgId) {
             try {
-              await saveArg('draft');
+              await saveArg();
             } catch (err) {
               console.error(err);
               openAlertModal('Failed to automatically save WARG before uploading cover image.');

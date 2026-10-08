@@ -54,9 +54,12 @@ const antiSpoofing = async (req, res, next) => {
       }
     }
 
-    // Fetch the last known location event for this user
+    // Fetch the last known TRUSTED location event for this user.
+    // Suspicious events are deliberately excluded from the baseline: a spoofed
+    // position must never become the new reference point, otherwise a blocked
+    // request could simply be retried and pass the speed check against itself.
     const lastEvent = await LocationEvent.findOne({
-      where: { user_id: userId },
+      where: { user_id: userId, is_suspicious: false },
       order: [['recorded_at', 'DESC']]
     });
 

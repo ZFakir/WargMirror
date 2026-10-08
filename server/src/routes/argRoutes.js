@@ -19,12 +19,16 @@ const uploadMemory = multer({
 });
 
 router.get('/', argController.getAllArgs);
+// Must be declared before GET /:id so "analytics" is not treated as an id.
+router.get('/analytics/mine', requireAuth, argController.getCreatorAnalytics);
 router.get('/:id', argController.getArgById);
-router.post('/', argController.createArg);
-router.put('/:id', argController.updateArg);
+router.post('/', requireAuth, argController.createArg);
+router.put('/:id', requireAuth, argController.updateArg);
 router.patch('/:id/status', requireAuth, argController.updateArgStatus);
 router.post('/:id/vote', argController.voteArg);
 router.post('/:id/flag', argController.flagArg);
+router.post('/:id/flags/:flagId/resolve', requireAuth, argController.resolveOwnFlag);
+router.delete('/:id', requireAuth, argController.deleteArg);
 router.post('/:id/cover-image', requireAuth, uploadMemory.single('image'), argController.uploadCoverImage);
 router.get('/:id/cover-image', argController.getCoverImage);
 

@@ -1,5 +1,35 @@
-const { User, Flag, Arg, Comment } = require('../models');
+const { User, Flag, Arg, Comment, GameSession } = require('../models');
 const { Op } = require('sequelize');
+
+// Fields safe to return to the admin client — never leak password_hash,
+// session_token or google_uid in a response body.
+const ADMIN_USER_FIELDS = ['user_id', 'username', 'email', 'role', 'trust_score', 'is_flagged', 'is_suspended'];
+
+// Platform-wide counters for the admin dashboard header.
+exports.getMetrics = async (req, res) => {
+  try {
+    const [total_users, total_args, published_args, open_flags, active_sessions, completed_sessions] = await Promise.all([
+      User.count(),
+      Arg.count(),
+      Arg.count({ where: { status: 'published' } }),
+      Flag.count({ where: { status: { [Op.in]: ['open', 'reviewing'] } } }),
+      GameSession.count({ where: { status: 'active' } }),
+      GameSession.count({ where: { status: 'completed' } })
+    ]);
+
+    res.json({
+      total_users,
+      total_args,
+      published_args,
+      open_flags,
+      active_sessions,
+      completed_sessions
+    });
+  } catch (error) {
+    console.error('Error fetching metrics:', error);
+    res.status(500).json({ error: 'Failed to fetch metrics' });
+  }
+};
 
 exports.getFlags = async (req, res) => {
   try {
@@ -58,7 +88,7 @@ exports.searchUsers = async (req, res) => {
 
     const users = await User.findAll({
       where: whereClause,
-      attributes: ['user_id', 'username', 'email', 'trust_score', 'is_flagged'],
+      attributes: [...ADMIN_USER_FIELDS],
       order: [['trust_score', 'ASC']],
       limit: 50
     });
@@ -78,10 +108,17 @@ exports.toggleBanUser = async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    user.is_flagged = !user.is_flagged;
+    // Bans are suspensions — is_flagged is reserved for anti-spoofing trust
+    // signals and must not be conflated with admin bans.
+    user.is_suspended = !user.is_suspended;
     await user.save();
 
-    res.json({ message: `User ${user.is_flagged ? 'banned' : 'unbanned'} successfully`, user });
+    const safeUser = {};
+    for (const field of ADMIN_USER_FIELDS) {
+      safeUser[field] = user[field];
+    }
+
+    res.json({ message: `User ${user.is_suspended ? 'banned' : 'unbanned'} successfully`, user: safeUser });
   } catch (error) {
     console.error('Error toggling user ban:', error);
     res.status(500).json({ error: 'Failed to toggle ban status' });

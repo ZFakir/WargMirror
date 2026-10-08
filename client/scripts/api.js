@@ -130,6 +130,19 @@ var api = (function () {
   }
 
   /**
+   * Returns the currently authenticated user, or redirects guests to the
+   * login page. For pages that have no meaningful guest view (editor,
+   * analytics, admin).
+   */
+  async function requireAuthPage() {
+    const user = await getCurrentUser();
+    if (!user) {
+      window.location.href = 'login.html';
+    }
+    return user;
+  }
+
+  /**
    * Returns all published ARGs normalised for GameCard.
    * Public endpoint — works for guests.
    */
@@ -271,6 +284,7 @@ var api = (function () {
   /* ── Public API ─────────────────────────────────────────── */
   return {
     getCurrentUser,
+    requireAuthPage,
     getArgs,
     getArgById,
     getUserProfile,
@@ -318,6 +332,45 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
       });
     }
+  } catch {
+    // Ignore errors for unauthenticated users
+  }
+});
+
+// --- Global Logout Button Injector ---
+// Adds a "Log out" control next to the profile button in the topbar for
+// authenticated users, on every page that includes api.js.
+document.addEventListener('DOMContentLoaded', async () => {
+  try {
+    const user = await api.getCurrentUser();
+    if (!user) return;
+
+    const profileBtn = document.getElementById('btn-profile');
+    if (!profileBtn || document.getElementById('btn-logout')) return;
+
+    const logoutBtn = document.createElement('button');
+    logoutBtn.className = 'icon-btn';
+    logoutBtn.id = 'btn-logout';
+    logoutBtn.setAttribute('aria-label', 'Log out');
+    logoutBtn.title = 'Log out';
+    logoutBtn.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+        <polyline points="16 17 21 12 16 7"/>
+        <line x1="21" y1="12" x2="9" y2="12"/>
+      </svg>
+    `;
+    logoutBtn.addEventListener('click', async () => {
+      logoutBtn.disabled = true;
+      try {
+        await fetch(API_BASE + '/auth/logout', { credentials: 'include' });
+      } catch (err) {
+        console.error('Logout request failed:', err);
+      }
+      window.location.href = 'login.html';
+    });
+
+    profileBtn.parentNode.insertBefore(logoutBtn, profileBtn.nextSibling);
   } catch {
     // Ignore errors for unauthenticated users
   }

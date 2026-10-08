@@ -370,6 +370,7 @@ document.addEventListener('DOMContentLoaded', () => {
           if (!arriveRes.ok) throw new Error('Arrive check failed');
           const arriveData = await arriveRes.json();
 
+          let geofenceOverride = false;
           if (!arriveData.within_radius) {
             // TEMP: Dev Override kept for ongoing testing — remove/gate before release.
             const override = confirm(`You are outside of the geofence (Distance: ${Math.round(arriveData.distance)}m, Radius: ${arriveData.radius}m).\n\nProceed anyway (Dev Override)?`);
@@ -377,6 +378,9 @@ document.addEventListener('DOMContentLoaded', () => {
               playModal.close();
               return;
             }
+            // Sent with the minigame submission so the server's proximity
+            // re-check keeps honouring the override (remove together with it).
+            geofenceOverride = true;
           }
 
           // Restore actual description
@@ -438,7 +442,8 @@ document.addEventListener('DOMContentLoaded', () => {
                   body: JSON.stringify({
                     game_id: minigame.game_id,
                     game_type: minigame.game_type,
-                    submission
+                    submission,
+                    geofence_override: geofenceOverride
                   })
                 });
                 if (!submitRes.ok) throw new Error('Submission failed');
@@ -464,7 +469,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                   }
                   if (feedbackTextContainer) {
-                    feedbackTextContainer.innerHTML = '<p style="color: var(--color-green, #4ade80); font-weight: bold; margin: 0; font-size: 1.1rem;">Correct!</p>';
+                    const pointsLine = result.points_awarded > 0
+                      ? `<p style="margin:2px 0 0;font-size:0.9rem;color:var(--color-text-muted);">+${result.points_awarded} points</p>`
+                      : '';
+                    feedbackTextContainer.innerHTML = '<p style="color: var(--color-green, #4ade80); font-weight: bold; margin: 0; font-size: 1.1rem;">Correct!</p>' + pointsLine;
                   }
                 } else {
                   if (spinner) spinner.style.borderColor = 'var(--color-danger, #ef4444)';

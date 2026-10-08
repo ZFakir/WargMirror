@@ -1,6 +1,10 @@
-const { sequelize, Waypoint, WaypointEdge, Minigame, GameSession, WaypointProgress, MinigameAttempt, LocationEvent } = require('../models');
+const { sequelize, User, Waypoint, WaypointEdge, Minigame, GameSession, WaypointProgress, MinigameAttempt, LocationEvent } = require('../models');
 
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
+
+// Points awarded for progression. Centralised here so the economy is easy to tune.
+const POINTS_PER_MINIGAME = 10;
+const POINTS_SESSION_COMPLETION = 50;
 
 // Helper to evaluate branching conditions
 exports.evaluateConditions = async (user_id, rawConditions, transaction = null) => {
@@ -214,7 +218,7 @@ exports.submitMinigame = async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
     const user_id = req.user.user_id;
-    const { game_id, submission } = req.body;
+    const { game_id, submission, geofence_override } = req.body;
 
     const game = await Minigame.findByPk(game_id, { 
       include: [{ model: Waypoint }],
@@ -228,17 +232,74 @@ exports.submitMinigame = async (req, res) => {
     const waypoint_id = game.waypoint_id;
     const arg_id = game.Waypoint ? game.Waypoint.arg_id : null;
 
+    // ── Security: submissions require an active session for this WARG ──
+    // Without this a raw API call could complete waypoints without ever playing.
+    const activeSession = await GameSession.findOne({
+      where: { user_id, arg_id, status: 'active' },
+      transaction
+    });
+    if (!activeSession) {
+      await transaction.rollback();
+      return res.status(403).json({ error: 'No active session for this WARG. Start the game before submitting.' });
+    }
+
+    // ── Security: the waypoint must have been unlocked through progression ──
+    // (Root waypoints are unlocked by startGameSession; successors by passing edges.)
+    const waypointProgress = await WaypointProgress.findOne({
+      where: { user_id, waypoint_id },
+      transaction
+    });
+    if (!waypointProgress || waypointProgress.status === 'locked') {
+      await transaction.rollback();
+      return res.status(403).json({ error: 'Waypoint is locked. Complete the previous waypoints first.' });
+    }
+
     // Validate submission based on game type
     let outcome = 'fail';
     let config = game.config_json || {};
 
     if (game.game_type === 'gps_proximity') {
-      outcome = 'pass'; // the /arrive endpoint already confirmed proximity if they were allowed to submit
+      // Defense-in-depth: confirm the player's last trusted location is inside the
+      // waypoint's geofence, rather than auto-passing. The client's TEMP Dev Override
+      // (geofence_override) intentionally bypasses this while testing — remove it
+      // together with the override dialog in game.js before release.
+      if (geofence_override === true) {
+        outcome = 'pass';
+      } else {
+        const lastTrustedEvent = await LocationEvent.findOne({
+          where: { user_id, is_suspicious: false },
+          order: [['recorded_at', 'DESC']],
+          transaction
+        });
+        if (lastTrustedEvent) {
+          // Compare the stored geometries directly — same convention /arrive uses.
+          const [distResult] = await sequelize.query(`
+            SELECT ST_Distance_Sphere(w.location, le.location) AS distance
+            FROM waypoints w
+            JOIN location_events le ON le.event_id = :event_id
+            WHERE w.waypoint_id = :waypoint_id
+          `, {
+            replacements: { waypoint_id, event_id: lastTrustedEvent.event_id },
+            type: sequelize.QueryTypes.SELECT,
+            transaction
+          });
+          const distance = distResult ? distResult.distance : null;
+          const radius = game.Waypoint ? game.Waypoint.validation_radius_m : null;
+          if (distance !== null && radius !== null && distance <= radius) {
+            outcome = 'pass';
+          }
+        }
+      }
     } else if (game.game_type === 'text_answer') {
-      console.log(`[DEBUG] Evaluating QnA text_answer minigame. Submission: "${submission}"`);
       if (config.is_mcq) {
+        // Accept either the option index or the exact option text.
         const submittedIndex = parseInt(submission, 10);
-        if (!isNaN(submittedIndex) && submittedIndex === config.correct_index) {
+        const correctText = Array.isArray(config.options)
+          ? String(config.options[config.correct_index] ?? '').toLowerCase().trim()
+          : null;
+        const submittedText = String(submission ?? '').toLowerCase().trim();
+        if ((!isNaN(submittedIndex) && submittedIndex === config.correct_index) ||
+            (correctText && submittedText === correctText)) {
           outcome = 'pass';
         }
       } else {
@@ -254,6 +315,11 @@ exports.submitMinigame = async (req, res) => {
       // Fallback stub for advanced types
       outcome = 'fail';
     }
+
+    // Points are only awarded on the first pass of each minigame — re-submitting
+    // an already-passed game awards nothing (the upsert below would double-count).
+    const previousAttempt = await MinigameAttempt.findOne({ where: { user_id, game_id }, transaction });
+    const firstPass = outcome === 'pass' && (!previousAttempt || previousAttempt.outcome !== 'pass');
 
     // Upsert MinigameAttempt
     await MinigameAttempt.upsert({
@@ -321,8 +387,17 @@ exports.submitMinigame = async (req, res) => {
       });
     }
 
+    // Award points once the outcome is final (the fail-with-retry path above
+    // already returned without unlocking anything).
+    let points_awarded = firstPass ? POINTS_PER_MINIGAME : 0;
+    if (session_completed) points_awarded += POINTS_SESSION_COMPLETION;
+    if (points_awarded > 0) {
+      await User.increment('total_points', { by: points_awarded, where: { user_id }, transaction });
+      await GameSession.increment('total_points_earned', { by: points_awarded, where: { user_id, arg_id }, transaction });
+    }
+
     await transaction.commit();
-    res.json({ outcome, unlockedNodes, session_completed });
+    res.json({ outcome, unlockedNodes, session_completed, points_awarded });
   } catch (error) {
     await transaction.rollback();
     console.error(error);

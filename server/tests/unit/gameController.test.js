@@ -1,5 +1,5 @@
 const { submitMinigame, arriveAtWaypoint } = require('../../src/controllers/gameController');
-const { sequelize, Minigame, MinigameAttempt, WaypointProgress, WaypointEdge, Waypoint, LocationEvent, GameSession } = require('../../src/models');
+const { sequelize, User, Minigame, MinigameAttempt, WaypointProgress, WaypointEdge, Waypoint, LocationEvent, GameSession } = require('../../src/models');
 
 jest.mock('../../src/models', () => {
   return {
@@ -9,13 +9,14 @@ jest.mock('../../src/models', () => {
       fn: jest.fn(),
       QueryTypes: { SELECT: 'SELECT' }
     },
+    User: { increment: jest.fn() },
     Minigame: { findByPk: jest.fn() },
-    MinigameAttempt: { upsert: jest.fn() },
-    WaypointProgress: { upsert: jest.fn(), findAll: jest.fn() },
+    MinigameAttempt: { upsert: jest.fn(), findOne: jest.fn() },
+    WaypointProgress: { upsert: jest.fn(), findAll: jest.fn(), findOne: jest.fn() },
     WaypointEdge: { findAll: jest.fn() },
     Waypoint: { findAll: jest.fn(), findByPk: jest.fn() },
-    LocationEvent: { create: jest.fn() },
-    GameSession: { update: jest.fn() }
+    LocationEvent: { create: jest.fn(), findOne: jest.fn() },
+    GameSession: { findOne: jest.fn(), update: jest.fn(), increment: jest.fn() }
   };
 });
 
@@ -35,28 +36,41 @@ describe('gameController - submitMinigame', () => {
     jest.clearAllMocks();
     mockTransaction = { commit: jest.fn(), rollback: jest.fn() };
     sequelize.transaction.mockResolvedValue(mockTransaction);
-    
+
     req = {
       user: { user_id: 1 },
       params: { argId: 10, waypointId: 20 },
       body: { game_id: 100, submission: 'TEST_CODE_123' }
     };
-    
+
     res = {
       json: jest.fn(),
       status: jest.fn().mockReturnThis()
     };
+
+    // Default happy-path mocks for the security gates: an active session,
+    // an unlocked waypoint and no previous attempt (first pass).
+    GameSession.findOne.mockResolvedValue({ session_id: 1, status: 'active' });
+    WaypointProgress.findOne.mockResolvedValue({ waypoint_id: 20, status: 'unlocked' });
+    MinigameAttempt.findOne.mockResolvedValue(null);
+    LocationEvent.findOne.mockResolvedValue({ event_id: 55 });
+    sequelize.query.mockResolvedValue([{ distance: 12.5 }]);
 
     WaypointEdge.findAll.mockResolvedValue([]);
     WaypointProgress.findAll.mockResolvedValue([]);
     Waypoint.findAll.mockResolvedValue([]);
   });
 
+  const mockGame = (overrides = {}) => ({
+    game_type: 'qr_barcode',
+    waypoint_id: 20,
+    config_json: { barcode_value: 'TEST_CODE_123' },
+    Waypoint: { arg_id: 10, validation_radius_m: 50 },
+    ...overrides
+  });
+
   it('should evaluate qr_barcode minigame correctly (pass)', async () => {
-    Minigame.findByPk.mockResolvedValue({
-      game_type: 'qr_barcode',
-      config_json: { barcode_value: 'TEST_CODE_123' }
-    });
+    Minigame.findByPk.mockResolvedValue(mockGame());
 
     await submitMinigame(req, res);
 
@@ -64,15 +78,16 @@ describe('gameController - submitMinigame', () => {
       expect.objectContaining({ outcome: 'pass', score: 1 }),
       expect.anything()
     );
-    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ outcome: 'pass' }));
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ outcome: 'pass', points_awarded: 10 }));
+    expect(User.increment).toHaveBeenCalledWith('total_points', expect.objectContaining({ by: 10 }));
+    expect(GameSession.increment).toHaveBeenCalledWith('total_points_earned', expect.objectContaining({ by: 10 }));
   });
 
   it('should evaluate qr_barcode minigame correctly (fail)', async () => {
     req.body.submission = 'WRONG_CODE';
-    Minigame.findByPk.mockResolvedValue({
-      game_type: 'qr_barcode',
+    Minigame.findByPk.mockResolvedValue(mockGame({
       config_json: { barcode_value: 'TEST_CODE_123', allow_multiple_attempts: false }
-    });
+    }));
 
     await submitMinigame(req, res);
 
@@ -81,6 +96,138 @@ describe('gameController - submitMinigame', () => {
       expect.anything()
     );
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ outcome: 'fail' }));
+    expect(User.increment).not.toHaveBeenCalled();
+  });
+
+  it('rejects submissions without an active session for this WARG (403)', async () => {
+    GameSession.findOne.mockResolvedValue(null);
+    Minigame.findByPk.mockResolvedValue(mockGame());
+
+    await submitMinigame(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(res.json).toHaveBeenCalledWith({ error: 'No active session for this WARG. Start the game before submitting.' });
+    expect(MinigameAttempt.upsert).not.toHaveBeenCalled();
+    expect(mockTransaction.rollback).toHaveBeenCalled();
+  });
+
+  it('rejects submissions for a waypoint that has not been unlocked (403)', async () => {
+    WaypointProgress.findOne.mockResolvedValue({ status: 'locked' });
+    Minigame.findByPk.mockResolvedValue(mockGame());
+
+    await submitMinigame(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Waypoint is locked. Complete the previous waypoints first.' });
+    expect(MinigameAttempt.upsert).not.toHaveBeenCalled();
+  });
+
+  describe('gps_proximity re-verification', () => {
+    it('passes when the last trusted location is inside the geofence', async () => {
+      Minigame.findByPk.mockResolvedValue(mockGame({ game_type: 'gps_proximity', config_json: {} }));
+
+      await submitMinigame(req, res);
+
+      expect(sequelize.query).toHaveBeenCalledWith(
+        expect.stringContaining('ST_Distance_Sphere(w.location, le.location)'),
+        expect.objectContaining({
+          replacements: { waypoint_id: 20, event_id: 55 },
+          type: 'SELECT'
+        })
+      );
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ outcome: 'pass' }));
+    });
+
+    it('fails when the last trusted location is outside the geofence', async () => {
+      sequelize.query.mockResolvedValue([{ distance: 500 }]);
+      Minigame.findByPk.mockResolvedValue(mockGame({ game_type: 'gps_proximity', config_json: {} }));
+
+      await submitMinigame(req, res);
+
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ outcome: 'fail' }));
+    });
+
+    it('only trusts non-suspicious location events for the baseline', async () => {
+      Minigame.findByPk.mockResolvedValue(mockGame({ game_type: 'gps_proximity', config_json: {} }));
+
+      await submitMinigame(req, res);
+
+      expect(LocationEvent.findOne).toHaveBeenCalledWith(
+        expect.objectContaining({ where: expect.objectContaining({ user_id: 1, is_suspicious: false }) })
+      );
+    });
+
+    it('lets the TEMP dev override bypass the distance check', async () => {
+      req.body.geofence_override = true;
+      LocationEvent.findOne.mockResolvedValue(null);
+      Minigame.findByPk.mockResolvedValue(mockGame({ game_type: 'gps_proximity', config_json: {} }));
+
+      await submitMinigame(req, res);
+
+      expect(sequelize.query).not.toHaveBeenCalled();
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ outcome: 'pass' }));
+    });
+  });
+
+  describe('MCQ text answers', () => {
+    const mcqGame = () => mockGame({
+      game_type: 'text_answer',
+      config_json: { is_mcq: true, options: ['Paris', 'London', 'Tokyo'], correct_index: 0 }
+    });
+
+    it('accepts the correct option text regardless of case and padding', async () => {
+      req.body.submission = '  PARIS ';
+      Minigame.findByPk.mockResolvedValue(mcqGame());
+
+      await submitMinigame(req, res);
+
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ outcome: 'pass' }));
+    });
+
+    it('accepts the correct option index', async () => {
+      req.body.submission = '0';
+      Minigame.findByPk.mockResolvedValue(mcqGame());
+
+      await submitMinigame(req, res);
+
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ outcome: 'pass' }));
+    });
+
+    it('rejects a wrong option text', async () => {
+      req.body.submission = 'London';
+      Minigame.findByPk.mockResolvedValue(mcqGame());
+
+      await submitMinigame(req, res);
+
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ outcome: 'fail' }));
+    });
+  });
+
+  it('awards points only on the first pass — re-passing awards nothing', async () => {
+    MinigameAttempt.findOne.mockResolvedValue({ outcome: 'pass' });
+    Minigame.findByPk.mockResolvedValue(mockGame());
+
+    await submitMinigame(req, res);
+
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ outcome: 'pass', points_awarded: 0 }));
+    expect(User.increment).not.toHaveBeenCalled();
+    expect(GameSession.increment).not.toHaveBeenCalled();
+  });
+
+  it('completes the session and awards the completion bonus when no waypoints remain', async () => {
+    WaypointProgress.findAll.mockResolvedValue([{ waypoint_id: 20, status: 'completed' }]);
+    Waypoint.findAll.mockResolvedValue([{ waypoint_id: 20 }]);
+    Minigame.findByPk.mockResolvedValue(mockGame());
+
+    await submitMinigame(req, res);
+
+    expect(GameSession.update).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'completed' }),
+      expect.objectContaining({ where: { user_id: 1, arg_id: 10 } })
+    );
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ session_completed: true, points_awarded: 60 }));
+    expect(User.increment).toHaveBeenCalledWith('total_points', expect.objectContaining({ by: 60 }));
+    expect(GameSession.increment).toHaveBeenCalledWith('total_points_earned', expect.objectContaining({ by: 60 }));
   });
 });
 

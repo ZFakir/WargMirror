@@ -79,6 +79,11 @@
         <p class="admin-header__desc">Monitor platform activity, review flagged content, and manage users.</p>
       </section>
 
+      <!-- Platform Metrics -->
+      <div id="admin-metrics" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:var(--space-3);margin-bottom:var(--space-4);">
+        <!-- Populated by admin.js -->
+      </div>
+
       <!-- Admin Controls -->
       <div class="admin-controls">
         
@@ -171,6 +176,7 @@
   <script src="scripts/data/games.js"></script>
 <script src="scripts/components/GameCard.js?v=2"></script>
 <script src="scripts/components/ConfirmModal.js"></script>
+<script src="scripts/api.js"></script>
 <script src="scripts/home.js"></script> <!-- Includes navigation drawer logic -->
 <script src="scripts/admin.js"></script>
 

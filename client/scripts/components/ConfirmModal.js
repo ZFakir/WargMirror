@@ -34,7 +34,7 @@ class ConfirmModal {
               <line x1="12" y1="8" x2="12" y2="12"></line>
               <line x1="12" y1="16" x2="12.01" y2="16"></line>
             </svg>
-            Confirm Action
+            <span id="generic-confirm-modal-title-text">Confirm Action</span>
           </h2>
           <button class="remove-modal__close-btn" id="btn-generic-confirm-close" aria-label="Close">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -56,6 +56,7 @@ class ConfirmModal {
     document.body.appendChild(this.overlay);
 
     this.titleEl = this.overlay.querySelector('#generic-confirm-modal-title');
+    this.titleTextEl = this.overlay.querySelector('#generic-confirm-modal-title-text');
     this.descEl = this.overlay.querySelector('#generic-confirm-desc');
     this.closeBtn = this.overlay.querySelector('#btn-generic-confirm-close');
     this.cancelBtn = this.overlay.querySelector('#btn-generic-confirm-cancel');
@@ -105,8 +106,10 @@ class ConfirmModal {
   }
 
   open({ title, desc, confirmText, callback }) {
-    if (title) this.titleEl.innerHTML = this.titleEl.innerHTML.replace('Confirm Action', title);
-    if (desc) this.descEl.innerHTML = desc;
+    // textContent (not innerHTML): titles/descriptions may include user-typed
+    // content (flag descriptions, usernames) and must never render as HTML.
+    if (title) this.titleTextEl.textContent = title;
+    if (desc) this.descEl.textContent = desc;
     if (confirmText) this.submitBtn.textContent = confirmText;
     
     this.callback = callback;
