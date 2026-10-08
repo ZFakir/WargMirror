@@ -106,7 +106,10 @@ exports.submitAttempt = async (req, res) => {
 
     const response = await fetch(`${AI_SERVICE_URL}${aiEndpoint}`, {
       method: 'POST',
-      body: formData
+      body: formData,
+      headers: {
+        'X-API-Key': process.env.AI_API_KEY || 'dev-secret-key'
+      }
     });
 
     if (!response.ok) {
