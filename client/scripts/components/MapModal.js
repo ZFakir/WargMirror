@@ -25,6 +25,8 @@ export class MapModal {
     this._editorMode = false;
     this._editorCallbacks = {};
     this._selectedNodeId = null;
+    this.radiusCircles = {};
+    this.radiusHandle = null;
 
     // Core data
     this.NODES = [
@@ -472,6 +474,18 @@ export class MapModal {
       popupAnchor: [0, -14]
     });
 
+    // Add radius circle
+    const radius = node.validation_radius_m || 30;
+    const circle = L.circle([node.lat, node.lng], {
+      radius: radius,
+      color: '#00d8ff',
+      weight: 1.5,
+      dashArray: '4, 4',
+      fillOpacity: 0.1,
+      interactive: false
+    }).addTo(this.map);
+    this.radiusCircles[node.id] = circle;
+
     // Markers are NOT draggable by default — only the handle enables dragging
     const marker = L.marker([node.lat, node.lng], { icon, draggable: false }).addTo(this.map);
 
@@ -508,6 +522,12 @@ export class MapModal {
 
     marker.on('drag', () => {
       const ll = marker.getLatLng();
+      if (this.radiusCircles[node.id]) {
+        this.radiusCircles[node.id].setLatLng(ll);
+      }
+      if (this.radiusHandle && this._selectedNodeId === node.id) {
+        this._updateRadiusHandlePosition(node.id);
+      }
       if (this._editorCallbacks.onNodeMoving) this._editorCallbacks.onNodeMoving(node.id, ll.lat, ll.lng);
     });
 
@@ -534,6 +554,14 @@ export class MapModal {
       this.map.removeLayer(marker);
       delete this.markerLookup[id];
     }
+    if (this.radiusCircles[id]) {
+      this.map.removeLayer(this.radiusCircles[id]);
+      delete this.radiusCircles[id];
+    }
+    if (this._selectedNodeId === id && this.radiusHandle) {
+      this.map.removeLayer(this.radiusHandle);
+      this.radiusHandle = null;
+    }
   }
 
   /**
@@ -546,6 +574,79 @@ export class MapModal {
       if (!el) return;
       const core = el.querySelector('.node-marker');
       if (core) core.classList.toggle('selected', nodeId === id);
+    });
+
+    if (this.radiusHandle) {
+      this.map.removeLayer(this.radiusHandle);
+      this.radiusHandle = null;
+    }
+
+    if (id && this.markerLookup[id]) {
+      this._createRadiusHandle(id);
+    }
+  }
+
+  updateNodeRadius(id, radius) {
+    if (this.radiusCircles[id]) {
+      this.radiusCircles[id].setRadius(radius);
+    }
+    if (this._selectedNodeId === id && this.radiusHandle) {
+      this._updateRadiusHandlePosition(id);
+    }
+  }
+
+  _updateRadiusHandlePosition(id) {
+    if (!this.radiusHandle || !this.markerLookup[id] || !this.radiusCircles[id]) return;
+    const center = this.markerLookup[id].getLatLng();
+    const radius = this.radiusCircles[id].getRadius();
+    // Position handle due east of center
+    const handleLatLng = this._destinationPoint(center, 90, radius);
+    this.radiusHandle.setLatLng(handleLatLng);
+  }
+
+  _destinationPoint(start, heading, distance) {
+    const R = 6371000; // Earth radius in meters
+    const d = distance / R;
+    const h = heading * Math.PI / 180;
+    const lat1 = start.lat * Math.PI / 180;
+    const lng1 = start.lng * Math.PI / 180;
+
+    const lat2 = Math.asin(Math.sin(lat1) * Math.cos(d) + Math.cos(lat1) * Math.sin(d) * Math.cos(h));
+    const lng2 = lng1 + Math.atan2(Math.sin(h) * Math.sin(d) * Math.cos(lat1), Math.cos(d) - Math.sin(lat1) * Math.sin(lat2));
+
+    return L.latLng(lat2 * 180 / Math.PI, lng2 * 180 / Math.PI);
+  }
+
+  _createRadiusHandle(id) {
+    if (!this.map) return;
+    const icon = L.divIcon({
+      className: '',
+      html: `<div style="width: 12px; height: 12px; background: #00d8ff; border: 2px solid #fff; border-radius: 50%; cursor: ew-resize; box-shadow: 0 0 5px rgba(0,0,0,0.5);"></div>`,
+      iconSize: [12, 12],
+      iconAnchor: [6, 6]
+    });
+
+    this.radiusHandle = L.marker([0, 0], {
+      icon,
+      draggable: true,
+      zIndexOffset: 2000
+    }).addTo(this.map);
+
+    this._updateRadiusHandlePosition(id);
+
+    this.radiusHandle.on('drag', () => {
+      const center = this.markerLookup[id].getLatLng();
+      const handlePos = this.radiusHandle.getLatLng();
+      const newRadius = center.distanceTo(handlePos);
+      this.radiusCircles[id].setRadius(newRadius);
+
+      if (this._editorCallbacks.onRadiusChanged) {
+        this._editorCallbacks.onRadiusChanged(id, newRadius);
+      }
+    });
+
+    this.radiusHandle.on('dragend', () => {
+      this._updateRadiusHandlePosition(id);
     });
   }
 

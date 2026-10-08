@@ -204,6 +204,10 @@
                   placeholder="Waypoint Title" spellcheck="false" />
                 <textarea class="editor-input editor-input--desc" id="editor-desc" placeholder="Waypoint Description"
                   spellcheck="false" rows="2"></textarea>
+                <div style="margin-top: 12px; display: flex; align-items: center; justify-content: space-between;">
+                  <label for="editor-radius" style="font-size: 13px; color: var(--text-2);">Radius (m):</label>
+                  <input type="number" class="editor-input" id="editor-radius" placeholder="30" min="5" step="1" style="width: 80px; padding: 4px 8px; text-align: right; background: rgba(0,0,0,0.2);" />
+                </div>
               </div>
 
               <div class="relationships-grid">
@@ -320,6 +324,7 @@
         <button class="btn btn--outline game-type-btn" data-game-type="photo_submit">Photo Submit</button>
         <button class="btn btn--outline game-type-btn" data-game-type="plaque_scan">Plaque Scanner</button>
         <button class="btn btn--outline game-type-btn" data-game-type="qna">QnA / MCQ</button>
+        <button class="btn btn--outline game-type-btn" data-game-type="point_domination">Point Domination</button>
       </div>
     </div>
   </div>
@@ -387,6 +392,28 @@
       <div class="modal__footer" style="display: flex; gap: 12px; justify-content: flex-end;">
         <button class="btn btn--outline" id="btn-cancel-barcode">Cancel</button>
         <button class="btn btn--primary" id="btn-save-barcode">Save Game</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Point Domination Modal -->
+  <div class="modal-overlay" id="pd-modal-overlay" aria-hidden="true">
+    <div class="modal">
+      <div class="modal__header">
+        <h3 class="modal__title">Configure Point Domination</h3>
+        <button class="icon-btn" id="btn-close-pd-modal" aria-label="Close modal">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <div class="modal__body">
+        <div style="margin-bottom: 16px;">
+          <label style="display: block; font-size: 14px; font-weight: 500; margin-bottom: 8px; color: var(--text-2);">Reset Interval (Hours)</label>
+          <input type="number" id="pd-reset-interval" style="width: 100%; padding: 10px; border-radius: 6px; background: var(--surface); color: var(--text-1); border: 1px solid var(--border);" placeholder="0 for never" min="0" />
+        </div>
+      </div>
+      <div class="modal__footer" style="display: flex; gap: 12px; justify-content: flex-end;">
+        <button class="btn btn--outline" id="btn-cancel-pd">Cancel</button>
+        <button class="btn btn--primary" id="btn-save-pd">Save Game</button>
       </div>
     </div>
   </div>

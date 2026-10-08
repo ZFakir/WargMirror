@@ -33,7 +33,7 @@ exports.getArgById = async (req, res) => {
         { model: User, as: 'Creator', attributes: ['username', 'avatar'] },
         {
           model: Waypoint,
-          attributes: ['waypoint_id', 'title', 'location', 'description'],
+          attributes: ['waypoint_id', 'title', 'location', 'description', 'validation_radius_m'],
           include: [{ model: Minigame }]
         },
         { model: WaypointEdge },
@@ -96,6 +96,7 @@ exports.createArg = async (req, res) => {
         arg_id: newArg.arg_id,
         title: wp.title || 'Waypoint',
         description: wp.description || '',
+        validation_radius_m: wp.validation_radius_m || 30,
         location: sequelize.fn('ST_GeomFromText', `POINT(${wp.lat} ${wp.lng})`, 4326)
       }, { transaction });
 
@@ -199,6 +200,7 @@ exports.updateArg = async (req, res) => {
         await Waypoint.update({
           title: wp.title || 'Waypoint',
           description: wp.description || '',
+          validation_radius_m: wp.validation_radius_m || 30,
           location: sequelize.fn('ST_GeomFromText', `POINT(${wp.lat} ${wp.lng})`, 4326)
         }, { where: { waypoint_id: wp.waypoint_id }, transaction });
 
@@ -259,6 +261,7 @@ exports.updateArg = async (req, res) => {
           arg_id: arg.arg_id,
           title: wp.title || 'Waypoint',
           description: wp.description || '',
+          validation_radius_m: wp.validation_radius_m || 30,
           location: sequelize.fn('ST_GeomFromText', `POINT(${wp.lat} ${wp.lng})`, 4326)
         }, { transaction });
 

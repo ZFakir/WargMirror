@@ -7,6 +7,7 @@ router.post('/:argId/start', gameController.startGameSession);
 router.get('/:argId/state', gameController.getGameState);
 router.post('/:argId/waypoint/:waypointId/arrive', requireAuth, antiSpoofing, gameController.arriveAtWaypoint);
 router.post('/:argId/waypoint/:waypointId/submit', gameController.submitMinigame);
+router.post('/:argId/waypoint/:waypointId/domination-ping', requireAuth, antiSpoofing, gameController.dominationPing);
+router.get('/:argId/waypoint/:waypointId/domination-scores', gameController.getDominationScores);
 router.post('/:argId/abandon', gameController.abandonSession);
-
 module.exports = router;

@@ -540,7 +540,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
             playModal.controlsContainer.appendChild(gameWrapper);
 
-            handler.render(gameWrapper, minigame.config_json || {}, async (submission) => {
+            const configWithMeta = Object.assign({}, minigame.config_json || {}, {
+              game_id: minigame.game_id,
+              arg_id: argId,
+              waypoint_id: node.id
+            });
+
+            handler.render(gameWrapper, configWithMeta, async (submission) => {
               // Show loading spinner
               const originalContent = gameWrapper.innerHTML;
               gameWrapper.innerHTML = `
