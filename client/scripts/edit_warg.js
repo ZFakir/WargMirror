@@ -33,7 +33,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   const descEl = document.getElementById('arg-desc');
   const modeEl = document.getElementById('arg-mode');
 
-  const mapBackendGameTypeToFrontend = (gameType) => {
+  const mapBackendGameTypeToFrontend = (mg) => {
+    if (mg.game_type === 'gps_proximity' && mg.config_json && mg.config_json.subtype === 'geofence') {
+      return { type: 'geofence', label: 'Geofence Check' };
+    }
     const map = {
       'gps_proximity': { type: 'gps', label: 'GPS Location' },
       'ar_object_scan': { type: 'ar', label: 'AR Object Scan' },
@@ -47,7 +50,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       'text_answer': { type: 'text_answer', label: 'QnA / MCQ' },
       'plaque_scan': { type: 'plaque_scan', label: 'Plaque Scanner' }
     };
-    return map[gameType] || { type: 'gps', label: 'GPS Location' };
+    return map[mg.game_type] || { type: 'gps', label: 'GPS Location' };
   };
 
   if (!isCreateMode && currentArgId) {
@@ -84,7 +87,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const nodeGames = [];
             if (wp.Minigames && wp.Minigames.length > 0) {
               wp.Minigames.forEach(mg => {
-                const mappedType = mapBackendGameTypeToFrontend(mg.game_type);
+                const mappedType = mapBackendGameTypeToFrontend(mg);
                 nodeGames.push({
                   type: mappedType.type,
                   gamemode: mappedType.label,
@@ -499,6 +502,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     openQnaModal(game.minigame_config, index);
                   } else if (game.gamemode === 'Barcode Game') {
                     openBarcodeModal(game.minigame_config, index);
+                  } else if (game.gamemode === 'Geofence Check') {
+                    openGeofenceModal(game.minigame_config, index);
                   } else {
                     openAlertModal('Editor for this game type is coming soon.');
                   }
@@ -886,6 +891,49 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (e.target === confirmModalOverlay) closeConfirmModal();
       });
     }
+    // ── Geofence Game Modal Logic ──
+    const geofenceModalOverlay = document.getElementById('geofence-modal-overlay');
+    const btnCloseGeofenceModal = document.getElementById('btn-close-geofence-modal');
+    const btnCancelGeofence = document.getElementById('btn-cancel-geofence');
+    const btnSaveGeofence = document.getElementById('btn-save-geofence');
+
+    let geofenceEditIndex = null;
+
+    // eslint-disable-next-line no-unused-vars
+    function openGeofenceModal(existingConfig = null, editIndex = null) {
+      geofenceEditIndex = editIndex;
+      if (geofenceModalOverlay) geofenceModalOverlay.setAttribute('aria-hidden', 'false');
+    }
+
+    function closeGeofenceModal() {
+      if (geofenceModalOverlay) geofenceModalOverlay.setAttribute('aria-hidden', 'true');
+    }
+
+    if (btnCloseGeofenceModal) btnCloseGeofenceModal.addEventListener('click', closeGeofenceModal);
+    if (btnCancelGeofence) btnCancelGeofence.addEventListener('click', closeGeofenceModal);
+    if (btnSaveGeofence) {
+      btnSaveGeofence.addEventListener('click', () => {
+        const node = nodes.find(n => n.id === selectedId);
+        if (!node) return;
+        if (!node.games) node.games = [];
+        
+        const newGame = {
+          gamemode: 'Geofence Check',
+          type: 'gps_proximity',
+          minigame_config: { subtype: 'geofence' }
+        };
+
+        if (geofenceEditIndex !== null) {
+          node.games[geofenceEditIndex] = newGame;
+        } else {
+          node.games.push(newGame);
+        }
+        
+        closeGeofenceModal();
+        updatePanel();
+      });
+    }
+
     // ── QnA / MCQ Modal Logic ──
     const btnAddGame = document.getElementById('btn-add-game');
     const qnaModalOverlay = document.getElementById('qna-modal-overlay');
@@ -1005,6 +1053,8 @@ document.addEventListener('DOMContentLoaded', async () => {
           openQnaModal(null, null); // Always new game when adding from selector
         } else if (gameType === 'barcode') {
           openBarcodeModal(null, null);
+        } else if (gameType === 'geofence') {
+          openGeofenceModal(null, null);
         } else {
           const node = nodes.find(n => n.id === selectedId);
           if (node) {

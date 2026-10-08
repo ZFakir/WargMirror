@@ -211,6 +211,25 @@ describe('gameController - submitMinigame', () => {
     );
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ session_completed: true }));
   });
+
+  // Adapted during the main merge: gps_proximity now re-verifies the last
+  // trusted location server-side, so the mock carries the Waypoint radius
+  // via mockGame instead of the bare pre-merge shape.
+  it('should evaluate gps_proximity minigame correctly (pass for Geofence/GPS)', async () => {
+    req.body.submission = {};
+    Minigame.findByPk.mockResolvedValue(mockGame({
+      game_type: 'gps_proximity',
+      config_json: { subtype: 'geofence' }
+    }));
+
+    await submitMinigame(req, res);
+
+    expect(MinigameAttempt.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ outcome: 'pass', score: 1 }),
+      expect.anything()
+    );
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ outcome: 'pass' }));
+  });
 });
 
 describe('gameController - arriveAtWaypoint', () => {

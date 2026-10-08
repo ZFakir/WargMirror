@@ -110,6 +110,37 @@
     --topbar-height:      68px;
     --touch-target:       44px;
   }
+
+  [data-theme="light"] {
+    --color-bg:               #F8F9FA;
+    --color-bg-surface:       #FFFFFF;
+    --color-bg-card:          #F1F3F5;
+    --color-bg-overlay:       rgba(248, 249, 250, 0.85);
+
+    --color-brand:            #8A7D58;
+    --color-brand-muted:      rgba(138, 125, 88, 0.12);
+    --color-brand-subtle:     rgba(138, 125, 88, 0.06);
+
+    --color-accent:           #4A6BFF;
+    --color-accent-glow:      rgba(74, 107, 255, 0.20);
+    --color-accent-muted:     rgba(74, 107, 255, 0.12);
+
+    --color-secondary:        #00A300;
+    --color-secondary-muted:  rgba(0, 163, 0, 0.10);
+
+    --color-text-primary:     #12100E;
+    --color-text-secondary:   #495057;
+    --color-text-muted:       #868E96;
+    --color-text-on-accent:   #FFFFFF;
+
+    --color-border:           rgba(18, 16, 14, 0.12);
+    --color-border-hover:     rgba(18, 16, 14, 0.25);
+    --color-border-accent:    rgba(74, 107, 255, 0.35);
+
+    --color-offline:          rgba(18, 16, 14, 0.30);
+    
+    --scrollbar-thumb:        rgba(74, 107, 255, 0.30);
+  }
 }
 
 @keyframes spin { 100% { transform: rotate(360deg); } }

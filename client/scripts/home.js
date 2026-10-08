@@ -753,3 +753,36 @@ async function removeFriendNow() {
     btnRemoveFriend.textContent = originalText;
   }
 }
+
+/* ── Theme Toggle ── */
+const btnThemeToggle = document.getElementById('btn-theme-toggle');
+const themeIconSun = document.getElementById('theme-icon-sun');
+const themeIconMoon = document.getElementById('theme-icon-moon');
+
+function applyTheme(theme) {
+  if (theme === 'light') {
+    document.documentElement.setAttribute('data-theme', 'light');
+    if (themeIconSun) themeIconSun.style.display = 'none';
+    if (themeIconMoon) themeIconMoon.style.display = 'block';
+  } else {
+    document.documentElement.removeAttribute('data-theme');
+    if (themeIconSun) themeIconSun.style.display = 'block';
+    if (themeIconMoon) themeIconMoon.style.display = 'none';
+  }
+}
+
+if (btnThemeToggle) {
+  // Initial state based on the script in <head>
+  if (document.documentElement.getAttribute('data-theme') === 'light') {
+    applyTheme('light');
+  } else {
+    applyTheme('dark');
+  }
+
+  btnThemeToggle.addEventListener('click', () => {
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+    applyTheme(newTheme);
+    localStorage.setItem('warg_theme', newTheme);
+  });
+}
