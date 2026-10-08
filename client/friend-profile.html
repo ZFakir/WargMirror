@@ -11,7 +11,8 @@
   <link rel="stylesheet" href="styles/tokens.css" />
   <link rel="stylesheet" href="styles/home.css" />
   <link rel="stylesheet" href="styles/profile.css" />
-  <script src="scripts/config.js"></script>
+  
+<script src="scripts/config.js"></script>
   <script>
     (function() {
       var savedTheme = localStorage.getItem("warg_theme");
@@ -268,6 +269,180 @@
 
 </div>
 <script src="scripts/home.js"></script>
+
+
+<!-- Feedback Modal -->
+<div class="feedback-modal-overlay" id="feedback-modal" aria-hidden="true">
+  <div class="feedback-modal" role="dialog" aria-labelledby="feedback-modal-title" aria-modal="true">
+    <div class="feedback-modal__header">
+      <h2 id="feedback-modal-title">Give Feedback</h2>
+      <button class="icon-btn" id="btn-close-feedback" aria-label="Close feedback modal">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+    <form class="feedback-modal__form" id="feedback-form">
+      <div class="feedback-modal__scroll-area">
+        <div class="feedback-group">
+          <label>How would you rate the platform's UI and design?</label>
+          <div class="rating-selector">
+            <label><input type="radio" name="uiExperience" value="1" required><span>1</span></label>
+            <label><input type="radio" name="uiExperience" value="2"><span>2</span></label>
+            <label><input type="radio" name="uiExperience" value="3"><span>3</span></label>
+            <label><input type="radio" name="uiExperience" value="4"><span>4</span></label>
+            <label><input type="radio" name="uiExperience" value="5"><span>5</span></label>
+          </div>
+          <div class="rating-labels">
+            <span>Poor</span>
+            <span>Excellent</span>
+          </div>
+        </div>
+        <div class="feedback-group">
+          <label>How would you rate your game playing experience?</label>
+          <div class="rating-selector">
+            <label><input type="radio" name="gameExperience" value="1" required><span>1</span></label>
+            <label><input type="radio" name="gameExperience" value="2"><span>2</span></label>
+            <label><input type="radio" name="gameExperience" value="3"><span>3</span></label>
+            <label><input type="radio" name="gameExperience" value="4"><span>4</span></label>
+            <label><input type="radio" name="gameExperience" value="5"><span>5</span></label>
+          </div>
+          <div class="rating-labels">
+            <span>Poor</span>
+            <span>Excellent</span>
+          </div>
+        </div>
+        <div class="feedback-group">
+          <label>How was your experience creating levels?</label>
+          <div class="rating-selector">
+            <label><input type="radio" name="creatorExperience" value="1" required><span>1</span></label>
+            <label><input type="radio" name="creatorExperience" value="2"><span>2</span></label>
+            <label><input type="radio" name="creatorExperience" value="3"><span>3</span></label>
+            <label><input type="radio" name="creatorExperience" value="4"><span>4</span></label>
+            <label><input type="radio" name="creatorExperience" value="5"><span>5</span></label>
+          </div>
+          <div class="rating-labels">
+            <span>Poor</span>
+            <span>Excellent</span>
+          </div>
+        </div>
+        <div class="feedback-group">
+          <label>How well did the location tracking (GPS) work for you?</label>
+          <div class="rating-selector">
+            <label><input type="radio" name="gpsExperience" value="1" required><span>1</span></label>
+            <label><input type="radio" name="gpsExperience" value="2"><span>2</span></label>
+            <label><input type="radio" name="gpsExperience" value="3"><span>3</span></label>
+            <label><input type="radio" name="gpsExperience" value="4"><span>4</span></label>
+            <label><input type="radio" name="gpsExperience" value="5"><span>5</span></label>
+          </div>
+          <div class="rating-labels">
+            <span>Poor</span>
+            <span>Excellent</span>
+          </div>
+        </div>
+        <div class="feedback-group">
+          <label>How was your experience playing with friends?</label>
+          <div class="rating-selector">
+            <label><input type="radio" name="socialExperience" value="1" required><span>1</span></label>
+            <label><input type="radio" name="socialExperience" value="2"><span>2</span></label>
+            <label><input type="radio" name="socialExperience" value="3"><span>3</span></label>
+            <label><input type="radio" name="socialExperience" value="4"><span>4</span></label>
+            <label><input type="radio" name="socialExperience" value="5"><span>5</span></label>
+          </div>
+          <div class="rating-labels">
+            <span>Poor</span>
+            <span>Excellent</span>
+          </div>
+        </div>
+        <div class="feedback-group">
+          <label>How did the app affect your device's battery & performance?</label>
+          <div class="rating-selector">
+            <label><input type="radio" name="perfExperience" value="1" required><span>1</span></label>
+            <label><input type="radio" name="perfExperience" value="2"><span>2</span></label>
+            <label><input type="radio" name="perfExperience" value="3"><span>3</span></label>
+            <label><input type="radio" name="perfExperience" value="4"><span>4</span></label>
+            <label><input type="radio" name="perfExperience" value="5"><span>5</span></label>
+          </div>
+          <div class="rating-labels">
+            <span>Heavy Drain</span>
+            <span>Negligible</span>
+          </div>
+        </div>
+        <div class="feedback-group">
+          <label>How likely are you to recommend WARG to a friend?</label>
+          <div class="rating-selector">
+            <label><input type="radio" name="nps" value="1" required><span>1</span></label>
+            <label><input type="radio" name="nps" value="2"><span>2</span></label>
+            <label><input type="radio" name="nps" value="3"><span>3</span></label>
+            <label><input type="radio" name="nps" value="4"><span>4</span></label>
+            <label><input type="radio" name="nps" value="5"><span>5</span></label>
+          </div>
+          <div class="rating-labels">
+            <span>Unlikely</span>
+            <span>Very Likely</span>
+          </div>
+        </div>
+        <div class="feedback-group">
+          <label for="feature-request">What is one feature you'd like to see added?</label>
+          <input type="text" id="feature-request" name="featureRequest" placeholder="e.g. Leaderboards, More avatars...">
+        </div>
+        <div class="feedback-group">
+          <label for="feedback-text">Any additional thoughts or suggestions?</label>
+          <textarea id="feedback-text" name="feedbackText" rows="4" placeholder="Tell us what you think..."></textarea>
+        </div>
+      </div>
+      <div class="feedback-modal__actions">
+        <button type="button" class="btn-secondary" id="btn-cancel-feedback">Cancel</button>
+        <button type="submit" class="btn-primary">Submit Feedback</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Friend Profile Modal -->
+<div class="feedback-modal-overlay" id="friend-profile-modal" aria-hidden="true">
+  <div class="feedback-modal" role="dialog" aria-labelledby="friend-profile-name" aria-modal="true">
+    <div class="feedback-modal__header">
+      <h2 id="friend-profile-name" style="margin: 0; font-size: 1.25rem;">Profile</h2>
+      <button class="icon-btn" id="btn-close-friend-profile" aria-label="Close profile modal">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+    <div class="feedback-modal__scroll-area" style="padding: 1rem;">
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 1rem; margin-bottom: 2rem;">
+        <div id="friend-profile-avatar" style="width: 80px; height: 80px; border-radius: 50%; background: var(--bg-card); display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: bold; border: 2px solid var(--color-accent);"></div>
+        <div style="text-align: center;">
+          <h3 id="friend-profile-username" style="margin: 0; font-size: 1.5rem; margin-bottom: 0.25rem;">-</h3>
+          <p id="friend-profile-level" style="margin: 0; color: var(--color-accent); font-size: 0.9rem;">Level 1</p>
+        </div>
+      </div>
+      
+      <div class="activity-card__stats" style="margin-bottom: 2rem; background: var(--bg-surface); padding: 1rem; border-radius: 12px;">
+        <div class="stat-block">
+          <span class="stat-block__value stat-block__value--accent" id="friend-profile-points">0</span>
+          <span class="stat-block__label">Points</span>
+        </div>
+        <div class="stat-block">
+          <span class="stat-block__value stat-block__value--green" id="friend-profile-distance">0 km</span>
+          <span class="stat-block__label">Walked</span>
+        </div>
+        <div class="stat-block">
+          <span class="stat-block__value" id="friend-profile-badges-count">0</span>
+          <span class="stat-block__label">Badges</span>
+        </div>
+      </div>
+
+      <div class="feedback-modal__actions" style="margin-top: 2rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+        <button type="button" class="btn-secondary" id="btn-remove-friend" style="width: 100%; color: #ff4d4f; border-color: #ff4d4f;">Remove Friend</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Notification -->
+<div id="toast" class="toast" aria-live="polite"></div>
 
 </body>
 </html>

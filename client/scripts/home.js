@@ -64,6 +64,7 @@ function toggleSidebar() {
 
 /* ── Right Panel ── */
 function openRightPanel() {
+  if (!rightPanel) return;
   if (isMobile()) {
     rightPanel.classList.add('drawer-open');
     showOverlay();
@@ -75,6 +76,7 @@ function openRightPanel() {
 }
 
 function closeRightPanel() {
+  if (!rightPanel) return;
   if (isMobile()) {
     rightPanel.classList.remove('drawer-open');
     if (!sidebar.classList.contains('drawer-open')) hideOverlay();
@@ -86,6 +88,7 @@ function closeRightPanel() {
 }
 
 function toggleRightPanel() {
+  if (!rightPanel) return;
   if (isMobile()) {
     rightPanel.classList.contains('drawer-open') ? closeRightPanel() : openRightPanel();
   } else {
@@ -94,9 +97,17 @@ function toggleRightPanel() {
 }
 
 /* ── Wire up buttons ── */
+if (!rightPanel && btnRightPanelToggle) {
+  btnRightPanelToggle.disabled = true;
+  btnRightPanelToggle.style.opacity = '0.4';
+  btnRightPanelToggle.style.cursor = 'not-allowed';
+}
+
 btnSidebarToggle?.addEventListener('click', toggleSidebar);
 btnSidebarClose?.addEventListener('click', closeSidebar);
-btnRightPanelToggle?.addEventListener('click', toggleRightPanel);
+if (rightPanel) {
+  btnRightPanelToggle?.addEventListener('click', toggleRightPanel);
+}
 btnRightPanelClose?.addEventListener('click', closeRightPanel);
 
 /* Dismiss drawers when tapping overlay */
@@ -226,16 +237,16 @@ async function initHomeData() {
     try {
       var profile = await api.getUserProfile(currentUser.user_id);
       
-      var statPlayed = document.querySelector('.activity-card__stats .stat-block:nth-child(1) .stat-block__value');
+      var statPlayed = document.querySelector('#right-panel .activity-card__stats .stat-block:nth-child(1) .stat-block__value');
       if (statPlayed) statPlayed.textContent = profile.games_played || 0; // Using view field if available
       
-      var statPoints = document.querySelector('.activity-card__stats .stat-block:nth-child(2) .stat-block__value');
+      var statPoints = document.querySelector('#right-panel .activity-card__stats .stat-block:nth-child(2) .stat-block__value');
       if (statPoints) statPoints.textContent = (profile.total_points || 0).toLocaleString();
       
       var statCompleted = document.getElementById('sidebar-stat-completed');
       if (statCompleted) statCompleted.textContent = profile.games_completed || 0;
       
-      var statBadges = document.querySelector('.activity-card__stats .stat-block:nth-child(4) .stat-block__value');
+      var statBadges = document.querySelector('#right-panel .activity-card__stats .stat-block:nth-child(4) .stat-block__value');
       if (statBadges) statBadges.textContent = (profile.Badges || []).length;
     } catch { /* profile stats are non-critical */ }
 
@@ -601,13 +612,8 @@ document.addEventListener('warg:removed-recent', function(e) {
 });
 
 /* ── Feedback Modal ── */
-const feedbackModal = document.getElementById('feedback-modal');
-const btnFeedback = document.getElementById('btn-feedback');
-const btnCloseFeedback = document.getElementById('btn-close-feedback');
-const btnCancelFeedback = document.getElementById('btn-cancel-feedback');
-const feedbackForm = document.getElementById('feedback-form');
-
 function openFeedbackModal() {
+  const feedbackModal = document.getElementById('feedback-modal');
   if (feedbackModal) {
     feedbackModal.classList.add('is-open');
     feedbackModal.setAttribute('aria-hidden', 'false');
@@ -615,20 +621,14 @@ function openFeedbackModal() {
 }
 
 function closeFeedbackModal() {
+  const feedbackModal = document.getElementById('feedback-modal');
+  const feedbackForm = document.getElementById('feedback-form');
   if (feedbackModal) {
     feedbackModal.classList.remove('is-open');
     feedbackModal.setAttribute('aria-hidden', 'true');
     if (feedbackForm) feedbackForm.reset();
   }
 }
-
-btnFeedback?.addEventListener('click', openFeedbackModal);
-btnCloseFeedback?.addEventListener('click', closeFeedbackModal);
-btnCancelFeedback?.addEventListener('click', closeFeedbackModal);
-
-feedbackModal?.addEventListener('click', e => {
-  if (e.target === feedbackModal) closeFeedbackModal();
-});
 
 function showToast(message) {
   const toast = document.getElementById('toast');
@@ -640,40 +640,54 @@ function showToast(message) {
   }, 3000);
 }
 
-feedbackForm?.addEventListener('submit', async e => {
-  e.preventDefault();
-  
-  const submitBtn = feedbackForm.querySelector('button[type="submit"]');
-  const originalText = submitBtn.textContent;
-  submitBtn.disabled = true;
-  submitBtn.textContent = 'Submitting...';
+document.addEventListener('DOMContentLoaded', () => {
+  const btnFeedback = document.getElementById('btn-feedback');
+  const btnCloseFeedback = document.getElementById('btn-close-feedback');
+  const btnCancelFeedback = document.getElementById('btn-cancel-feedback');
+  const feedbackModal = document.getElementById('feedback-modal');
+  const feedbackForm = document.getElementById('feedback-form');
 
-  try {
-    const formData = new FormData(feedbackForm);
-    const data = Object.fromEntries(formData);
+  btnFeedback?.addEventListener('click', openFeedbackModal);
+  btnCloseFeedback?.addEventListener('click', closeFeedbackModal);
+  btnCancelFeedback?.addEventListener('click', closeFeedbackModal);
+
+  feedbackModal?.addEventListener('click', e => {
+    if (e.target === feedbackModal) closeFeedbackModal();
+  });
+
+  feedbackForm?.addEventListener('submit', async e => {
+    e.preventDefault();
     
-    await api.submitFeedback(data);
-    
-    closeFeedbackModal();
-    showToast('Thank you for your feedback!');
-  } catch (error) {
-    console.error('Failed to submit feedback:', error);
-    showToast('Failed to submit feedback. Please try again.');
-  } finally {
-    submitBtn.disabled = false;
-    submitBtn.textContent = originalText;
-  }
+    const submitBtn = feedbackForm.querySelector('button[type="submit"]');
+    const originalText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Submitting...';
+
+    try {
+      const formData = new FormData(feedbackForm);
+      const data = Object.fromEntries(formData);
+      
+      await api.submitFeedback(data);
+      
+      closeFeedbackModal();
+      showToast('Thank you for your feedback!');
+    } catch (error) {
+      console.error('Failed to submit feedback:', error);
+      showToast('Failed to submit feedback. Please try again.');
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalText;
+    }
+  });
 });
 
 /* ── Friend Profile Modal ── */
-const friendProfileModal = document.getElementById('friend-profile-modal');
-const btnCloseFriendProfile = document.getElementById('btn-close-friend-profile');
-const btnRemoveFriend = document.getElementById('btn-remove-friend');
-
 let currentProfileFriendId = null;
 
 async function openFriendProfileModal(friendId) {
   currentProfileFriendId = friendId;
+  const friendProfileModal = document.getElementById('friend-profile-modal');
+  const btnRemoveFriend = document.getElementById('btn-remove-friend');
   
   // Reset UI
   document.getElementById('friend-profile-username').textContent = 'Loading...';
@@ -682,8 +696,10 @@ async function openFriendProfileModal(friendId) {
   document.getElementById('friend-profile-distance').textContent = '0 km';
   document.getElementById('friend-profile-badges-count').textContent = '0';
   document.getElementById('friend-profile-level').textContent = 'Level 1';
-  btnRemoveFriend.disabled = false;
-  btnRemoveFriend.textContent = 'Remove Friend';
+  if (btnRemoveFriend) {
+    btnRemoveFriend.disabled = false;
+    btnRemoveFriend.textContent = 'Remove Friend';
+  }
   
   if (friendProfileModal) {
     friendProfileModal.classList.add('is-open');
@@ -708,6 +724,7 @@ async function openFriendProfileModal(friendId) {
 }
 
 function closeFriendProfileModal() {
+  const friendProfileModal = document.getElementById('friend-profile-modal');
   if (friendProfileModal) {
     friendProfileModal.classList.remove('is-open');
     friendProfileModal.setAttribute('aria-hidden', 'true');
@@ -715,31 +732,39 @@ function closeFriendProfileModal() {
   currentProfileFriendId = null;
 }
 
-btnCloseFriendProfile?.addEventListener('click', closeFriendProfileModal);
+document.addEventListener('DOMContentLoaded', () => {
+  const btnCloseFriendProfile = document.getElementById('btn-close-friend-profile');
+  const btnRemoveFriend = document.getElementById('btn-remove-friend');
+  const friendProfileModal = document.getElementById('friend-profile-modal');
 
-friendProfileModal?.addEventListener('click', e => {
-  if (e.target === friendProfileModal) closeFriendProfileModal();
-});
+  btnCloseFriendProfile?.addEventListener('click', closeFriendProfileModal);
 
-btnRemoveFriend?.addEventListener('click', async () => {
-  if (!currentProfileFriendId) return;
-  
-  const originalText = btnRemoveFriend.textContent;
-  btnRemoveFriend.disabled = true;
-  btnRemoveFriend.textContent = 'Removing...';
-  
-  try {
-    const currentUser = await api.getCurrentUser();
-    await api.removeFriend(currentUser.user_id, currentProfileFriendId);
-    showToast('Friend removed');
-    closeFriendProfileModal();
-    initHomeData(); // Refresh friends list
-  } catch (error) {
-    console.error('Failed to remove friend:', error);
-    showToast('Failed to remove friend');
-    btnRemoveFriend.disabled = false;
-    btnRemoveFriend.textContent = originalText;
-  }
+  friendProfileModal?.addEventListener('click', e => {
+    if (e.target === friendProfileModal) closeFriendProfileModal();
+  });
+
+  btnRemoveFriend?.addEventListener('click', async () => {
+    if (!currentProfileFriendId) return;
+    
+    const originalText = btnRemoveFriend.textContent;
+    btnRemoveFriend.disabled = true;
+    btnRemoveFriend.textContent = 'Removing...';
+    
+    try {
+      const currentUser = await api.getCurrentUser();
+      await api.removeFriend(currentUser.user_id, currentProfileFriendId);
+      showToast('Friend removed');
+      closeFriendProfileModal();
+      if (typeof initHomeData === 'function') initHomeData(); // Refresh friends list
+    } catch (error) {
+      console.error('Failed to remove friend:', error);
+      showToast('Failed to remove friend');
+      if (btnRemoveFriend) {
+        btnRemoveFriend.disabled = false;
+        btnRemoveFriend.textContent = originalText;
+      }
+    }
+  });
 });
 
 /* ── Theme Toggle ── */
