@@ -139,6 +139,13 @@ var api = (function () {
   }
 
   /**
+   * Returns all available badges in the system.
+   */
+  async function getAllBadges() {
+    return _get('/api/badges');
+  }
+
+  /**
    * Returns a single ARG (with Waypoints) normalised for GameCard.
    */
   async function getArgById(id) {
@@ -272,6 +279,7 @@ var api = (function () {
   return {
     getCurrentUser,
     getArgs,
+    getAllBadges,
     getArgById,
     getUserProfile,
     getUserLibrary,

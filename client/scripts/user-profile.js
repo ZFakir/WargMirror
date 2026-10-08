@@ -80,28 +80,41 @@ document.addEventListener('DOMContentLoaded', async () => {
   // ── Badges ──
   const badgesGrid = document.getElementById('profile-badges-grid');
   if (badgesGrid) {
-    const badges = profile.Badges || [];
-    if (badges.length === 0) {
-      badgesGrid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:var(--color-text-muted);padding:var(--space-4)">No badges earned yet.</p>';
-    } else {
-      badgesGrid.innerHTML = badges.map(badge => {
-        // Format the date (awarded_at is in the junction table)
-        const dateObj = new Date(badge.UserBadge ? badge.UserBadge.awarded_at : badge.created_at);
-        const formattedDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-        
-        // Star Icon SVG
-        const starIcon = `<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
+    try {
+      const allBadges = await api.getAllBadges();
+      const earnedBadges = profile.Badges || [];
+      const earnedBadgeIds = new Set(earnedBadges.map(b => b.badge_id));
+      
+      if (allBadges.length === 0) {
+        badgesGrid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:var(--color-text-muted);padding:var(--space-4)">No badges available in the system.</p>';
+      } else {
+        badgesGrid.innerHTML = allBadges.map(badge => {
+          const isEarned = earnedBadgeIds.has(badge.badge_id);
+          const earnedData = isEarned ? earnedBadges.find(b => b.badge_id === badge.badge_id) : null;
+          
+          let formattedDate = badge.description || 'Complete tasks to earn this badge.';
+          if (isEarned) {
+            const dateObj = new Date(earnedData.UserBadge ? earnedData.UserBadge.awarded_at : earnedData.created_at);
+            formattedDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+          }
+          
+          // SVG Icon (fallback to default star if missing)
+          const badgeIcon = badge.icon_svg || `<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
 
-        return `
-          <div class="badge-item" title="${badge.description || badge.name}">
-            <div class="badge-icon">
-              ${starIcon}
+          return `
+            <div class="badge-item ${isEarned ? 'earned' : 'unearned'}" title="${badge.name}">
+              <div class="badge-icon">
+                ${badgeIcon}
+              </div>
+              <p class="badge-name">${badge.name}</p>
+              <p class="badge-date">${formattedDate}</p>
             </div>
-            <p class="badge-name">${badge.name}</p>
-            <p class="badge-date">${formattedDate}</p>
-          </div>
-        `;
-      }).join('');
+          `;
+        }).join('');
+      }
+    } catch (err) {
+      console.error('Error fetching badges', err);
+      badgesGrid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:var(--color-text-muted);padding:var(--space-4)">Failed to load badges.</p>';
     }
   }
 
