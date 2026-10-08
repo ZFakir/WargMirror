@@ -171,22 +171,31 @@ exports.arriveAtWaypoint = async (req, res) => {
       return res.status(400).json({ error: 'Missing coordinates' });
     }
 
+    // Coordinates are used to build WKT for SQL — only accept finite numbers
+    // within valid geographic ranges so the value can never break out of the literal.
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) ||
+        Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+      return res.status(400).json({ error: 'Invalid coordinates' });
+    }
+
+    const pointWkt = `POINT(${lat} ${lng})`;
+
     const waypoint = await Waypoint.findByPk(waypoint_id);
     if (!waypoint) return res.status(404).json({ error: 'Waypoint not found' });
 
     // Log location event
     await LocationEvent.create({
       user_id,
-      location: sequelize.fn('ST_GeomFromText', `POINT(${lat} ${lng})`, 4326),
+      location: sequelize.fn('ST_GeomFromText', pointWkt, 4326),
       accuracy_m: accuracy_m || null
     });
 
     // Run spatial query for distance
     const [result] = await sequelize.query(`
-      SELECT ST_Distance_Sphere(location, ST_GeomFromText('POINT(${lat} ${lng})', 4326)) AS distance
+      SELECT ST_Distance_Sphere(location, ST_GeomFromText(:point_wkt, 4326)) AS distance
       FROM waypoints WHERE waypoint_id = :waypoint_id
     `, {
-      replacements: { waypoint_id },
+      replacements: { waypoint_id, point_wkt: pointWkt },
       type: sequelize.QueryTypes.SELECT
     });
 

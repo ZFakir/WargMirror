@@ -301,7 +301,6 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
               setTimeout(() => {
                 if (typeof playModal !== 'undefined') playModal.close();
-                if (typeof openMapModal !== 'undefined') openMapModal(argId);
               }, 2000);
             }
 
@@ -371,6 +370,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const arriveData = await arriveRes.json();
 
           if (!arriveData.within_radius) {
+            // TEMP: Dev Override kept for ongoing testing — remove/gate before release.
             const override = confirm(`You are outside of the geofence (Distance: ${Math.round(arriveData.distance)}m, Radius: ${arriveData.radius}m).\n\nProceed anyway (Dev Override)?`);
             if (!override) {
               playModal.close();
@@ -582,63 +582,81 @@ document.addEventListener('DOMContentLoaded', () => {
 
       function renderCommentNode(comment, isReply = false) {
         const timeString = new Date(comment.created_at).toLocaleString();
-        const avatarSeed = comment.User ? comment.User.username : 'default';
         const username = comment.User ? comment.User.username : 'Unknown User';
-
-        let bodyHtml = comment.body;
-        if (comment.is_spoiler) bodyHtml = `<span class="spoiler-text" title="Click to reveal spoiler">${comment.body}</span>`;
+        const avatarSeed = comment.User ? comment.User.username : 'default';
 
         const div = document.createElement('div');
         div.className = `comment-item ${isReply ? 'is-reply' : ''}`;
-        div.innerHTML = `
-          <div class="comment-item__avatar">
-            <img src="https://api.dicebear.com/9.x/identicon/svg?seed=${avatarSeed}&backgroundColor=1a1816" alt="${username}" />
-          </div>
-          <div class="comment-item__content">
-            <div class="comment-item__header">
-              <strong>${username}</strong>
-              <span class="comment-item__time">${timeString}</span>
-            </div>
-            <p>${bodyHtml}</p>
-            <button class="btn-reply" style="background: none; border: none; color: var(--color-brand); font-size: 12px; cursor: pointer; padding: 0; margin-top: 4px;">Reply</button>
-            ${isAdmin ? `<button class="btn-delete" style="background: none; border: none; color: var(--color-danger); font-size: 12px; cursor: pointer; padding: 0; margin-top: 4px; margin-left: 12px;">Delete</button>` : ''}
-          </div>
-        `;
 
+        const avatarWrap = document.createElement('div');
+        avatarWrap.className = 'comment-item__avatar';
+        const avatarImg = document.createElement('img');
+        avatarImg.src = `https://api.dicebear.com/9.x/identicon/svg?seed=${encodeURIComponent(avatarSeed)}&backgroundColor=1a1816`;
+        avatarImg.alt = username;
+        avatarWrap.appendChild(avatarImg);
+
+        const content = document.createElement('div');
+        content.className = 'comment-item__content';
+
+        const header = document.createElement('div');
+        header.className = 'comment-item__header';
+        const nameEl = document.createElement('strong');
+        nameEl.textContent = username;
+        const timeEl = document.createElement('span');
+        timeEl.className = 'comment-item__time';
+        timeEl.textContent = timeString;
+        header.append(nameEl, timeEl);
+
+        // Comment bodies are user content — render as text, never as HTML.
+        const bodyEl = document.createElement('p');
         if (comment.is_spoiler) {
-          const spoilerSpan = div.querySelector('.spoiler-text');
-          spoilerSpan.addEventListener('click', () => spoilerSpan.classList.add('is-revealed'), { once: true });
+          const spoiler = document.createElement('span');
+          spoiler.className = 'spoiler-text';
+          spoiler.title = 'Click to reveal spoiler';
+          spoiler.textContent = comment.body;
+          spoiler.addEventListener('click', () => spoiler.classList.add('is-revealed'), { once: true });
+          bodyEl.appendChild(spoiler);
+        } else {
+          bodyEl.textContent = comment.body;
         }
+
+        const replyBtn = document.createElement('button');
+        replyBtn.className = 'btn-reply';
+        replyBtn.style.cssText = 'background: none; border: none; color: var(--color-brand); font-size: 12px; cursor: pointer; padding: 0; margin-top: 4px;';
+        replyBtn.textContent = 'Reply';
+
+        content.append(header, bodyEl, replyBtn);
 
         if (isAdmin) {
-          const btnDelete = div.querySelector('.btn-delete');
-          if (btnDelete) {
-            btnDelete.addEventListener('click', async () => {
-              if (window.confirmModal) {
-                window.confirmModal.open({
-                  title: 'Delete Comment',
-                  desc: 'Are you sure you want to delete this comment?',
-                  confirmText: 'Delete',
-                  callback: async () => {
-                    try {
-                      const res = await fetch(`${API_BASE}/api/admin/comments/${comment.comment_id}`, { method: 'DELETE', credentials: 'include' });
-                      if (res.ok) {
-                        loadComments(); // refresh the list
-                      } else {
-                        if (typeof showToast !== 'undefined') showToast('Failed to delete comment.');
-                      }
-                    } catch (e) {
-                      console.error(e);
-                      if (typeof showToast !== 'undefined') showToast('Error deleting comment.');
+          const btnDelete = document.createElement('button');
+          btnDelete.className = 'btn-delete';
+          btnDelete.style.cssText = 'background: none; border: none; color: var(--color-danger); font-size: 12px; cursor: pointer; padding: 0; margin-top: 4px; margin-left: 12px;';
+          btnDelete.textContent = 'Delete';
+          btnDelete.addEventListener('click', async () => {
+            if (window.confirmModal) {
+              window.confirmModal.open({
+                title: 'Delete Comment',
+                desc: 'Are you sure you want to delete this comment?',
+                confirmText: 'Delete',
+                callback: async () => {
+                  try {
+                    const res = await fetch(`${API_BASE}/api/admin/comments/${comment.comment_id}`, { method: 'DELETE', credentials: 'include' });
+                    if (res.ok) {
+                      loadComments(); // refresh the list
+                    } else {
+                      if (typeof showToast !== 'undefined') showToast('Failed to delete comment.');
                     }
+                  } catch (e) {
+                    console.error(e);
+                    if (typeof showToast !== 'undefined') showToast('Error deleting comment.');
                   }
-                });
-              }
-            });
-          }
+                }
+              });
+            }
+          });
+          content.appendChild(btnDelete);
         }
 
-        const replyBtn = div.querySelector('.btn-reply');
         replyBtn.addEventListener('click', () => {
           const currentReply = document.querySelector('.reply-input-wrapper');
           if (currentReply) currentReply.remove();
@@ -650,7 +668,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <input type="text" class="input-field reply-input" placeholder="Write a reply..." />
             <button class="btn btn--primary btn--sm btn-post-reply">Post</button>
           `;
-          div.querySelector('.comment-item__content').appendChild(replyWrapper);
+          content.appendChild(replyWrapper);
 
           const btnPostReply = replyWrapper.querySelector('.btn-post-reply');
           const replyInput = replyWrapper.querySelector('.reply-input');
@@ -661,6 +679,7 @@ document.addEventListener('DOMContentLoaded', () => {
           });
         });
 
+        div.append(avatarWrap, content);
         return div;
       }
 

@@ -1,5 +1,13 @@
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
-const AI_KEY = process.env.AI_KEY || 'dev-secret-key';
+
+// Fail fast in production rather than silently authenticating with a known constant.
+let AI_KEY = process.env.AI_KEY;
+if (!AI_KEY) {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('AI_KEY must be set in production; refusing to use the shared dev fallback key.');
+  }
+  AI_KEY = 'dev-secret-key';
+}
 
 const evaluateShape = async (req, res) => {
   try {

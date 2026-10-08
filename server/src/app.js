@@ -4,6 +4,7 @@ const session = require('express-session');
 require('dotenv').config();
 
 const passport = require('./config/passport');
+const { requireAuth, requireAdmin } = require('./middleware/authMiddleware');
 const argRoutes = require('./routes/argRoutes');
 const userRoutes = require('./routes/userRoutes');
 const sessionRoutes = require('./routes/sessionRoutes');
@@ -47,8 +48,17 @@ function createApp() {
 
   app.set('trust proxy', 1); // Trust first proxy (Render/Heroku/Vercel)
 
+  // Fail fast in production rather than silently signing sessions with a known constant.
+  let sessionSecret = process.env.SESSION_SECRET;
+  if (!sessionSecret) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('SESSION_SECRET must be set in production; refusing to start with a guessable secret.');
+    }
+    sessionSecret = 'warg-dev-secret';
+  }
+
   const sessionOptions = {
-    secret: process.env.SESSION_SECRET || 'warg-dev-secret',
+    secret: sessionSecret,
     resave: false,
     saveUninitialized: false,
     cookie: {
@@ -95,8 +105,8 @@ function createApp() {
   // Mount API Routes
   app.use('/auth', authRoutes);
   app.use('/api/args', argRoutes);
-  app.use('/api/users', userRoutes);
-  app.use('/api/sessions', sessionRoutes);
+  app.use('/api/users', requireAuth, userRoutes);
+  app.use('/api/sessions', requireAuth, sessionRoutes);
   app.use('/api/comments', commentRoutes);
   app.use('/api/feedback', feedbackRoutes);
 
@@ -107,11 +117,6 @@ function createApp() {
   app.use('/api/minigames', minigameRoutes);
 
   const gameRoutes = require('./routes/gameRoutes');
-  const requireAuth = (req, res, next) => {
-    if (req.isAuthenticated()) return next();
-    res.status(401).json({ error: 'Unauthorized' });
-  };
-  const { requireAdmin } = require('./middleware/authMiddleware');
 
   app.use('/api/game', requireAuth, gameRoutes);
   app.use('/api/admin', requireAuth, requireAdmin, adminRoutes);
