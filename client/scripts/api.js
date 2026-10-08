@@ -350,4 +350,56 @@ document.addEventListener('DOMContentLoaded', async () => {
   } catch {
     // Ignore errors for unauthenticated users
   }
+
+  // --- Global Profile Dropdown Logic ---
+  const btnProfile = document.getElementById('btn-profile');
+  const profileDropdown = document.getElementById('profile-dropdown');
+
+  function toggleProfileDropdown(e) {
+    if (e) e.stopPropagation();
+    if (!profileDropdown) return;
+    const isOpen = profileDropdown.classList.contains('is-open');
+    if (isOpen) {
+      profileDropdown.classList.remove('is-open');
+      profileDropdown.setAttribute('aria-hidden', 'true');
+      if (btnProfile) btnProfile.setAttribute('aria-expanded', 'false');
+    } else {
+      profileDropdown.classList.add('is-open');
+      profileDropdown.setAttribute('aria-hidden', 'false');
+      if (btnProfile) btnProfile.setAttribute('aria-expanded', 'true');
+    }
+  }
+
+  function closeProfileDropdown() {
+    if (profileDropdown && profileDropdown.classList.contains('is-open')) {
+      profileDropdown.classList.remove('is-open');
+      profileDropdown.setAttribute('aria-hidden', 'true');
+      if (btnProfile) btnProfile.setAttribute('aria-expanded', 'false');
+    }
+  }
+
+  if (btnProfile) {
+    btnProfile.addEventListener('click', toggleProfileDropdown);
+  }
+
+  document.addEventListener('click', (e) => {
+    if (profileDropdown && profileDropdown.classList.contains('is-open')) {
+      if (!profileDropdown.contains(e.target) && e.target !== btnProfile && (!btnProfile || !btnProfile.contains(e.target))) {
+        closeProfileDropdown();
+      }
+    }
+  });
+
+  const btnLogout = document.getElementById('btn-logout');
+  if (btnLogout) {
+    btnLogout.addEventListener('click', async () => {
+      try {
+        if (typeof api !== 'undefined' && api.logout) {
+          await api.logout();
+        }
+      } catch(e) {}
+      localStorage.removeItem('warg_token');
+      window.location.href = 'login.html';
+    });
+  }
 });
