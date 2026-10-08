@@ -268,6 +268,11 @@ var api = (function () {
     return _post('/api/feedback', feedbackData);
   }
 
+  async function logout() {
+    // Fetch directly because _get expects JSON but /auth/logout redirects
+    return fetch(API_BASE + '/auth/logout', { credentials: 'include' });
+  }
+
   /* ── Public API ─────────────────────────────────────────── */
   return {
     getCurrentUser,
@@ -290,6 +295,7 @@ var api = (function () {
     submitMinigameAttempt,
     uploadMinigameReference,
     submitFeedback,
+    logout,
   };
 
 })();

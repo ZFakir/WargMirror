@@ -113,6 +113,60 @@ document.addEventListener('keydown', e => {
   }
 });
 
+/* ── Profile Dropdown ── */
+const btnProfile = document.getElementById('btn-profile');
+const profileDropdown = document.getElementById('profile-dropdown');
+
+function toggleProfileDropdown(e) {
+  if (e) {
+    e.stopPropagation();
+  }
+  if (!profileDropdown) return;
+  const isOpen = profileDropdown.classList.contains('is-open');
+  if (isOpen) {
+    profileDropdown.classList.remove('is-open');
+    profileDropdown.setAttribute('aria-hidden', 'true');
+    if (btnProfile) btnProfile.setAttribute('aria-expanded', 'false');
+  } else {
+    profileDropdown.classList.add('is-open');
+    profileDropdown.setAttribute('aria-hidden', 'false');
+    if (btnProfile) btnProfile.setAttribute('aria-expanded', 'true');
+  }
+}
+
+function closeProfileDropdown() {
+  if (profileDropdown && profileDropdown.classList.contains('is-open')) {
+    profileDropdown.classList.remove('is-open');
+    profileDropdown.setAttribute('aria-hidden', 'true');
+    if (btnProfile) btnProfile.setAttribute('aria-expanded', 'false');
+  }
+}
+
+btnProfile?.addEventListener('click', toggleProfileDropdown);
+
+// Close dropdown when clicking outside
+document.addEventListener('click', (e) => {
+  if (profileDropdown && profileDropdown.classList.contains('is-open')) {
+    if (!profileDropdown.contains(e.target) && e.target !== btnProfile && !btnProfile?.contains(e.target)) {
+      closeProfileDropdown();
+    }
+  }
+});
+
+// Logout handler
+const btnLogout = document.getElementById('btn-logout');
+btnLogout?.addEventListener('click', async () => {
+  try {
+    if (typeof api !== 'undefined' && api.logout) {
+      await api.logout();
+    }
+  } catch(e) {
+    // Ignore JSON parse error from redirect
+  }
+  localStorage.removeItem('warg_token'); // Fallback if no specific logout method exists
+  window.location.href = 'login.html';
+});
+
 /* ── Adapt state on viewport resize ── */
 // When going from mobile → desktop, clean up drawer classes
 window.addEventListener('resize', () => {
