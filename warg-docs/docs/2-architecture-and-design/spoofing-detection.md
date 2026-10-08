@@ -10,9 +10,9 @@ To preserve the integrity of the Wits Alternate Reality Game (WARG) platform, lo
 
 Each user account is associated with a hidden "Trust Score".
 - A high trust score implies the user is a legitimate, physically active player.
-- A low trust score flags the user's submissions for manual review or quietly shadow-bans their progression on competitive ARGs.
+- A low trust score is a signal for admin review only — it never restricts the account by itself.
 
-Points are incrementally awarded for passing continuous background checks and deducted when anomalies are detected.
+Points are incrementally awarded for passing continuous background checks and deducted when anomalies are detected. When an interaction fails a check, that single interaction is rejected and the score drops — but the player keeps full access to their account. **Account bans are never automatic**: only an admin can suspend an account (`is_suspended`), which blocks login and all authenticated API access.
 
 ## 2. Detection Mechanisms
 

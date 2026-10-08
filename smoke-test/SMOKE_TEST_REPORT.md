@@ -178,6 +178,7 @@ All findings from §3 were triaged and implemented (except the deferred items no
 - **`submitMinigame` ReferenceError** (`lastTrusted` vs `lastTrustedEvent`) — caught by the new unit tests before shipping.
 - New endpoints: `DELETE /api/args/:id` and creator flag-resolve `POST /api/args/:id/flags/:flagId/resolve` (both ownership-checked; delete cascades via FKs). Live-verified.
 - **"Remove from Recent" targets user 1** (found 2026-10-08, unfixed): the server route `DELETE /api/sessions/:user_id/arg/:arg_id` correctly 403s non-owners, but `api.removeRecentArg(argId, userId = 1)` defaults to user 1, so the home-page "Remove from Recent" menu 403s for every other user. Needs the session user's id (or a `/me`-scoped route).
+- **Trust score auto-ban removed (2026-10-08, maintainer decision):** `antiSpoofing` no longer sets `is_flagged` when trust drops below 50, and `requireAuth` now enforces only `is_suspended` (it previously 403'd flagged users with "Your account has been banned" — the automatic system ban this change eliminates). Side effect: admin bans now also block live sessions immediately, not just the next login. `is_flagged` remains as a legacy, non-blocking marker for admin visibility; the per-interaction 403 for a suspicious request is unchanged.
 
 **Server restart required**: the fixes live in `server/src/**`; the user's `:3000` process (with debugger attached) still runs the old code until restarted. Client changes are already live via the no-cache `:5500` static server.
 

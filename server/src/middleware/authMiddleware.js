@@ -1,7 +1,10 @@
 const requireAuth = (req, res, next) => {
   if (req.isAuthenticated()) {
-    if (req.user && req.user.is_flagged) {
-      return res.status(403).json({ error: 'Forbidden: Your account has been banned.' });
+    // Only an admin ban (is_suspended) blocks access — and it is enforced on
+    // live sessions too, not just at login. The anti-spoofing trust signal
+    // (is_flagged) is informational: no player is ever banned automatically.
+    if (req.user && req.user.is_suspended) {
+      return res.status(403).json({ error: 'Forbidden: Your account has been suspended.' });
     }
     return next();
   }

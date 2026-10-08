@@ -108,8 +108,8 @@ exports.toggleBanUser = async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Bans are suspensions — is_flagged is reserved for anti-spoofing trust
-    // signals and must not be conflated with admin bans.
+    // Bans are suspensions. is_flagged is a legacy anti-spoofing marker the
+    // system no longer sets automatically — bans must never touch it.
     user.is_suspended = !user.is_suspended;
     await user.save();
 
