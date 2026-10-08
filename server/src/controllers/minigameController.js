@@ -31,6 +31,28 @@ exports.uploadReference = async (req, res) => {
   }
 };
 
+exports.deleteReference = async (req, res) => {
+  try {
+    const { gameId } = req.params;
+    const minigame = await Minigame.findByPk(gameId);
+    if (!minigame) return res.status(404).json({ error: 'Minigame not found' });
+
+    const config = minigame.config_json || {};
+    delete config.reference_image_url;
+    delete config.reference_image_base64;
+    delete config.reference_image_mimetype;
+
+    minigame.config_json = config;
+    minigame.changed('config_json', true);
+    await minigame.save();
+
+    res.json({ message: 'Reference deleted successfully' });
+  } catch (err) {
+    console.error('Error in deleteReference:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
 exports.getReferenceImage = async (req, res) => {
   try {
     const { gameId } = req.params;

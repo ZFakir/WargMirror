@@ -12,6 +12,7 @@ const uploadMemory = multer({ storage: multer.memoryStorage(), limits: { fileSiz
 router.use(requireAuth);
 
 router.post('/:gameId/reference', uploadMemory.single('image'), minigameController.uploadReference);
+router.delete('/:gameId/reference', minigameController.deleteReference);
 router.get('/:gameId/reference/image', minigameController.getReferenceImage);
 router.post('/:gameId/attempt', uploadMemory.single('image'), minigameController.submitAttempt);
 
