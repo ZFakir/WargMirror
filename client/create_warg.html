@@ -22,6 +22,10 @@
       if (savedTheme === "light") {
         document.documentElement.setAttribute("data-theme", "light");
       }
+      var savedContrast = localStorage.getItem("warg_contrast");
+      if (savedContrast === "high") {
+        document.documentElement.setAttribute("data-contrast", "high");
+      }
     })();
   </script>
 <body>

@@ -123,6 +123,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Start watching player location
       if (navigator.geolocation) {
+        const gpsMode = localStorage.getItem('warg_gps_mode') || 'high';
+        const enableHighAccuracy = gpsMode === 'high';
+        const maximumAge = gpsMode === 'saver' ? 30000 : 10000;
+        
         navigator.geolocation.watchPosition((position) => {
           const { latitude, longitude, accuracy } = position.coords;
           window.lastPlayerLocation = { latitude, longitude, accuracy };
@@ -130,7 +134,7 @@ document.addEventListener('DOMContentLoaded', () => {
           mapModal.updatePlayerLocation(latitude, longitude, accuracy);
         }, (error) => {
           console.warn("Player location not available:", error);
-        }, { enableHighAccuracy: true, maximumAge: 10000 });
+        }, { enableHighAccuracy, maximumAge });
       }
     } catch (err) {
       console.error('Failed to load ARG data for map:', err);
@@ -371,7 +375,10 @@ document.addEventListener('DOMContentLoaded', () => {
           const arriveData = await arriveRes.json();
 
           if (!arriveData.within_radius) {
-            const override = confirm(`You are outside of the geofence (Distance: ${Math.round(arriveData.distance)}m, Radius: ${arriveData.radius}m).\n\nProceed anyway (Dev Override)?`);
+            const unit = localStorage.getItem('warg_units') || 'metric';
+            const dist = unit === 'imperial' ? (arriveData.distance * 3.28084).toFixed(1) + 'ft' : Math.round(arriveData.distance) + 'm';
+            const rad = unit === 'imperial' ? (arriveData.radius * 3.28084).toFixed(1) + 'ft' : arriveData.radius + 'm';
+            const override = confirm(`You are outside of the geofence (Distance: ${dist}, Radius: ${rad}).\n\nProceed anyway (Dev Override)?`);
             if (!override) {
               playModal.close();
               return;
@@ -527,6 +534,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (window.lastPlayerLocation) {
         processLocation(window.lastPlayerLocation.latitude, window.lastPlayerLocation.longitude, window.lastPlayerLocation.accuracy);
       } else {
+        const gpsMode = localStorage.getItem('warg_gps_mode') || 'high';
         navigator.geolocation.getCurrentPosition((position) => {
           const { latitude, longitude, accuracy } = position.coords;
           window.lastPlayerLocation = { latitude, longitude, accuracy };
@@ -536,9 +544,9 @@ document.addEventListener('DOMContentLoaded', () => {
           console.error(error);
           playModal.close();
         }, {
-          enableHighAccuracy: true,
+          enableHighAccuracy: gpsMode === 'high',
           timeout: 10000,
-          maximumAge: 0
+          maximumAge: gpsMode === 'saver' ? 30000 : 0
         });
       }
     }

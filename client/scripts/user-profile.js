@@ -73,8 +73,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const statDistance = document.getElementById('stat-distance-walked');
   if (statDistance) {
-    const km = ((profile.distance_walked_m || 0) / 1000).toFixed(1);
-    statDistance.textContent = km + ' km';
+    const unit = localStorage.getItem('warg_units') || 'metric';
+    if (unit === 'imperial') {
+      const miles = ((profile.distance_walked_m || 0) * 0.000621371).toFixed(1);
+      statDistance.textContent = miles + ' mi';
+    } else {
+      const km = ((profile.distance_walked_m || 0) / 1000).toFixed(1);
+      statDistance.textContent = km + ' km';
+    }
   }
 
   // ── Badges ──

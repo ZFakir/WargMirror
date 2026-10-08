@@ -43,6 +43,19 @@ var api = (function () {
     return res.json();
   }
 
+  async function _put(path, body) {
+    const res = await fetch(API_BASE + path, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      credentials: 'include'
+    });
+    if (!res.ok) {
+      throw Object.assign(new Error('API error'), { status: res.status, path });
+    }
+    return res.json();
+  }
+
   async function _delete(path) {
     const res = await fetch(API_BASE + path, {
       method: 'DELETE',
@@ -273,6 +286,14 @@ var api = (function () {
     return fetch(API_BASE + '/auth/logout', { credentials: 'include' });
   }
 
+  async function updateAccount(data) {
+    return _put('/auth/account', data);
+  }
+
+  async function deleteAccount() {
+    return _delete('/auth/account');
+  }
+
   /* ── Public API ─────────────────────────────────────────── */
   return {
     getCurrentUser,
@@ -296,6 +317,8 @@ var api = (function () {
     uploadMinigameReference,
     submitFeedback,
     logout,
+    updateAccount,
+    deleteAccount,
   };
 
 })();

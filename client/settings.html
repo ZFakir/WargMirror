@@ -12,6 +12,18 @@
   <link rel="stylesheet" href="styles/home.css" />
   <link rel="stylesheet" href="styles/settings.css" />
   <script src="scripts/config.js"></script>
+  <script>
+    (function() {
+      var savedTheme = localStorage.getItem("warg_theme");
+      if (savedTheme === "light") {
+        document.documentElement.setAttribute("data-theme", "light");
+      }
+      var savedContrast = localStorage.getItem("warg_contrast");
+      if (savedContrast === "high") {
+        document.documentElement.setAttribute("data-contrast", "high");
+      }
+    })();
+  </script>
 </head>
 <body>
 
@@ -141,15 +153,10 @@
               <label class="settings-group__label" for="setting-password">New Password</label>
               <input type="password" id="setting-password" class="settings-input" placeholder="Leave blank to keep current" />
             </div>
-            <div class="settings-toggle">
-              <div class="settings-toggle__info">
-                <span class="settings-toggle__title">Two-Factor Authentication (2FA)</span>
-                <span class="settings-toggle__desc">Add an extra layer of security to your account</span>
-              </div>
-              <label class="switch">
-                <input type="checkbox" id="setting-2fa">
-                <span class="slider"></span>
-              </label>
+            
+            <div id="google-auth-warning" style="display: none; padding: var(--space-3); margin-top: var(--space-3); background: rgba(255, 209, 102, 0.1); border: 1px solid rgba(255, 209, 102, 0.3); border-radius: var(--radius-sm); color: var(--color-warning); font-size: var(--font-size-caption);">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px; display: inline-block; vertical-align: text-bottom; margin-right: 4px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              You logged in using Google. Email and password changes are managed through your Google account.
             </div>
           </section>
 
@@ -163,9 +170,12 @@
               <label class="settings-group__label" for="setting-gps">GPS Accuracy Mode</label>
               <select id="setting-gps" class="settings-select">
                 <option value="high">High Precision (Recommended for ARGs)</option>
-                <option value="balanced">Balanced</option>
                 <option value="saver">Battery Saver</option>
               </select>
+              <div id="gps-warning" style="display: none; padding: var(--space-3); margin-top: var(--space-3); background: rgba(255, 77, 79, 0.1); border: 1px solid rgba(255, 77, 79, 0.3); border-radius: var(--radius-sm); color: #ff4d4f; font-size: var(--font-size-caption);">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px; display: inline-block; vertical-align: text-bottom; margin-right: 4px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                Warning: Battery Saver relies on Wi-Fi and cell towers instead of your device's GPS chip. You may experience severe location drifting or find it impossible to unlock waypoints.
+              </div>
             </div>
             <div class="settings-group">
               <label class="settings-group__label" for="setting-units">Unit of Measurement</label>
@@ -178,8 +188,8 @@
               <label class="settings-group__label" for="setting-mapstyle">Default Map Style</label>
               <select id="setting-mapstyle" class="settings-select">
                 <option value="dark">WARG Dark</option>
-                <option value="satellite">Satellite / Hybrid</option>
                 <option value="light">Street Light</option>
+                <option value="satellite">Satellite</option>
               </select>
             </div>
           </section>
@@ -193,7 +203,6 @@
             <div class="settings-group">
               <label class="settings-group__label" for="setting-theme">Theme</label>
               <select id="setting-theme" class="settings-select">
-                <option value="system">System Default</option>
                 <option value="dark">Dark Mode</option>
                 <option value="light">Light Mode</option>
               </select>
@@ -210,55 +219,13 @@
             </div>
           </section>
 
-          <!-- 4. Privacy Settings -->
-          <section class="settings-section" aria-labelledby="priv-title">
-            <div class="settings-section__header">
-              <svg class="settings-section__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-              <h2 id="priv-title" class="settings-section__title">Privacy & Social</h2>
-            </div>
-            <div class="settings-group">
-              <label class="settings-group__label" for="setting-locvis">Location Visibility</label>
-              <select id="setting-locvis" class="settings-select">
-                <option value="friends">Friends Only</option>
-                <option value="nobody">Nobody (Ghost Mode)</option>
-                <option value="everyone">Everyone (In-game proximity)</option>
-              </select>
-            </div>
-            <div class="settings-group">
-              <label class="settings-group__label" for="setting-profvis">Profile Visibility</label>
-              <select id="setting-profvis" class="settings-select">
-                <option value="public">Public</option>
-                <option value="friends">Friends Only</option>
-                <option value="private">Private</option>
-              </select>
-            </div>
-            <div class="settings-toggle">
-              <div class="settings-toggle__info">
-                <span class="settings-toggle__title">Allow Friend Requests</span>
-                <span class="settings-toggle__desc">Let other users search and send you friend requests</span>
-              </div>
-              <label class="switch">
-                <input type="checkbox" id="setting-friend-req" checked>
-                <span class="slider"></span>
-              </label>
-            </div>
-          </section>
+
 
           <!-- 5. Data & Storage -->
           <section class="settings-section" aria-labelledby="data-title">
             <div class="settings-section__header">
               <svg class="settings-section__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="12" x2="2" y2="12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><line x1="6" y1="16" x2="6.01" y2="16"/><line x1="10" y1="16" x2="10.01" y2="16"/></svg>
               <h2 id="data-title" class="settings-section__title">Data & Storage</h2>
-            </div>
-            <div class="settings-toggle">
-              <div class="settings-toggle__info">
-                <span class="settings-toggle__title">Data Usage Warnings</span>
-                <span class="settings-toggle__desc">Warn when downloading large game assets over cellular</span>
-              </div>
-              <label class="switch">
-                <input type="checkbox" id="setting-data-warn" checked>
-                <span class="slider"></span>
-              </label>
             </div>
             <div class="settings-group" style="margin-top: var(--space-4);">
               <label class="settings-group__label">Storage Management</label>
@@ -289,48 +256,173 @@
 <script src="scripts/components/GameCard.js?v=2"></script>
 <script src="scripts/home.js"></script>
 <script>
+  let currentUser = null;
+
   document.addEventListener('DOMContentLoaded', async () => {
     // 1. Fetch current user to pre-fill email
     try {
-      const user = await api.getCurrentUser();
-      if (user) {
+      currentUser = await api.getCurrentUser();
+      if (currentUser) {
         const emailInput = document.getElementById('setting-email');
-        if (emailInput) emailInput.value = user.email || '';
+        const passInput = document.getElementById('setting-password');
+        const warningBox = document.getElementById('google-auth-warning');
+        
+        if (emailInput) emailInput.value = currentUser.email || '';
+        
+        // If Google user, disable email and password edits and show warning
+        if (currentUser.auth_provider === 'google') {
+          if (emailInput) {
+            emailInput.disabled = true;
+            emailInput.style.opacity = '0.6';
+            emailInput.style.cursor = 'not-allowed';
+          }
+          if (passInput) {
+            passInput.disabled = true;
+            passInput.style.opacity = '0.6';
+            passInput.style.cursor = 'not-allowed';
+          }
+          if (warningBox) {
+            warningBox.style.display = 'block';
+          }
+        }
       }
     } catch (e) {
       console.warn("Could not fetch user for settings", e);
     }
 
-    // 2. Mock Clear Cache
+    // 2. Load Local Preferences
+    const gpsMode = localStorage.getItem('warg_gps_mode') || 'high';
+    const units = localStorage.getItem('warg_units') || 'metric';
+    const mapStyle = localStorage.getItem('warg_map_style') || 'dark';
+    const theme = localStorage.getItem('warg_theme') || 'dark';
+    const contrast = localStorage.getItem('warg_contrast') === 'high';
+
+    const gpsSelect = document.getElementById('setting-gps');
+    const gpsWarning = document.getElementById('gps-warning');
+    if (gpsSelect) {
+      gpsSelect.value = gpsMode;
+      if (gpsWarning && gpsSelect.value === 'saver') {
+        gpsWarning.style.display = 'block';
+      }
+      gpsSelect.addEventListener('change', (e) => {
+        if (gpsWarning) {
+          gpsWarning.style.display = e.target.value === 'saver' ? 'block' : 'none';
+        }
+      });
+    }
+    const unitsSelect = document.getElementById('setting-units');
+    if (unitsSelect) unitsSelect.value = units;
+    const mapStyleSelect = document.getElementById('setting-mapstyle');
+    if (mapStyleSelect) mapStyleSelect.value = mapStyle;
+    const themeSelect = document.getElementById('setting-theme');
+    if (themeSelect) themeSelect.value = theme;
+    const contrastCheck = document.getElementById('setting-contrast');
+    if (contrastCheck) contrastCheck.checked = contrast;
+
+    // 3. Clear Cache
     const btnClearCache = document.getElementById('btn-clear-cache');
     btnClearCache?.addEventListener('click', () => {
       const origText = btnClearCache.textContent;
       btnClearCache.textContent = 'Clearing...';
       btnClearCache.disabled = true;
       setTimeout(() => {
+        // Clear all WARG specific local storage keys
+        for (let i = localStorage.length - 1; i >= 0; i--) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith('warg_')) {
+            localStorage.removeItem(key);
+          }
+        }
         btnClearCache.textContent = origText;
         btnClearCache.disabled = false;
         showToast('Local cache cleared successfully');
+        
+        // Reload page after short delay so default settings take effect immediately
+        setTimeout(() => window.location.reload(), 1000);
       }, 800);
     });
 
-    // 3. Save Settings Handler
+    // 4. Delete Account
+    const btnDeleteAccount = document.getElementById('btn-delete-account');
+    btnDeleteAccount?.addEventListener('click', async () => {
+      if (confirm('Are you sure you want to delete your account? This action cannot be undone and all your progress will be lost.')) {
+        const origText = btnDeleteAccount.textContent;
+        btnDeleteAccount.textContent = 'Deleting...';
+        btnDeleteAccount.disabled = true;
+        try {
+          await api.deleteAccount();
+          window.location.href = 'login.html';
+        } catch (err) {
+          console.error(err);
+          showToast('Failed to delete account');
+          btnDeleteAccount.textContent = origText;
+          btnDeleteAccount.disabled = false;
+        }
+      }
+    });
+
+    // 5. Save Settings Handler
     const settingsForm = document.getElementById('settings-form');
-    settingsForm?.addEventListener('submit', (e) => {
+    settingsForm?.addEventListener('submit', async (e) => {
       e.preventDefault();
       const saveBtn = document.getElementById('btn-settings-save');
       const origText = saveBtn.textContent;
       saveBtn.textContent = 'Saving...';
       saveBtn.disabled = true;
 
-      setTimeout(() => {
+      try {
+        if (currentUser && currentUser.auth_provider !== 'google') {
+          const newEmail = document.getElementById('setting-email').value;
+          const newPass = document.getElementById('setting-password').value;
+          
+          const updates = {};
+          if (newEmail && newEmail !== currentUser.email) updates.email = newEmail;
+          if (newPass) updates.password = newPass;
+
+          if (Object.keys(updates).length > 0) {
+            await api.updateAccount(updates);
+            // Clear password field after successful update
+            document.getElementById('setting-password').value = '';
+            currentUser.email = newEmail; // Update local state
+          }
+        }
+
+        // Save local preferences
+        const newGps = document.getElementById('setting-gps')?.value;
+        const newUnits = document.getElementById('setting-units')?.value;
+        const newMapStyle = document.getElementById('setting-mapstyle')?.value;
+        const newTheme = document.getElementById('setting-theme')?.value;
+        const newContrast = document.getElementById('setting-contrast')?.checked ? 'high' : 'normal';
+        
+        if (newGps) localStorage.setItem('warg_gps_mode', newGps);
+        if (newUnits) localStorage.setItem('warg_units', newUnits);
+        if (newMapStyle) localStorage.setItem('warg_map_style', newMapStyle);
+        if (newTheme) {
+          localStorage.setItem('warg_theme', newTheme);
+          if (newTheme === 'light') {
+            document.documentElement.setAttribute('data-theme', 'light');
+          } else {
+            document.documentElement.removeAttribute('data-theme');
+          }
+        }
+        localStorage.setItem('warg_contrast', newContrast);
+        if (newContrast === 'high') {
+          document.documentElement.setAttribute('data-contrast', 'high');
+        } else {
+          document.documentElement.removeAttribute('data-contrast');
+        }
+        
+        showToast('Settings saved successfully');
+      } catch (err) {
+        console.error('Failed to save settings:', err);
+        showToast(err.message || 'Failed to save settings');
+      } finally {
         saveBtn.textContent = origText;
         saveBtn.disabled = false;
-        showToast('Settings saved successfully');
-      }, 600);
+      }
     });
 
-    // 4. Cancel
+    // 6. Cancel
     document.getElementById('btn-settings-cancel')?.addEventListener('click', () => {
       window.location.href = 'user-profile.html';
     });
