@@ -943,6 +943,14 @@ export class MapModal {
     }
   }
 
+  focusNode(nodeId) {
+    const node = this.NODES.find(n => n.id === nodeId);
+    if (node && this.map && this.markerLookup[nodeId]) {
+      this.map.flyTo([node.lat, node.lng], MapModal.MAP_CONFIG.startZoom, { duration: 0.6 });
+      this.markerLookup[nodeId].openPopup();
+    }
+  }
+
   showCompletedOverlay() {
     if (!this.container) return;
     const overlay = document.createElement('div');

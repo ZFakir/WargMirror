@@ -301,6 +301,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
               setTimeout(() => {
                 if (typeof playModal !== 'undefined') playModal.close();
+                if (typeof mapModal !== 'undefined' && typeof mapModal.focusNode === 'function') mapModal.focusNode(argId);
               }, 2000);
             }
 
