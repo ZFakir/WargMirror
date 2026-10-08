@@ -32,7 +32,7 @@ function createApp() {
       : [];
 
     const normalizedOrigin = origin ? origin.trim().replace(/\/$/, '') : null;
-    const isLocalDevelopment = process.env.NODE_ENV !== 'production' && normalizedOrigin && normalizedOrigin.startsWith('http://localhost');
+    const isLocalDevelopment = process.env.NODE_ENV !== 'production' && normalizedOrigin && (normalizedOrigin.startsWith('http://localhost') || normalizedOrigin.startsWith('http://127.0.0.1'));
 
     if (!normalizedOrigin || allowedOrigins.includes(normalizedOrigin) || isLocalDevelopment) {
       callback(null, true);
@@ -102,9 +102,11 @@ function createApp() {
 
   const aiRoutes = require('./routes/aiRoutes');
   const minigameRoutes = require('./routes/minigameRoutes');
+  const badgeRoutes = require('./routes/badgeRoutes');
 
   app.use('/api/ai', aiRoutes);
   app.use('/api/minigames', minigameRoutes);
+  app.use('/api/badges', badgeRoutes);
 
   const gameRoutes = require('./routes/gameRoutes');
   const requireAuth = (req, res, next) => {
