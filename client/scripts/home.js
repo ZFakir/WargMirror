@@ -246,17 +246,14 @@ function showRowEmpty(rowId, message) {
 }
 
 async function initHomeData() {
-  // If we are not on the home page, exit early to prevent container null errors
-  if (!document.getElementById('row-recent')) return;
-
   if (typeof api === 'undefined') {
     console.error('API not loaded'); return;
   }
 
-  // Show skeletons immediately
-  GameCard.renderSkeletons('row-recent', 4);
-  GameCard.renderSkeletons('row-new', 4);
-  GameCard.renderSkeletons('row-creators', 4);
+  // Show skeletons immediately if containers exist
+  if (document.getElementById('row-recent')) GameCard.renderSkeletons('row-recent', 4);
+  if (document.getElementById('row-new')) GameCard.renderSkeletons('row-new', 4);
+  if (document.getElementById('row-creators')) GameCard.renderSkeletons('row-creators', 4);
 
   // Fetch ARGs (public) and current user (optional) in parallel
   var results = await Promise.allSettled([
@@ -326,10 +323,12 @@ async function initHomeData() {
     try { dismissed = JSON.parse(localStorage.getItem('warg_dismissed_recent') || '[]'); } catch { /* ignore */ }
     recentArgs = recentArgs.filter(function (a) { return dismissed.indexOf(a.id) === -1; });
 
-    if (recentArgs.length === 0) {
-      showRowEmpty('row-recent', 'No games played yet.');
-    } else {
-      GameCard.renderRow('row-recent', recentArgs, { showRemove: true });
+    if (document.getElementById('row-recent')) {
+      if (recentArgs.length === 0) {
+        showRowEmpty('row-recent', 'No games played yet.');
+      } else {
+        GameCard.renderRow('row-recent', recentArgs, { showRemove: true });
+      }
     }
   } else {
     // Guest: show "My Progress" prompt
@@ -354,10 +353,12 @@ async function initHomeData() {
     try { guestDismissed = JSON.parse(localStorage.getItem('warg_dismissed_recent') || '[]'); } catch { /* ignore */ }
     newestArgs = newestArgs.filter(function (a) { return guestDismissed.indexOf(a.id) === -1; });
 
-    if (newestArgs.length === 0) {
-      showRowEmpty('row-recent', 'Log in to track your recent games.');
-    } else {
-      GameCard.renderRow('row-recent', newestArgs, { showRemove: true });
+    if (document.getElementById('row-recent')) {
+      if (newestArgs.length === 0) {
+        showRowEmpty('row-recent', 'Log in to track your recent games.');
+      } else {
+        GameCard.renderRow('row-recent', newestArgs, { showRemove: true });
+      }
     }
   }
 
@@ -370,20 +371,24 @@ async function initHomeData() {
   }).sort(function (a, b) {
     return (b.likes || 0) - (a.likes || 0);
   }).slice(0, 10);
-  if (trendingArgs.length === 0) {
-    showRowEmpty('row-new', 'No new games yet.');
-  } else {
-    GameCard.renderRow('row-new', trendingArgs);
+  if (document.getElementById('row-new')) {
+    if (trendingArgs.length === 0) {
+      showRowEmpty('row-new', 'No new games yet.');
+    } else {
+      GameCard.renderRow('row-new', trendingArgs);
+    }
   }
 
   // ── From Creators — sorted by play_count desc ──
   var creatorsArgs = args.slice().sort(function (a, b) {
     return (b._raw.play_count || 0) - (a._raw.play_count || 0);
   }).slice(0, 10);
-  if (creatorsArgs.length === 0) {
-    showRowEmpty('row-creators', 'No games available yet.');
-  } else {
-    GameCard.renderRow('row-creators', creatorsArgs);
+  if (document.getElementById('row-creators')) {
+    if (creatorsArgs.length === 0) {
+      showRowEmpty('row-creators', 'No games available yet.');
+    } else {
+      GameCard.renderRow('row-creators', creatorsArgs);
+    }
   }
   // Init horizontal scroll for cards
   initCardScrolls();
