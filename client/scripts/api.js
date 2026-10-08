@@ -397,7 +397,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (typeof api !== 'undefined' && api.logout) {
           await api.logout();
         }
-      } catch(e) {}
+      } catch { /* ignore */ }
       localStorage.removeItem('warg_token');
       window.location.href = 'login.html';
     });
