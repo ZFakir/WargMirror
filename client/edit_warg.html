@@ -16,6 +16,14 @@
   <link rel="stylesheet" href="styles/edit_warg.css" />
 
 
+  <script>
+    (function() {
+      var savedTheme = localStorage.getItem("warg_theme");
+      if (savedTheme === "light") {
+        document.documentElement.setAttribute("data-theme", "light");
+      }
+    })();
+  </script>
 <body>
 
   <!-- Overlay backdrop for mobile drawers -->
@@ -80,7 +88,7 @@
         </svg>
       </button>
       <div class="topbar__brand">
-        <div class="topbar__logo" aria-hidden="true">W</div><span class="topbar__wordmark">WARG</span>
+        <div class="topbar__logo" aria-hidden="true"><img src="assets/warg-logo.png" alt="" class="topbar__logo-img" /></div><span class="topbar__wordmark">WARG</span>
       </div>
       <div class="topbar__search" role="search">
         <svg class="topbar__search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -320,6 +328,7 @@
         <button class="btn btn--outline game-type-btn" data-game-type="photo_submit">Photo Submit</button>
         <button class="btn btn--outline game-type-btn" data-game-type="plaque_scan">Plaque Scanner</button>
         <button class="btn btn--outline game-type-btn" data-game-type="qna">QnA / MCQ</button>
+        <button class="btn btn--outline game-type-btn" data-game-type="geofence">Geofence Check</button>
       </div>
     </div>
   </div>
@@ -387,6 +396,29 @@
       <div class="modal__footer" style="display: flex; gap: 12px; justify-content: flex-end;">
         <button class="btn btn--outline" id="btn-cancel-barcode">Cancel</button>
         <button class="btn btn--primary" id="btn-save-barcode">Save Game</button>
+      </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Geofence Game Modal -->
+  <div class="modal-overlay" id="geofence-modal-overlay" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true">
+      <div class="modal__header">
+        <h3 class="modal__title">Configure Geofence Game</h3>
+        <button class="icon-btn" id="btn-close-geofence-modal" aria-label="Close modal">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="modal__body">
+        <p style="color: var(--text-2); font-size: 14px;">This game will require the player to physically visit the waypoint's location. The geofence checker will automatically verify their proximity.</p>
+      </div>
+      <div class="modal__footer" style="display: flex; gap: 12px; justify-content: flex-end;">
+        <button class="btn btn--outline" id="btn-cancel-geofence">Cancel</button>
+        <button class="btn btn--primary" id="btn-save-geofence">Save Game</button>
       </div>
     </div>
   </div>
