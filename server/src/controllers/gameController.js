@@ -3,7 +3,7 @@ const { sequelize, Waypoint, WaypointEdge, Minigame, GameSession, WaypointProgre
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
 
 // Helper to evaluate branching conditions
-const evaluateConditions = async (user_id, rawConditions, transaction = null) => {
+exports.evaluateConditions = async (user_id, rawConditions, transaction = null) => {
   let conditions = rawConditions;
   if (typeof conditions === 'string') {
     try { conditions = JSON.parse(conditions); } catch { /* ignore parse error */ }
@@ -122,7 +122,7 @@ exports.getGameState = async (req, res) => {
         
         const newProgressPromises = roots.map(async w => {
           const existing = progress.find(p => p.waypoint_id === w.waypoint_id);
-          if (existing && existing.status === 'completed') {
+          if (existing && (existing.status === 'completed' || existing.status === 'failed')) {
             return;
           }
           
@@ -145,7 +145,7 @@ exports.getGameState = async (req, res) => {
         await Promise.all(newProgressPromises);
 
         // If STILL no unlocked nodes and they have completed nodes, the game is actually over!
-        if (!hasUnlocked && progress.some(p => p.status === 'completed')) {
+        if (!hasUnlocked && progress.some(p => p.status === 'completed' || p.status === 'failed')) {
           session.status = 'completed';
           session.completed_at = new Date();
           await session.save();
@@ -205,15 +205,19 @@ exports.submitMinigame = async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
     const user_id = req.user.user_id;
-    const arg_id = req.params.argId;
-    const waypoint_id = req.params.waypointId;
     const { game_id, submission } = req.body;
 
-    const game = await Minigame.findByPk(game_id, { transaction });
+    const game = await Minigame.findByPk(game_id, { 
+      include: [{ model: Waypoint }],
+      transaction 
+    });
     if (!game) {
        await transaction.rollback();
        return res.status(404).json({ error: 'Minigame not found' });
     }
+
+    const waypoint_id = game.waypoint_id;
+    const arg_id = game.Waypoint ? game.Waypoint.arg_id : null;
 
     // Validate submission based on game type
     let outcome = 'fail';
@@ -222,6 +226,7 @@ exports.submitMinigame = async (req, res) => {
     if (game.game_type === 'gps_proximity') {
       outcome = 'pass'; // the /arrive endpoint already confirmed proximity if they were allowed to submit
     } else if (game.game_type === 'text_answer') {
+      console.log(`[DEBUG] Evaluating QnA text_answer minigame. Submission: "${submission}"`);
       if (config.is_mcq) {
         const submittedIndex = parseInt(submission, 10);
         if (!isNaN(submittedIndex) && submittedIndex === config.correct_index) {
@@ -236,44 +241,9 @@ exports.submitMinigame = async (req, res) => {
     } else if (game.game_type === 'qr_barcode') {
       const correctCode = config.barcode_value || '';
       if (correctCode && submission === correctCode) outcome = 'pass';
-    } else if (game.game_type === 'plaque_scan') {
-      if (!config.reference_image_base64 || !config.reference_image_mimetype) {
-        await transaction.rollback();
-        return res.status(400).json({ error: 'This plaque scanner has no reference photo configured.' });
-      }
-      if (!submission) {
-        await transaction.rollback();
-        return res.status(400).json({ error: 'No image submitted.' });
-      }
-
-      const playerBase64 = submission.replace(/^data:image\/\w+;base64,/, '');
-      const playerBuffer = Buffer.from(playerBase64, 'base64');
-      const referenceBuffer = Buffer.from(config.reference_image_base64, 'base64');
-
-      const formData = new FormData();
-      formData.append('image', new Blob([playerBuffer], { type: 'image/jpeg' }), 'player.jpg');
-      formData.append('reference_image', new Blob([referenceBuffer], { type: config.reference_image_mimetype }), 'reference.jpg');
-
-      try {
-        const response = await fetch(`${AI_SERVICE_URL}/api/v1/ocr-match`, {
-          method: 'POST',
-          headers: {
-            'X-API-Key': process.env.AI_API_KEY || 'dev-secret-key'
-          },
-          body: formData
-        });
-        if (!response.ok) {
-          throw new Error(`AI engine returned ${response.status}`);
-        }
-        const data = await response.json();
-        outcome = data.passed ? 'pass' : 'fail';
-      } catch (err) {
-        await transaction.rollback();
-        return res.status(502).json({ error: 'Failed to contact AI evaluation service.' });
-      }
     } else {
       // Fallback stub for advanced types
-      outcome = 'pass';
+      outcome = 'fail';
     }
 
     // Upsert MinigameAttempt
@@ -293,11 +263,13 @@ exports.submitMinigame = async (req, res) => {
 
     let unlockedNodes = [];
 
+    const finalStatus = outcome === 'pass' ? 'completed' : 'failed';
+
     // Always update waypoint progress regardless of pass or fail
     await WaypointProgress.upsert({
       user_id,
       waypoint_id,
-      status: 'completed',
+      status: finalStatus,
       completed_at: new Date()
     }, { transaction });
 
@@ -305,7 +277,7 @@ exports.submitMinigame = async (req, res) => {
     const edges = await WaypointEdge.findAll({ where: { from_waypoint_id: waypoint_id }, transaction });
     
     for (const edge of edges) {
-      const canUnlock = await evaluateConditions(user_id, edge.conditions_json, transaction);
+      const canUnlock = await exports.evaluateConditions(user_id, edge.conditions_json, transaction);
       if (canUnlock) {
         await WaypointProgress.upsert({
           user_id,
@@ -332,7 +304,7 @@ exports.submitMinigame = async (req, res) => {
     const hasUnlocked = sessionProgress.some(p => p.status === 'unlocked');
     let session_completed = false;
     
-    if (!hasUnlocked && sessionProgress.some(p => p.status === 'completed')) {
+    if (!hasUnlocked && sessionProgress.some(p => p.status === 'completed' || p.status === 'failed')) {
       session_completed = true;
       await GameSession.update({ status: 'completed', completed_at: new Date() }, {
         where: { user_id, arg_id },

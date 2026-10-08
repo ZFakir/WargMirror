@@ -109,6 +109,7 @@ router.get('/me', async (req, res) => {
         username: req.user.username,
         email: req.user.email,
         role: req.user.role,
+        auth_provider: req.user.auth_provider,
         games_completed: gamesCompleted,
         profile_picture: req.user.profile_picture_url || null
       });
@@ -119,5 +120,11 @@ router.get('/me', async (req, res) => {
   }
   return res.status(401).json({ error: 'Not authenticated' });
 });
+
+// Update account (email/password)
+router.put('/account', authController.updateAccount);
+
+// Delete account
+router.delete('/account', authController.deleteAccount);
 
 module.exports = router;

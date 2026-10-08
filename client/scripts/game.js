@@ -67,6 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
           let progressPercent = 0;
           if (status === 'unlocked') { progLabel = 'Available'; progressPercent = 10; }
           if (status === 'completed') { progLabel = 'Completed'; progressPercent = 100; }
+          if (status === 'failed') { progLabel = 'Failed'; progressPercent = 100; }
 
           nodes.push({
             id: wp.waypoint_id.toString(),
@@ -122,6 +123,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Start watching player location
       if (navigator.geolocation) {
+        const gpsMode = localStorage.getItem('warg_gps_mode') || 'high';
+        const enableHighAccuracy = gpsMode === 'high';
+        const maximumAge = gpsMode === 'saver' ? 30000 : 10000;
+        
         navigator.geolocation.watchPosition((position) => {
           const { latitude, longitude, accuracy } = position.coords;
           window.lastPlayerLocation = { latitude, longitude, accuracy };
@@ -129,7 +134,7 @@ document.addEventListener('DOMContentLoaded', () => {
           mapModal.updatePlayerLocation(latitude, longitude, accuracy);
         }, (error) => {
           console.warn("Player location not available:", error);
-        }, { enableHighAccuracy: true, maximumAge: 10000 });
+        }, { enableHighAccuracy, maximumAge });
       }
     } catch (err) {
       console.error('Failed to load ARG data for map:', err);
@@ -222,7 +227,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Launch the game's actual Play Modal using the node's data
     playModal.open(node.name, node.desc);
 
-    const cvGameTypes = ['shape_match', 'colour_match', 'texture_match', 'sift_match', 'symmetry_finder'];
+    const cvGameTypes = ['shape_match', 'colour_match', 'texture_match', 'sift_match', 'symmetry_finder', 'plaque_scan'];
 
     // Check if the node has a CV minigame
     let cvMinigame = null;
@@ -271,13 +276,38 @@ document.addEventListener('DOMContentLoaded', () => {
             // Show result overlay
             const overlay = document.createElement('div');
             overlay.className = `camera-result-overlay ${result.passed ? 'pass' : 'fail'}`;
-            overlay.innerHTML = `
-              <h2>${result.passed ? 'Match Found!' : 'Not Quite...'}</h2>
-              <p>Score: ${Math.round(result.confidence_score * 100)}%</p>
-              <p>+${result.points_awarded} Points</p>
-              <p>${result.message || ''}</p>
-            `;
+            
+            if (result.passed) {
+              overlay.innerHTML = `
+                <h2>Match Found!</h2>
+                <p>Score: ${Math.round(result.confidence_score * 100)}%</p>
+                <p>+${result.points_awarded} Points</p>
+                <p>${result.message || ''}</p>
+              `;
+            } else {
+              overlay.innerHTML = `
+                <h2>Not Quite...</h2>
+                <p>Score: ${Math.round(result.confidence_score * 100)}%</p>
+                <p>${result.message || ''}</p>
+                <button id="btn-retry-ar" class="btn btn--outline" style="margin-top: 1rem; border-color: white; color: white;">Try Again</button>
+              `;
+            }
             container.appendChild(overlay);
+
+            if (!result.passed) {
+              const retryBtn = overlay.querySelector('#btn-retry-ar');
+              if (retryBtn) {
+                retryBtn.addEventListener('click', () => {
+                  overlay.remove();
+                  feedbackDiv.textContent = 'Aligning...';
+                });
+              }
+            } else {
+              setTimeout(() => {
+                if (typeof playModal !== 'undefined') playModal.close();
+                if (typeof mapModal !== 'undefined' && typeof mapModal.focusNode === 'function') mapModal.focusNode(argId);
+              }, 2000);
+            }
 
           } catch (err) {
             console.error(err);
@@ -345,7 +375,10 @@ document.addEventListener('DOMContentLoaded', () => {
           const arriveData = await arriveRes.json();
 
           if (!arriveData.within_radius) {
-            const override = confirm(`You are outside of the geofence (Distance: ${Math.round(arriveData.distance)}m, Radius: ${arriveData.radius}m).\n\nProceed anyway (Dev Override)?`);
+            const unit = localStorage.getItem('warg_units') || 'metric';
+            const dist = unit === 'imperial' ? (arriveData.distance * 3.28084).toFixed(1) + 'ft' : Math.round(arriveData.distance) + 'm';
+            const rad = unit === 'imperial' ? (arriveData.radius * 3.28084).toFixed(1) + 'ft' : arriveData.radius + 'm';
+            const override = confirm(`You are outside of the geofence (Distance: ${dist}, Radius: ${rad}).\n\nProceed anyway (Dev Override)?`);
             if (!override) {
               playModal.close();
               return;
@@ -391,9 +424,14 @@ document.addEventListener('DOMContentLoaded', () => {
               // Show loading spinner
               const originalContent = gameWrapper.innerHTML;
               gameWrapper.innerHTML = `
-              <div style="text-align: center; padding: 2rem;">
-                <div class="spinner" style="margin: 0 auto 1rem; width: 40px; height: 40px; border: 4px solid var(--color-bg-elevated); border-top: 4px solid var(--color-brand); border-radius: 50%; animation: spin 1s linear infinite;"></div>
-                <p>Verifying...</p>
+              <div class="minigame-feedback-container" style="text-align: center; padding: 2rem;">
+                <div class="spinner-container" style="position: relative; width: 60px; height: 60px; margin: 0 auto 1rem;">
+                  <div class="spinner" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 4px solid var(--color-bg-elevated); border-top: 4px solid var(--color-brand); border-radius: 50%; animation: spin 1s linear infinite; box-sizing: border-box;"></div>
+                  <div class="feedback-icon" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0); transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); display: flex; align-items: center; justify-content: center;"></div>
+                </div>
+                <div class="feedback-text-container" style="min-height: 2.5rem; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+                  <p class="feedback-text" style="margin: 0; color: var(--color-text-muted);">Verifying...</p>
+                </div>
               </div>
             `;
 
@@ -411,9 +449,41 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 if (!submitRes.ok) throw new Error('Submission failed');
                 const result = await submitRes.json();
-
+                
                 const isLastGame = index === minigames.length - 1;
-                playModal.showFeedback(result.outcome, isLastGame);
+
+                const spinner = gameWrapper.querySelector('.spinner');
+                const feedbackIcon = gameWrapper.querySelector('.feedback-icon');
+                const feedbackTextContainer = gameWrapper.querySelector('.feedback-text-container');
+                
+                if (spinner) {
+                  spinner.style.animation = 'none';
+                  spinner.style.borderTopColor = 'var(--color-bg-elevated)';
+                }
+                
+                if (result.outcome === 'pass') {
+                  if (spinner) spinner.style.borderColor = 'var(--color-green, #4ade80)';
+                  if (feedbackIcon) {
+                    feedbackIcon.innerHTML = '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--color-green, #4ade80)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+                    requestAnimationFrame(() => {
+                      feedbackIcon.style.transform = 'translate(-50%, -50%) scale(1)';
+                    });
+                  }
+                  if (feedbackTextContainer) {
+                    feedbackTextContainer.innerHTML = '<p style="color: var(--color-green, #4ade80); font-weight: bold; margin: 0; font-size: 1.1rem;">Correct!</p>';
+                  }
+                } else {
+                  if (spinner) spinner.style.borderColor = 'var(--color-danger, #ef4444)';
+                  if (feedbackIcon) {
+                    feedbackIcon.innerHTML = '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--color-danger, #ef4444)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+                    requestAnimationFrame(() => {
+                      feedbackIcon.style.transform = 'translate(-50%, -50%) scale(1)';
+                    });
+                  }
+                  if (feedbackTextContainer) {
+                    feedbackTextContainer.innerHTML = `<p style="color: var(--color-danger, #ef4444); font-weight: bold; margin: 0; font-size: 1.1rem;">Incorrect</p>${result.can_retry ? '<p style="color: var(--color-text-muted); margin: 0.25rem 0 0 0; font-size: 0.9rem;">Try again...</p>' : '<p style="color: var(--color-text-muted); margin: 0.25rem 0 0 0; font-size: 0.9rem;">Out of attempts</p>'}`;
+                  }
+                }
 
                   if (result.can_retry && result.outcome === 'fail') {
                     setTimeout(() => {
@@ -431,12 +501,16 @@ document.addEventListener('DOMContentLoaded', () => {
                         renderMinigame(index + 1);
                       }, 2000);
                     } else {
-                      mapModal.updateNodeStatus(node.id, 'completed');
+                      const nodeStatus = result.outcome === 'fail' ? 'failed' : 'completed';
+                      mapModal.updateNodeStatus(node.id, nodeStatus);
                       if (result.session_completed) {
                         setTimeout(() => {
                           mapModal.showCompletedOverlay();
                         }, 1000); // Wait a second for popup to close / feedback to finish
                       }
+                      setTimeout(() => {
+                        playModal.close();
+                      }, 2000);
                     }
                   }
                 } catch (err) {
@@ -460,6 +534,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (window.lastPlayerLocation) {
         processLocation(window.lastPlayerLocation.latitude, window.lastPlayerLocation.longitude, window.lastPlayerLocation.accuracy);
       } else {
+        const gpsMode = localStorage.getItem('warg_gps_mode') || 'high';
         navigator.geolocation.getCurrentPosition((position) => {
           const { latitude, longitude, accuracy } = position.coords;
           window.lastPlayerLocation = { latitude, longitude, accuracy };
@@ -469,9 +544,9 @@ document.addEventListener('DOMContentLoaded', () => {
           console.error(error);
           playModal.close();
         }, {
-          enableHighAccuracy: true,
+          enableHighAccuracy: gpsMode === 'high',
           timeout: 10000,
-          maximumAge: 0
+          maximumAge: gpsMode === 'saver' ? 30000 : 0
         });
       }
     }
