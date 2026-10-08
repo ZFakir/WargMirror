@@ -130,7 +130,7 @@ The significant problems are: a **minigame-submit bypass** (the server never che
 
 ## 5. Remediation — status after fixes (2026-10-08, same day)
 
-All findings from §3 were triaged and implemented (except the deferred items noted). Verification: server `eslint` clean, jest **mocked 58/58** and **unit 55/55** (gameController submit suite extended 2→13 tests; adminController updated to the new ban semantics), plus a full live re-probe on a temporary `:3001` instance against the shared Aiven DB.
+All findings from §3 were triaged and implemented (except the deferred items noted). Verification: server `eslint` clean, jest **mocked 58/58** and **unit 54/54** (gameController submit suite extended 2→12 tests; adminController updated to the new ban semantics), plus a full live re-probe on a temporary `:3001` instance against the shared Aiven DB.
 
 ### HIGH — all fixed
 
@@ -145,7 +145,7 @@ All findings from §3 were triaged and implemented (except the deferred items no
 
 | # | Finding | Fix | Verified |
 |---|---|---|---|
-| 5 | Points never awarded | `submitMinigame` awards **10/minigame on first pass** + **50 on session completion** (transactional `User.increment` / `GameSession.increment`; re-submits award 0) | Live: full playthrough of ARG 14 as a temp user → 80 points, `games_completed: 1`, session `total_points_earned: 80`; duplicate submit → 0 |
+| 5 | Points never awarded | **Implemented then reverted (2026-10-08)** — maintainer decision: the points economy will be driven by PvP games, which are not implemented yet. `submitMinigame` no longer awards points; the `total_points` / `total_points_earned` columns stay untouched until the PvP system lands (a NOTE comment in `gameController.js` documents this) |
 | 6 | Analytics 100% mock | New `GET /api/args/analytics/mine` (per-creator: session counts, votes, per-waypoint pass/fail, recent flags); `analytics.js` fully rewritten against it | Live: 200 with per-ARG aggregation for the created draft |
 | 7 | No auth guard on protected pages | `api.requireAuthPage()` redirects guests to `login.html`; wired into analytics, admin, edit_warg | Code-verified (all three pages call it before rendering) |
 | 8 | Friends empty on first load | Investigated: no race in code (sequential awaits, no status filter) — most likely a phase-4 timeline artifact | Monitor on next manual pass |
@@ -186,7 +186,7 @@ Left in the shared Aiven DB:
 - Users `wargbot1` (5, **admin**) and `wargbot2` (6) — both currently unbanned, not friends.
 - ARG 14 "Fakir Smoke Test ARG" (published) + waypoints/minigames/edges 31→32→33.
 - Completed game session for wargbot1 on ARG 14; several comments (incl. XSS payload string + spoiler); one resolved flag (flag_id 3); trust events from spoof-flagged arrives.
-- `verifybot` (user_id 7, demoted back to `player` after live verification) with 80 points and a completed session on ARG 14; its temp draft ARG 15 was deleted via the new `DELETE /api/args/:id` endpoint during verification.
+- `verifybot` (user_id 7, demoted back to `player` after live verification) with a completed session on ARG 14; the 80 phantom points it earned during live verification of the (now-reverted) points fix were zeroed. Its temp draft ARG 15 was deleted via the new `DELETE /api/args/:id` endpoint during verification.
 - Client static server for this test is still running on `http://localhost:5500` (background terminal); your Express server on 3000 was untouched throughout.
 
 Say the word if you want any of this cleaned up (accounts demoted/deleted, ARG 14 removed, comments purged).

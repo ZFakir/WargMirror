@@ -1,10 +1,6 @@
-const { sequelize, User, Waypoint, WaypointEdge, Minigame, GameSession, WaypointProgress, MinigameAttempt, LocationEvent } = require('../models');
+const { sequelize, Waypoint, WaypointEdge, Minigame, GameSession, WaypointProgress, MinigameAttempt, LocationEvent } = require('../models');
 
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
-
-// Points awarded for progression. Centralised here so the economy is easy to tune.
-const POINTS_PER_MINIGAME = 10;
-const POINTS_SESSION_COMPLETION = 50;
 
 // Helper to evaluate branching conditions
 exports.evaluateConditions = async (user_id, rawConditions, transaction = null) => {
@@ -316,11 +312,6 @@ exports.submitMinigame = async (req, res) => {
       outcome = 'fail';
     }
 
-    // Points are only awarded on the first pass of each minigame — re-submitting
-    // an already-passed game awards nothing (the upsert below would double-count).
-    const previousAttempt = await MinigameAttempt.findOne({ where: { user_id, game_id }, transaction });
-    const firstPass = outcome === 'pass' && (!previousAttempt || previousAttempt.outcome !== 'pass');
-
     // Upsert MinigameAttempt
     await MinigameAttempt.upsert({
       user_id,
@@ -387,17 +378,11 @@ exports.submitMinigame = async (req, res) => {
       });
     }
 
-    // Award points once the outcome is final (the fail-with-retry path above
-    // already returned without unlocking anything).
-    let points_awarded = firstPass ? POINTS_PER_MINIGAME : 0;
-    if (session_completed) points_awarded += POINTS_SESSION_COMPLETION;
-    if (points_awarded > 0) {
-      await User.increment('total_points', { by: points_awarded, where: { user_id }, transaction });
-      await GameSession.increment('total_points_earned', { by: points_awarded, where: { user_id, arg_id }, transaction });
-    }
-
+    // NOTE: no points are awarded here on purpose — the points economy is
+    // planned around PvP games, which are not implemented yet, so the
+    // total_points / total_points_earned columns stay untouched.
     await transaction.commit();
-    res.json({ outcome, unlockedNodes, session_completed, points_awarded });
+    res.json({ outcome, unlockedNodes, session_completed });
   } catch (error) {
     await transaction.rollback();
     console.error(error);

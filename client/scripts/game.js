@@ -469,10 +469,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                   }
                   if (feedbackTextContainer) {
-                    const pointsLine = result.points_awarded > 0
-                      ? `<p style="margin:2px 0 0;font-size:0.9rem;color:var(--color-text-muted);">+${result.points_awarded} points</p>`
-                      : '';
-                    feedbackTextContainer.innerHTML = '<p style="color: var(--color-green, #4ade80); font-weight: bold; margin: 0; font-size: 1.1rem;">Correct!</p>' + pointsLine;
+                    feedbackTextContainer.innerHTML = '<p style="color: var(--color-green, #4ade80); font-weight: bold; margin: 0; font-size: 1.1rem;">Correct!</p>';
                   }
                 } else {
                   if (spinner) spinner.style.borderColor = 'var(--color-danger, #ef4444)';

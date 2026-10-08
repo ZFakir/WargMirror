@@ -1,5 +1,5 @@
 const { submitMinigame, arriveAtWaypoint } = require('../../src/controllers/gameController');
-const { sequelize, User, Minigame, MinigameAttempt, WaypointProgress, WaypointEdge, Waypoint, LocationEvent, GameSession } = require('../../src/models');
+const { sequelize, Minigame, MinigameAttempt, WaypointProgress, WaypointEdge, Waypoint, LocationEvent, GameSession } = require('../../src/models');
 
 jest.mock('../../src/models', () => {
   return {
@@ -9,14 +9,13 @@ jest.mock('../../src/models', () => {
       fn: jest.fn(),
       QueryTypes: { SELECT: 'SELECT' }
     },
-    User: { increment: jest.fn() },
     Minigame: { findByPk: jest.fn() },
     MinigameAttempt: { upsert: jest.fn(), findOne: jest.fn() },
     WaypointProgress: { upsert: jest.fn(), findAll: jest.fn(), findOne: jest.fn() },
     WaypointEdge: { findAll: jest.fn() },
     Waypoint: { findAll: jest.fn(), findByPk: jest.fn() },
     LocationEvent: { create: jest.fn(), findOne: jest.fn() },
-    GameSession: { findOne: jest.fn(), update: jest.fn(), increment: jest.fn() }
+    GameSession: { findOne: jest.fn(), update: jest.fn() }
   };
 });
 
@@ -48,11 +47,10 @@ describe('gameController - submitMinigame', () => {
       status: jest.fn().mockReturnThis()
     };
 
-    // Default happy-path mocks for the security gates: an active session,
-    // an unlocked waypoint and no previous attempt (first pass).
+    // Default happy-path mocks for the security gates: an active session
+    // and an unlocked waypoint.
     GameSession.findOne.mockResolvedValue({ session_id: 1, status: 'active' });
     WaypointProgress.findOne.mockResolvedValue({ waypoint_id: 20, status: 'unlocked' });
-    MinigameAttempt.findOne.mockResolvedValue(null);
     LocationEvent.findOne.mockResolvedValue({ event_id: 55 });
     sequelize.query.mockResolvedValue([{ distance: 12.5 }]);
 
@@ -78,9 +76,7 @@ describe('gameController - submitMinigame', () => {
       expect.objectContaining({ outcome: 'pass', score: 1 }),
       expect.anything()
     );
-    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ outcome: 'pass', points_awarded: 10 }));
-    expect(User.increment).toHaveBeenCalledWith('total_points', expect.objectContaining({ by: 10 }));
-    expect(GameSession.increment).toHaveBeenCalledWith('total_points_earned', expect.objectContaining({ by: 10 }));
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ outcome: 'pass' }));
   });
 
   it('should evaluate qr_barcode minigame correctly (fail)', async () => {
@@ -96,7 +92,6 @@ describe('gameController - submitMinigame', () => {
       expect.anything()
     );
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ outcome: 'fail' }));
-    expect(User.increment).not.toHaveBeenCalled();
   });
 
   it('rejects submissions without an active session for this WARG (403)', async () => {
@@ -203,18 +198,7 @@ describe('gameController - submitMinigame', () => {
     });
   });
 
-  it('awards points only on the first pass — re-passing awards nothing', async () => {
-    MinigameAttempt.findOne.mockResolvedValue({ outcome: 'pass' });
-    Minigame.findByPk.mockResolvedValue(mockGame());
-
-    await submitMinigame(req, res);
-
-    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ outcome: 'pass', points_awarded: 0 }));
-    expect(User.increment).not.toHaveBeenCalled();
-    expect(GameSession.increment).not.toHaveBeenCalled();
-  });
-
-  it('completes the session and awards the completion bonus when no waypoints remain', async () => {
+  it('completes the session when no waypoints remain', async () => {
     WaypointProgress.findAll.mockResolvedValue([{ waypoint_id: 20, status: 'completed' }]);
     Waypoint.findAll.mockResolvedValue([{ waypoint_id: 20 }]);
     Minigame.findByPk.mockResolvedValue(mockGame());
@@ -225,9 +209,7 @@ describe('gameController - submitMinigame', () => {
       expect.objectContaining({ status: 'completed' }),
       expect.objectContaining({ where: { user_id: 1, arg_id: 10 } })
     );
-    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ session_completed: true, points_awarded: 60 }));
-    expect(User.increment).toHaveBeenCalledWith('total_points', expect.objectContaining({ by: 60 }));
-    expect(GameSession.increment).toHaveBeenCalledWith('total_points_earned', expect.objectContaining({ by: 60 }));
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ session_completed: true }));
   });
 });
 
