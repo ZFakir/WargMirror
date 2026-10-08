@@ -85,7 +85,7 @@ exports.updateAccount = async (req, res) => {
   try {
     const { email, password } = req.body;
     
-    if (!req.user) {
+    if (!req.isAuthenticated || !req.isAuthenticated()) {
       return res.status(401).json({ error: 'Not authenticated' });
     }
 
@@ -121,7 +121,7 @@ exports.updateAccount = async (req, res) => {
 
 exports.deleteAccount = async (req, res) => {
   try {
-    if (!req.user) {
+    if (!req.isAuthenticated || !req.isAuthenticated()) {
       return res.status(401).json({ error: 'Not authenticated' });
     }
     
@@ -131,6 +131,7 @@ exports.deleteAccount = async (req, res) => {
       if (err) {
         console.error('Logout error during deletion:', err);
       }
+      // Regardless of logout error, the user is deleted
       res.json({ message: 'Account deleted successfully' });
     });
   } catch (error) {
