@@ -2,7 +2,8 @@ const { sequelize, Arg, User, Waypoint, WaypointEdge, Minigame, MinigameAttempt,
 
 exports.getAllArgs = async (req, res) => {
   try {
-    const user_id = req.user ? req.user.user_id : 1;
+    // Guests see no vote state — never fall back to another user's votes.
+    const user_id = req.user ? req.user.user_id : null;
     const args = await Arg.findAll({
       where: { status: 'published' },
       include: [
@@ -27,7 +28,8 @@ exports.getAllArgs = async (req, res) => {
 
 exports.getArgById = async (req, res) => {
   try {
-    const user_id = req.user ? req.user.user_id : 1;
+    // Guests see no vote state — never fall back to another user's votes.
+    const user_id = req.user ? req.user.user_id : null;
     const arg = await Arg.findByPk(req.params.id, {
       include: [
         { model: User, as: 'Creator', attributes: ['username', 'avatar'] },
@@ -336,11 +338,17 @@ exports.updateArg = async (req, res) => {
 
 exports.voteArg = async (req, res) => {
   try {
-    const { vote, user_id } = req.body;
+    const { vote } = req.body;
     const arg_id = req.params.id;
+    // The route is behind requireAuth — the vote always belongs to the
+    // session user, never a client-supplied user_id.
+    const user_id = req.user.user_id;
 
-    if (!user_id || !vote) {
-      return res.status(400).json({ error: 'Missing user_id or vote' });
+    if (!vote) {
+      return res.status(400).json({ error: 'Missing vote' });
+    }
+    if (vote !== 'like' && vote !== 'dislike') {
+      return res.status(400).json({ error: 'Invalid vote — must be "like" or "dislike"' });
     }
 
     const existingVote = await ArgVote.findOne({ where: { arg_id, user_id } });

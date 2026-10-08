@@ -152,6 +152,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const isPressed = activeBtn && activeBtn.classList.contains('is-active');
 
+    // Pre-click state, restored if the server rejects the vote (guests).
+    const prevLikes = currentLikes;
+    const prevDislikes = currentDislikes;
+    const prevLikeActive = btnLike ? btnLike.classList.contains('is-active') : false;
+    const prevDislikeActive = btnDislike ? btnDislike.classList.contains('is-active') : false;
+    let prevStoredVote = null;
+    try { prevStoredVote = (JSON.parse(localStorage.getItem('warg_votes') || '{}'))[argId] || null; } catch { /* ignore */ }
+
     if (activeBtn) activeBtn.classList.toggle('is-active', !isPressed);
 
     if (action === 'like') {
@@ -186,7 +194,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const res = await fetch(`${API_BASE}/api/args/${argId}/vote`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ vote: action, user_id: 1 }),
+        body: JSON.stringify({ vote: action }),
         credentials: 'include'
       });
 
@@ -203,6 +211,26 @@ document.addEventListener('DOMContentLoaded', () => {
             if (btnDislike) btnDislike.classList.toggle('is-active', data.action === 'voted');
             if (btnLike) btnLike.classList.remove('is-active');
           }
+        }
+      } else if (res.status === 401) {
+        // Guests cannot vote — undo the optimistic update and offer login.
+        if (btnLike) btnLike.classList.toggle('is-active', prevLikeActive);
+        if (btnDislike) btnDislike.classList.toggle('is-active', prevDislikeActive);
+        if (btnLike) btnLike.querySelector('span').textContent = `(${prevLikes})`;
+        if (btnDislike) btnDislike.querySelector('span').textContent = `(${prevDislikes})`;
+        try {
+          const localVotes = JSON.parse(localStorage.getItem('warg_votes') || '{}');
+          if (prevStoredVote) localVotes[argId] = prevStoredVote;
+          else delete localVotes[argId];
+          localStorage.setItem('warg_votes', JSON.stringify(localVotes));
+        } catch { /* ignore */ }
+        if (window.confirmModal) {
+          window.confirmModal.open({
+            title: 'Login required',
+            desc: 'Log in to like or dislike games.',
+            confirmText: 'Log in',
+            callback: () => { window.location.href = 'login.html'; }
+          });
         }
       }
     } catch (err) {

@@ -77,14 +77,14 @@ Creates a new ARG. Used by the `create_warg.html` view.
 
 ### 4. `POST /api/args/:id/vote`
 
-Submits an upvote or downvote for an ARG to influence its catalogue ranking.
+Submits a like or dislike for an ARG to influence its catalogue ranking.
 
 **Requirements**: Valid Session Cookie
 
 **Request Body:**
 ```json
 {
-  "vote": "up" // or "down"
+  "vote": "like" // or "dislike"
 }
 ```
 

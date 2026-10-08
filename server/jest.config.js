@@ -20,7 +20,6 @@ module.exports = {
       ],
       testPathIgnorePatterns: [
         '/node_modules/',
-        'tests/controllers/argController.test.js',
         'tests/controllers/userController.test.js',
         'tests/routes/authRoutes.test.js'
       ]

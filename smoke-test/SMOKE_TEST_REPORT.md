@@ -103,7 +103,7 @@ The significant problems are: a **minigame-submit bypass** (the server never che
 
 ### LOW / UX polish
 11. **Remove friend has no confirmation** — an explicit user-feedback request from 2026-09-21 ("Confirm before removing a friend") that remains unimplemented.
-12. **No per-comment upvotes** — only game-level like/dislike (user-testing docs mention upvoting interactions).
+12. **No per-comment upvotes** — only game-level like/dislike (the user-testing doc's upvote references were removed 2026-10-08 — see §5).
 13. **Login errors use native `alert()`** instead of inline messages ([step7-login-wrong-password.png](screenshots/step7-login-wrong-password.png)).
 14. **"Recently Played" only lists ACTIVE sessions** — completed games disappear from the home row ([phase4-14-home-recently-played.png](screenshots/phase4-14-home-recently-played.png)). Possibly intended; worth confirming.
 15. **Admin dashboard has no system metrics** (wiki claims them); flag modal heading says "Ban User" even when unbanning; "Recently Flagged Games" section stayed empty while flag reports existed.
@@ -125,12 +125,13 @@ The significant problems are: a **minigame-submit bypass** (the server never che
 | XSS-safe comment rendering (`textContent` + DOM API) | Payload renders as literal text; no execution |
 | SQLi-safe `arriveAtWaypoint` (validated coords, bound WKT) | Non-numeric/out-of-range coords → 400; regression tests pass |
 | Geofence Dev Override | Still present per user request (marked TEMP in `game.js`) — remember to remove/gate before release |
+| Session-user game voting (`POST /api/args/:id/vote`) | Guest vote → 401; authed like → `voted`; repeat vote with spoofed body `user_id` → `unvoted` (session user wins); guests see `user_vote: null`, session users see their own (2026-10-08) |
 
 ---
 
 ## 5. Remediation — status after fixes (2026-10-08, same day)
 
-All findings from §3 were triaged and implemented (except the deferred items noted). Verification: server `eslint` clean, jest **mocked 58/58** and **unit 54/54** (gameController submit suite extended 2→12 tests; adminController updated to the new ban semantics), plus a full live re-probe on a temporary `:3001` instance against the shared Aiven DB.
+All findings from §3 were triaged and implemented (except the deferred items noted). Verification: server `eslint` clean, jest **mocked 73/73** and **unit 54/54** (gameController submit suite extended 2→12 tests; adminController updated to the new ban semantics; the argController suite was refreshed to the session-user contract and re-enabled 2026-10-08), plus a full live re-probe on a temporary `:3001` instance against the shared Aiven DB.
 
 ### HIGH — all fixed
 
@@ -157,7 +158,7 @@ All findings from §3 were triaged and implemented (except the deferred items no
 | # | Finding | Fix |
 |---|---|---|
 | 11 | Remove-friend confirmation | ConfirmModal with "Remove Friend" / "Remove" |
-| 12 | Per-comment upvotes | **Deferred** — needs new tables (schema migration) |
+| 12 | Per-comment upvotes | **Won't-fix (2026-10-08)** — not planned; the user-testing doc references to comment upvoting were removed instead |
 | 13 | Login `alert()` errors | Inline error element with `role=alert` |
 | 14 | Recently Played active-only | Root cause: the editor's save always sent `unpublished`, un-publishing WARGs mid-play. "Save Changes" now preserves the current status. (Sessions endpoint returns all statuses — confirmed live, so completed games appear once published WARGs stay published) |
 | 15 | Admin metrics / "Ban User" heading / empty flagged-games | New `GET /api/admin/metrics` (live: 7 users, 14 args, 11 published, 0 open flags, 17 active, 3 completed sessions); ConfirmModal title bug fixed (dedicated span — the old one-shot `innerHTML` replace only worked on first open); flagged-games section fetches real ARGs |
@@ -171,10 +172,12 @@ All findings from §3 were triaged and implemented (except the deferred items no
 
 - **Login lockout**: both passport strategies rejected logins for `is_flagged` users (trust < 50) — worse than reported; decoupled from `is_suspended`.
 - **Spoofable `creator_id`**: `createArg`/`updateArg`/`updateArgStatus` fell back to `req.body.creator_id || 1`; routes now require auth and use `req.user.user_id`. Live: a body `creator_id: 999` was ignored — the ARG was owned by the session user.
+- **Spoofable `user_id` in game-level voting** (fixed 2026-10-08, post-report): `voteArg` trusted `req.body.user_id` and the clients hardcoded `1` — guest clicks voted as user 1. Now behind `requireAuth` using the session user; guests get a login prompt (with optimistic-UI rollback); the GET endpoints no longer show user 1's vote state to guests. Live: guest → 401, like → `voted`, repeat-with-spoofed-`user_id` → `unvoted`, guest `user_vote: null`. Regression tests added (mocked suite refreshed + integration suite reworked onto session cookies for CI). `flagArg`'s body-supplied `reporter_id` remains a known unfixed issue.
 - **XSS in admin lists**: flag descriptions/usernames rendered via `innerHTML` → rebuilt with DOM APIs + `textContent`.
 - **ConfirmModal desc XSS + stale titles** → `textContent` everywhere.
 - **`submitMinigame` ReferenceError** (`lastTrusted` vs `lastTrustedEvent`) — caught by the new unit tests before shipping.
 - New endpoints: `DELETE /api/args/:id` and creator flag-resolve `POST /api/args/:id/flags/:flagId/resolve` (both ownership-checked; delete cascades via FKs). Live-verified.
+- **"Remove from Recent" targets user 1** (found 2026-10-08, unfixed): the server route `DELETE /api/sessions/:user_id/arg/:arg_id` correctly 403s non-owners, but `api.removeRecentArg(argId, userId = 1)` defaults to user 1, so the home-page "Remove from Recent" menu 403s for every other user. Needs the session user's id (or a `/me`-scoped route).
 
 **Server restart required**: the fixes live in `server/src/**`; the user's `:3000` process (with debugger attached) still runs the old code until restarted. Client changes are already live via the no-cache `:5500` static server.
 

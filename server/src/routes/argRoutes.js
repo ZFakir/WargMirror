@@ -25,7 +25,7 @@ router.get('/:id', argController.getArgById);
 router.post('/', requireAuth, argController.createArg);
 router.put('/:id', requireAuth, argController.updateArg);
 router.patch('/:id/status', requireAuth, argController.updateArgStatus);
-router.post('/:id/vote', argController.voteArg);
+router.post('/:id/vote', requireAuth, argController.voteArg);
 router.post('/:id/flag', argController.flagArg);
 router.post('/:id/flags/:flagId/resolve', requireAuth, argController.resolveOwnFlag);
 router.delete('/:id', requireAuth, argController.deleteArg);

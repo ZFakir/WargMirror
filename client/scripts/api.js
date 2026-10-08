@@ -222,8 +222,8 @@ var api = (function () {
   }
 
   /* ── Game Actions ───────────────────────────────────────── */
-  async function voteArg(argId, voteType, userId = 1) { // Defaulting user_id to 1 until auth is hooked up
-    return _post('/api/args/' + argId + '/vote', { vote: voteType, user_id: userId });
+  async function voteArg(argId, voteType) {
+    return _post('/api/args/' + argId + '/vote', { vote: voteType });
   }
 
   async function flagArg(argId, reason, description, reporterId = 1) { // Defaulting user_id to 1 until auth is hooked up
