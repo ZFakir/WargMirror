@@ -235,7 +235,10 @@ document.addEventListener('DOMContentLoaded', () => {
       const container = document.getElementById('camera-container');
 
       try {
-        const refData = await api.getMinigameReference(cvMinigame.game_id);
+        let refData = null;
+        if (cvMinigame.game_type !== 'symmetry_finder') {
+          refData = await api.getMinigameReference(cvMinigame.game_id);
+        }
         const { CameraCapture } = await import('./components/CameraCapture.js');
 
         const camera = new CameraCapture(container, cvMinigame.game_type, refData);
