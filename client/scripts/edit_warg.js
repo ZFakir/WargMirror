@@ -329,8 +329,23 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // ── Placement cursor helper ──
   function _setPlacementCursor(on) {
-    const mapEl = document.getElementById('game-map');
-    if (mapEl) mapEl.style.cursor = on ? 'crosshair' : '';
+    if (on) {
+      document.body.classList.add('global-crosshair-active');
+      if (!document.getElementById('global-crosshair-style')) {
+        const style = document.createElement('style');
+        style.id = 'global-crosshair-style';
+        style.textContent = `
+          .global-crosshair-active,
+          .global-crosshair-active * {
+            cursor: crosshair !important;
+          }
+        `;
+        document.head.appendChild(style);
+      }
+    } else {
+      document.body.classList.remove('global-crosshair-active');
+    }
+
     if (!on && mapModal) {
       mapModal.hideGhostNode();
     }
