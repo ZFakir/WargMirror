@@ -9,17 +9,9 @@ export function getMinigameHandler(gameType) {
     case 'gps_proximity':
       return {
         render: (container, config, onSubmit) => {
-          container.innerHTML = `
-            <div style="text-align: center; padding: 1rem;">
-              <p style="margin-bottom: 1rem; color: var(--color-text-muted);">Ensure you are physically at this location.</p>
-              <button id="btn-verify-location" class="btn btn--primary">Verify Location</button>
-            </div>
-          `;
-          container.querySelector('#btn-verify-location').addEventListener('click', () => {
-             // In GPS proximity, we just submit an empty payload. The server validates proximity before this, 
-             // but we can also just do an empty submit since /arrive passed.
-             onSubmit({}); 
-          });
+          // Geofence has already been verified on click of "Play".
+          // We can immediately submit without requiring an extra button click.
+          onSubmit({});
         }
       };
     case 'text_answer':
@@ -187,58 +179,16 @@ export function getMinigameHandler(gameType) {
       };
     case 'point_domination':
       return {
-        render: async (container, config, onSubmit) => {
-          container.innerHTML = `
-            <div style="text-align: center; padding: 1rem;">
-               <div class="spinner" style="margin: 0 auto; width: 30px; height: 30px; border: 3px solid var(--color-bg-elevated); border-top: 3px solid var(--color-brand); border-radius: 50%; animation: spin 1s linear infinite;"></div>
-               <p>Loading leaderboard...</p>
-            </div>
-          `;
-          
-          let leaderboardData;
-          try {
-            const res = await fetch(`${API_BASE}/api/game/${config.arg_id}/waypoint/${config.waypoint_id}/domination-scores?game_id=${config.game_id}`, { credentials: 'include' });
-            if (!res.ok) throw new Error('Failed to load leaderboard');
-            leaderboardData = await res.json();
-          } catch (err) {
-            console.error(err);
-            container.innerHTML = `<p style="color: var(--color-danger);">Failed to load leaderboard.</p>`;
-            return;
-          }
-
-          let top3Html = '';
-          if (leaderboardData.top3 && leaderboardData.top3.length > 0) {
-            top3Html = leaderboardData.top3.map(user => `
-              <div style="display: flex; justify-content: space-between; padding: 0.5rem; border-bottom: 1px solid var(--color-border);">
-                <span><strong>${user.username}</strong></span>
-                <span>${user.score.toFixed(2)} hrs</span>
-              </div>
-            `).join('');
-          } else {
-            top3Html = '<p style="color: var(--color-text-muted); font-size: 0.9rem;">No one has dominated this point yet.</p>';
-          }
-
-          let wipeHtml = '';
-          if (leaderboardData.nextWipeInHours !== null) {
-             const hrs = Math.floor(leaderboardData.nextWipeInHours);
-             const mins = Math.floor((leaderboardData.nextWipeInHours - hrs) * 60);
-             wipeHtml = `<p style="font-size: 0.85rem; color: var(--color-text-muted); margin-top: 1rem;">Next wipe in: ${hrs}h ${mins}m</p>`;
-          }
-
+        render: async (container, config) => {
           container.innerHTML = `
             <div style="text-align: center; padding: 1rem; background: var(--color-bg-elevated); border-radius: var(--radius-md);">
               <h3 style="margin-bottom: 1rem; color: var(--color-brand);">Point Domination</h3>
-              <div style="text-align: left; background: var(--color-bg); padding: 0.5rem; border-radius: var(--radius-sm); margin-bottom: 1rem;">
-                <h4 style="margin-bottom: 0.5rem; font-size: 0.9rem; text-transform: uppercase; color: var(--color-text-muted);">Leaderboard</h4>
-                ${top3Html}
-              </div>
+              <p style="font-size: 0.9rem; color: var(--color-text-muted); margin-bottom: 1.5rem;">Stay within this location to accumulate points over time. The leaderboard is visible on the map marker.</p>
               <button id="btn-start-domination" class="btn btn--primary" style="width: 100%;">Start Dominating</button>
-              ${wipeHtml}
             </div>
           `;
 
           const btnStart = container.querySelector('#btn-start-domination');
-          let watchId = null;
 
           btnStart.addEventListener('click', () => {
              const confirmed = confirm("This game will continue to track your location in the background as long as you are on this website. Are you sure you want to start?");
@@ -252,7 +202,7 @@ export function getMinigameHandler(gameType) {
                 // Throttle pings to every ~30 seconds
                 let lastPingTime = 0;
                 
-                watchId = navigator.geolocation.watchPosition(async (position) => {
+                navigator.geolocation.watchPosition(async (position) => {
                    const now = Date.now();
                    if (now - lastPingTime < 30000) return; // 30 sec throttle
                    lastPingTime = now;
@@ -263,6 +213,7 @@ export function getMinigameHandler(gameType) {
                    // To avoid dependency errors, we'll try to find it or send empty for now if not globally exposed.
 
                    try {
+                     const API_BASE = window.API_BASE || '';
                      await fetch(`${API_BASE}/api/game/${config.arg_id}/waypoint/${config.waypoint_id}/domination-ping`, {
                        method: 'POST',
                        headers: { 'Content-Type': 'application/json' },

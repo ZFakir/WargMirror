@@ -392,24 +392,103 @@ export class MapModal {
 
     // In editor mode don't add the static NODES
     if (!this._editorMode) {
+      this.radiusCircles = this.radiusCircles || {};
+      
       this.NODES.forEach(node => {
         const marker = L.marker([node.lat, node.lng], { icon: this.iconFor(node) }).addTo(this.map);
         marker.bindPopup(this.popupHTML(node), { closeButton: true, className: '' });
         this.markerLookup[node.id] = marker;
+        
+        // Render Point Domination radius
+        const minigames = node.games || node.minigames || [];
+        const hasPD = minigames.some(g => g.type === 'point_domination' || g.game_type === 'point_domination');
+        if (hasPD) {
+          const radius = node.validation_radius_m || 30;
+          const circle = L.circle([node.lat, node.lng], {
+            radius: radius,
+            color: '#ff4444',
+            weight: 1.5,
+            dashArray: '4, 4',
+            opacity: 1,
+            fillOpacity: 0.1,
+            interactive: false
+          }).addTo(this.map);
+          this.radiusCircles[node.id] = circle;
+        }
       });
 
       // Handle clicks inside popups
       this.map.on('popupopen', (e) => {
         const btn = e.popup._contentNode.querySelector('.map-play-btn');
         if (btn) {
+          const nodeId = btn.getAttribute('data-node-id');
+          const node = this.NODES.find(n => n.id === nodeId);
+          
           btn.addEventListener('click', () => {
-            const nodeId = btn.getAttribute('data-node-id');
-            const node = this.NODES.find(n => n.id === nodeId);
             if (node) {
               document.dispatchEvent(new CustomEvent('warg:play-node', { detail: node }));
               this.map.closePopup();
             }
           });
+
+          // Point Domination: Show Leaderboard in the map popup
+          const minigames = node && (node.games || node.minigames) ? (node.games || node.minigames) : [];
+          const pdGame = minigames.find(g => g.type === 'point_domination' || g.game_type === 'point_domination');
+          if (pdGame) {
+            const lbContainer = document.createElement('div');
+            lbContainer.className = 'popup-leaderboard-container';
+            lbContainer.style.marginTop = '0.5rem';
+            lbContainer.style.marginBottom = '0.5rem';
+            lbContainer.innerHTML = `
+              <div style="text-align: center; padding: 0.5rem; background: var(--color-bg-elevated); border-radius: var(--radius-sm);">
+                <div class="spinner" style="margin: 0 auto; width: 16px; height: 16px; border: 2px solid var(--color-bg); border-top: 2px solid var(--color-brand); border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                <p style="font-size: 0.75rem; color: var(--color-text-muted); margin-top: 0.25rem;">Loading Leaderboard...</p>
+              </div>
+            `;
+            
+            btn.parentNode.insertBefore(lbContainer, btn);
+
+            const argId = new URLSearchParams(window.location.search).get('id');
+            const apiBase = window.API_BASE || '';
+            const gameId = pdGame.id || pdGame.game_id;
+            
+            if (argId && gameId) {
+              fetch(`${apiBase}/api/game/${argId}/waypoint/${node.id}/domination-scores?game_id=${gameId}`, { credentials: 'include' })
+                .then(res => res.ok ? res.json() : Promise.reject('Failed'))
+                .then(data => {
+                  let top3Html;
+                  if (data.top3 && data.top3.length > 0) {
+                    top3Html = data.top3.map(u => `
+                      <div style="display: flex; justify-content: space-between; font-size: 0.75rem; border-bottom: 1px solid var(--color-border); padding: 3px 0;">
+                        <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 60%;"><strong>${u.username}</strong></span>
+                        <span style="color: var(--color-brand); font-weight: bold;">${u.score.toFixed(2)}h</span>
+                      </div>
+                    `).join('');
+                  } else {
+                    top3Html = '<p style="font-size: 0.75rem; color: var(--color-text-muted); text-align: center; margin: 0.5rem 0;">No dominators yet.</p>';
+                  }
+                  
+                  let wipeHtml = '';
+                  if (data.nextWipeInHours !== null) {
+                    const hrs = Math.floor(data.nextWipeInHours);
+                    const mins = Math.floor((data.nextWipeInHours - hrs) * 60);
+                    wipeHtml = `<p style="font-size: 0.7rem; color: var(--color-text-muted); margin-top: 0.5rem; text-align: center;">Wipes in: ${hrs}h ${mins}m</p>`;
+                  }
+
+                  lbContainer.innerHTML = `
+                    <div style="background: var(--color-bg-elevated); padding: 0.5rem; border-radius: var(--radius-sm);">
+                      <h4 style="margin-bottom: 0.2rem; font-size: 0.75rem; text-transform: uppercase; color: var(--color-brand); text-align: center; border-bottom: 1px solid var(--color-border); padding-bottom: 0.2rem;">Live Leaderboard</h4>
+                      ${top3Html}
+                      ${wipeHtml}
+                    </div>
+                  `;
+                })
+                .catch(err => {
+                  console.error(err);
+                  lbContainer.innerHTML = '<p style="font-size: 0.75rem; color: var(--color-danger); text-align: center; margin: 0.5rem 0;">Leaderboard unavailable.</p>';
+                });
+            }
+          }
         }
       });
 
@@ -456,6 +535,34 @@ export class MapModal {
 
   /* ─── Editor Mode API ─── */
 
+  updateNodeVisuals(node) {
+    if (!this.map) return;
+    const hasPD = node.games && node.games.some(g => g.type === 'point_domination');
+    const el = document.getElementById(`em-${node.id}`);
+    
+    if (el) {
+      if (hasPD) {
+        el.classList.add('pd-node');
+      } else {
+        el.classList.remove('pd-node');
+      }
+      
+      const handleEl = el.querySelector('.mock-waypoint__handle');
+      if (handleEl) {
+         handleEl.style.display = hasPD ? 'flex' : 'none';
+      }
+    }
+
+    if (this.radiusCircles && this.radiusCircles[node.id]) {
+       const circle = this.radiusCircles[node.id];
+       if (hasPD) {
+         circle.setStyle({ color: '#ff4444', opacity: 1, fillOpacity: 0.1 });
+       } else {
+         circle.setStyle({ color: '#00d8ff', opacity: 0, fillOpacity: 0 });
+       }
+    }
+  }
+
   /**
    * Add a draggable editor marker for a node.
    * @param {{ id, lat, lng, title }} node
@@ -463,11 +570,14 @@ export class MapModal {
   addEditorNode(node) {
     if (!this.map) return;
 
+    const hasPD = node.games && node.games.some(g => g.type === 'point_domination');
+    const markerColorClass = hasPD ? 'pd-node' : '';
+
     const icon = L.divIcon({
       className: '',
-      html: `<div class="node-marker editor-node" id="em-${node.id}">
+      html: `<div class="node-marker editor-node ${markerColorClass}" id="em-${node.id}">
                <div class="node-marker__core">+</div>
-               <div class="mock-waypoint__handle"><span></span><span></span><span></span></div>
+               <div class="mock-waypoint__handle" style="display: ${hasPD ? 'flex' : 'none'};"><span></span><span></span><span></span></div>
              </div>`,
       iconSize: [34, 34],
       iconAnchor: [17, 17],
@@ -478,10 +588,11 @@ export class MapModal {
     const radius = node.validation_radius_m || 30;
     const circle = L.circle([node.lat, node.lng], {
       radius: radius,
-      color: '#00d8ff',
+      color: hasPD ? '#ff4444' : '#00d8ff',
       weight: 1.5,
       dashArray: '4, 4',
-      fillOpacity: 0.1,
+      opacity: hasPD ? 1 : 0,
+      fillOpacity: hasPD ? 0.1 : 0,
       interactive: false
     }).addTo(this.map);
     this.radiusCircles[node.id] = circle;
@@ -955,8 +1066,14 @@ export class MapModal {
   }
 
   iconFor(node) {
-    const cls = node.status === 'completed' ? 'completed' : (node.status === 'current' ? 'current' : 'locked');
-    const glyph = node.status === 'completed' ? '✓' : (node.status === 'locked' ? '•' : (this.BADGE_LABEL[node.type][0]));
+    const minigames = node.games || node.minigames || [];
+    const isPD = minigames.some(g => g.type === 'point_domination' || g.game_type === 'point_domination');
+    const pdClass = isPD ? ' pd-node' : '';
+    const cls = (node.status === 'completed' ? 'completed' : (node.status === 'current' ? 'current' : 'locked')) + pdClass;
+    let glyph = node.status === 'completed' ? '✓' : (node.status === 'locked' ? '•' : (this.BADGE_LABEL[node.type] ? this.BADGE_LABEL[node.type][0] : '•'));
+    if (isPD && node.status !== 'completed') {
+      glyph = '☠️'; // Skull and crossbones
+    }
     const ping = node.status === 'current' ? '<span class="ping"></span><span class="ping delay"></span>' : '';
     return L.divIcon({
       className: '',

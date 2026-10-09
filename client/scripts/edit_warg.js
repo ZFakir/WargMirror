@@ -241,6 +241,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       clearSelection();
     },
     onNodeCoreDown(id) {
+      const node = nodes.find(n => n.id === id);
+      const isPD = node && node.games && node.games.some(g => g.type === 'point_domination');
+      if (isPD) {
+        openAlertModal('Point Domination nodes cannot have outgoing edges because there are no pass/fail conditions.');
+        return;
+      }
       dragState = { type: 'edge_draw', from: id };
       _setPlacementCursor(true);
     },
@@ -357,8 +363,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (node) {
         if (editorTitle) editorTitle.value = node.title;
         if (editorDesc) editorDesc.value = node.description;
+        const hasPD = node.games && node.games.some(g => g.type === 'point_domination');
         if (typeof editorRadius !== 'undefined' && editorRadius) {
           editorRadius.value = node.validation_radius_m || 30;
+          editorRadius.parentElement.style.display = hasPD ? 'flex' : 'none';
+        }
+        if (mapModal) {
+          mapModal.updateNodeVisuals(node);
         }
 
         const gamesList = document.getElementById('editor-games-list');
@@ -370,6 +381,7 @@ document.addEventListener('DOMContentLoaded', async () => {
               const config = game.minigame_config || {};
               const unlimitedChecked = config.allow_multiple_attempts ? 'checked' : '';
               const isCVGame = ['shape_match', 'colour_match', 'texture_match', 'sift_match', 'symmetry_finder', 'plaque_scan'].includes(game.type);
+              const isPDGame = game.type === 'point_domination' || game.gamemode === 'Point Domination';
 
               html += `
                 <div class="sub-card" style="position: relative; flex-direction: column; align-items: stretch;" tabindex="0">
@@ -379,10 +391,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
                     </button>
                   </div>
+                  ${!isPDGame ? `
                   <label style="display: inline-block; font-size: 11px; margin-top: 4px; cursor: pointer; color: var(--color-text-muted);">
                     <input type="checkbox" class="unlimited-attempts-checkbox" data-index="${index}" ${unlimitedChecked}>
                     Unlimited attempts
                   </label>
+                  ` : ''}
                   ${isCVGame ? `
                     <button class="btn btn--outline btn-set-reference" data-index="${index}" style="width: 100%; margin-top: 8px;">
                       Set Reference Photo

@@ -118,22 +118,27 @@ export class PlayModal {
    * Render feedback toast in the modal
    */
   showFeedback(outcome, autoClose = true) {
+    this.controlsContainer.innerHTML = '';
+    
     const feedbackEl = document.createElement('div');
     feedbackEl.style = `
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: ${outcome === 'pass' ? 'var(--color-green)' : 'var(--color-red)'};
-      color: var(--color-bg-base);
-      padding: 1rem 2rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      min-height: 150px;
+      background: var(--color-bg-elevated);
       border-radius: var(--radius-md);
+      color: ${outcome === 'pass' ? 'var(--color-green)' : 'var(--color-red)'};
       font-weight: bold;
-      font-size: 1.2rem;
-      z-index: 1000;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+      font-size: 1.5rem;
+      animation: fadeIn 0.3s ease;
     `;
-    feedbackEl.textContent = outcome === 'pass' ? 'Success!' : 'Failed';
+    feedbackEl.innerHTML = outcome === 'pass' 
+      ? '<span style="font-size: 3rem; margin-bottom: 0.5rem;">✓</span><span>Success!</span>' 
+      : '<span style="font-size: 3rem; margin-bottom: 0.5rem;">✗</span><span>Failed</span>';
+    
     this.controlsContainer.appendChild(feedbackEl);
     
     setTimeout(() => {

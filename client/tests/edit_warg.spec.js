@@ -33,6 +33,13 @@ test.describe('edit_warg page logic', () => {
     // Wait for script to finish initializing by waiting for Leaflet map container
     await page.waitForSelector('.leaflet-container', { state: 'attached' });
 
+    // Delete existing game first to allow adding a new one
+    page.once('dialog', dialog => dialog.accept());
+    await page.evaluate(() => {
+      const deleteBtn = document.querySelector('.btn-delete-game');
+      if (deleteBtn) deleteBtn.click();
+    });
+
     // The script initializes asynchronously. The event listener on btn-add-game 
     // is attached at the end of the script. We poll the click until the modal opens.
     const selectorModal = page.locator('#game-selector-modal-overlay');
@@ -60,4 +67,5 @@ test.describe('edit_warg page logic', () => {
     await page.click('#btn-cancel-barcode');
     await expect(barcodeModal).toHaveAttribute('aria-hidden', 'true');
   });
+
 });
