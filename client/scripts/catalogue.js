@@ -12,9 +12,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   const titleEl = document.getElementById('catalogue-title');
   const urlParams = new URLSearchParams(window.location.search);
   const categoryParam = urlParams.get('category');
+  const searchParam = urlParams.get('search');
   
   if (titleEl && categoryParam === 'trending') {
     titleEl.textContent = 'Trending Games';
+  } else if (titleEl && searchParam) {
+    titleEl.textContent = `Search Results for "${searchParam}"`;
   }
   let skeletonHtml = '';
   for (let i = 0; i < 12; i++) {
@@ -58,6 +61,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (activeFilter !== 'all') {
       filtered = filtered.filter(a => a.mode === activeFilter);
+    }
+
+    // Apply search param
+    if (searchParam) {
+      const q = searchParam.toLowerCase();
+      filtered = filtered.filter(a => {
+        const titleMatch = a.title && a.title.toLowerCase().includes(q);
+        const captionMatch = a.caption && a.caption.toLowerCase().includes(q);
+        const authorMatch = a.author && a.author.name && a.author.name.toLowerCase().includes(q);
+        return titleMatch || captionMatch || authorMatch;
+      });
     }
 
     // Sort

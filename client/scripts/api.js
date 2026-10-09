@@ -43,6 +43,19 @@ var api = (function () {
     return res.json();
   }
 
+  async function _put(path, body) {
+    const res = await fetch(API_BASE + path, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      credentials: 'include'
+    });
+    if (!res.ok) {
+      throw Object.assign(new Error('API error'), { status: res.status, path });
+    }
+    return res.json();
+  }
+
   async function _delete(path) {
     const res = await fetch(API_BASE + path, {
       method: 'DELETE',
@@ -136,6 +149,13 @@ var api = (function () {
   async function getArgs() {
     const args = await _get('/api/args');
     return args.map(normaliseArg);
+  }
+
+  /**
+   * Returns all available badges in the system.
+   */
+  async function getAllBadges() {
+    return _get('/api/badges');
   }
 
   /**
@@ -268,10 +288,24 @@ var api = (function () {
     return _post('/api/feedback', feedbackData);
   }
 
+  async function logout() {
+    // Fetch directly because _get expects JSON but /auth/logout redirects
+    return fetch(API_BASE + '/auth/logout', { credentials: 'include' });
+  }
+
+  async function updateAccount(data) {
+    return _put('/auth/account', data);
+  }
+
+  async function deleteAccount() {
+    return _delete('/auth/account');
+  }
+
   /* ── Public API ─────────────────────────────────────────── */
   return {
     getCurrentUser,
     getArgs,
+    getAllBadges,
     getArgById,
     getUserProfile,
     getUserLibrary,
@@ -290,6 +324,9 @@ var api = (function () {
     submitMinigameAttempt,
     uploadMinigameReference,
     submitFeedback,
+    logout,
+    updateAccount,
+    deleteAccount,
   };
 
 })();
@@ -320,5 +357,57 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   } catch {
     // Ignore errors for unauthenticated users
+  }
+
+  // --- Global Profile Dropdown Logic ---
+  const btnProfile = document.getElementById('btn-profile');
+  const profileDropdown = document.getElementById('profile-dropdown');
+
+  function toggleProfileDropdown(e) {
+    if (e) e.stopPropagation();
+    if (!profileDropdown) return;
+    const isOpen = profileDropdown.classList.contains('is-open');
+    if (isOpen) {
+      profileDropdown.classList.remove('is-open');
+      profileDropdown.setAttribute('aria-hidden', 'true');
+      if (btnProfile) btnProfile.setAttribute('aria-expanded', 'false');
+    } else {
+      profileDropdown.classList.add('is-open');
+      profileDropdown.setAttribute('aria-hidden', 'false');
+      if (btnProfile) btnProfile.setAttribute('aria-expanded', 'true');
+    }
+  }
+
+  function closeProfileDropdown() {
+    if (profileDropdown && profileDropdown.classList.contains('is-open')) {
+      profileDropdown.classList.remove('is-open');
+      profileDropdown.setAttribute('aria-hidden', 'true');
+      if (btnProfile) btnProfile.setAttribute('aria-expanded', 'false');
+    }
+  }
+
+  if (btnProfile) {
+    btnProfile.addEventListener('click', toggleProfileDropdown);
+  }
+
+  document.addEventListener('click', (e) => {
+    if (profileDropdown && profileDropdown.classList.contains('is-open')) {
+      if (!profileDropdown.contains(e.target) && e.target !== btnProfile && (!btnProfile || !btnProfile.contains(e.target))) {
+        closeProfileDropdown();
+      }
+    }
+  });
+
+  const btnLogout = document.getElementById('btn-logout');
+  if (btnLogout) {
+    btnLogout.addEventListener('click', async () => {
+      try {
+        if (typeof api !== 'undefined' && api.logout) {
+          await api.logout();
+        }
+      } catch { /* ignore */ }
+      localStorage.removeItem('warg_token');
+      window.location.href = 'login.html';
+    });
   }
 });

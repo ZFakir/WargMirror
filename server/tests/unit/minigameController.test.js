@@ -1,9 +1,19 @@
-const { uploadReference, getReferenceImage, submitAttempt } = require('../../src/controllers/minigameController');
-const Minigame = require('../../src/models/Minigame');
+jest.mock('../../src/models', () => {
+  const transactionMock = { commit: jest.fn(), rollback: jest.fn() };
+  return {
+    Minigame: { 
+      findByPk: jest.fn(),
+      sequelize: { transaction: jest.fn().mockResolvedValue(transactionMock) }
+    },
+    MinigameAttempt: { upsert: jest.fn() },
+    WaypointProgress: { upsert: jest.fn() },
+    WaypointEdge: { findAll: jest.fn().mockResolvedValue([]) },
+    evaluateConditions: jest.fn().mockResolvedValue(true)
+  };
+});
 
-jest.mock('../../src/models/Minigame', () => ({
-  findByPk: jest.fn()
-}));
+const { uploadReference, getReferenceImage, submitAttempt } = require('../../src/controllers/minigameController');
+const { Minigame } = require('../../src/models');
 
 global.fetch = jest.fn();
 
@@ -14,7 +24,9 @@ describe('minigameController', () => {
     jest.clearAllMocks();
     req = {
       params: { gameId: 1 },
-      file: { buffer: Buffer.from('test'), mimetype: 'image/jpeg', originalname: 'test.jpg' }
+      file: { buffer: Buffer.from('test'), mimetype: 'image/jpeg', originalname: 'test.jpg' },
+      user: { user_id: 2 },
+      body: { game_id: 1, submission: 'test' }
     };
     res = {
       json: jest.fn(),
@@ -26,7 +38,12 @@ describe('minigameController', () => {
 
   describe('uploadReference', () => {
     it('should upload a reference image and update config', async () => {
-      const mockGame = { config_json: {}, changed: jest.fn(), save: jest.fn() };
+      const mockGame = { 
+        config_json: {}, 
+        changed: jest.fn(), 
+        save: jest.fn(),
+        Waypoint: { Arg: { author_id: 2 } }
+      };
       Minigame.findByPk.mockResolvedValue(mockGame);
 
       await uploadReference(req, res);
@@ -59,13 +76,13 @@ describe('minigameController', () => {
       
       fetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue({ passed: true })
+        json: jest.fn().mockResolvedValue({ passed: true, confidence_score: 0.99 })
       });
 
       await submitAttempt(req, res);
 
       expect(fetch).toHaveBeenCalled();
-      expect(res.json).toHaveBeenCalledWith({ passed: true });
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ passed: true }));
     });
   });
 });

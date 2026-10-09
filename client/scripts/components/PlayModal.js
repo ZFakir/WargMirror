@@ -114,37 +114,7 @@ export class PlayModal {
     this.controlsContainer.innerHTML = '';
   }
 
-  /**
-   * Render feedback toast in the modal
-   */
-  showFeedback(outcome, autoClose = true) {
-    const feedbackEl = document.createElement('div');
-    feedbackEl.style = `
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: ${outcome === 'pass' ? 'var(--color-green)' : 'var(--color-red)'};
-      color: var(--color-bg-base);
-      padding: 1rem 2rem;
-      border-radius: var(--radius-md);
-      font-weight: bold;
-      font-size: 1.2rem;
-      z-index: 1000;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-    `;
-    feedbackEl.textContent = outcome === 'pass' ? 'Success!' : 'Failed';
-    this.controlsContainer.appendChild(feedbackEl);
-    
-    setTimeout(() => {
-      if (feedbackEl.parentNode) {
-        feedbackEl.remove();
-      }
-      if (autoClose) {
-        this.close();
-      }
-    }, 2000);
-  }
+
 
   /**
    * Returns the canvas element or its context for game rendering
