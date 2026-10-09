@@ -992,10 +992,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function openGameSelectorModal() {
       const node = nodes.find(n => n.id === selectedId);
-      if (node && node.games && node.games.length >= 1) {
-        openAlertModal('A waypoint can only have a maximum of one minigame. Please delete the existing game to add a new one.');
-        return;
-      }
       if (gameSelectorModalOverlay) gameSelectorModalOverlay.setAttribute('aria-hidden', 'false');
     }
 
