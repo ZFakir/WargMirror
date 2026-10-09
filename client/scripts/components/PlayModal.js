@@ -124,8 +124,8 @@ export class PlayModal {
     feedbackEl.className = 'minigame-feedback-container';
     feedbackEl.style = 'text-align: center; padding: 2rem; background: var(--color-bg-elevated); border-radius: var(--radius-md); animation: fadeIn 0.3s ease;';
     
-    let iconHtml = '';
-    let textHtml = '';
+    let iconHtml;
+    let textHtml;
     
     if (outcome === 'pass') {
       iconHtml = '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--color-green, #4ade80)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';

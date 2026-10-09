@@ -586,7 +586,8 @@ export class MapModal {
   addEditorNode(node) {
     if (!this.map) return;
 
-    const hasPD = node.games && node.games.some(g => g.type === 'point_domination');
+    const games = node.games || node.minigames || node.Minigames || [];
+    const hasPD = games.some(g => g.type === 'point_domination' || g.game_type === 'point_domination');
     const markerColorClass = hasPD ? 'pd-node' : '';
 
     const icon = L.divIcon({
@@ -1082,7 +1083,7 @@ export class MapModal {
   }
 
   iconFor(node) {
-    const minigames = node.games || node.minigames || [];
+    const minigames = node.games || node.minigames || node.Minigames || [];
     const isPD = minigames.some(g => g.type === 'point_domination' || g.game_type === 'point_domination');
     const pdClass = isPD ? ' pd-node' : '';
 
