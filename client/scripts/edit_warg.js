@@ -23,6 +23,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   const isCreateMode = !currentArgId;
   let currentStatus = 'unpublished';
 
+  let isDirty = false;
+  window.addEventListener('beforeunload', (e) => {
+    if (isDirty) {
+      e.preventDefault();
+      e.returnValue = '';
+    }
+  });
+
+  document.addEventListener('input', () => { isDirty = true; });
+  document.addEventListener('change', () => { isDirty = true; });
+
   let nodes = [];
   let edges = [];
   let nextId = 1;
@@ -230,6 +241,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       selectItem('node', newNode.id);
       isPlacementMode = false;
       _setPlacementCursor(false);
+      isDirty = true;
     },
     onNodeSelected(id) {
       selectItem('node', id);
@@ -246,6 +258,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const node = nodes.find(n => n.id === id);
       if (node) { node.lat = lat; node.lng = lng; }
       mapModal.updateEditorEdges(edges, nodes);
+      isDirty = true;
     },
     onMapDeselect() {
       clearSelection();
@@ -490,6 +503,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                   openConfirmModal('Delete Game', 'Are you sure you want to remove this game from the waypoint?', () => {
                     node.games.splice(index, 1);
                     updatePanel();
+                    isDirty = true;
                   });
                 });
               });
@@ -650,6 +664,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         currentStatus = effectiveStatus;
+        isDirty = false;
 
         // Update nodes with their DB IDs
         if (data.idMap || data.minigameMap || data.wpObjMap) {
@@ -1027,6 +1042,7 @@ document.addEventListener('DOMContentLoaded', async () => {
               minigame_config: {}
             });
             updatePanel();
+            isDirty = true;
           }
         }
       });
