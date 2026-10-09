@@ -18,9 +18,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // ── Create vs Edit mode ──
-  const isCreateMode = window.location.pathname.includes('create_warg');
   const urlParams = new URLSearchParams(window.location.search);
   let currentArgId = urlParams.get('id');
+  const isCreateMode = !currentArgId;
   let currentStatus = 'unpublished';
 
   let nodes = [];
@@ -34,6 +34,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   const modeEl = document.getElementById('arg-mode');
 
   const mapBackendGameTypeToFrontend = (mg) => {
+    if (isCreateMode) {
+      document.title = "WARG - Create ARG";
+    }
     if (mg.game_type === 'gps_proximity' && mg.config_json && mg.config_json.subtype === 'geofence') {
       return { type: 'geofence', label: 'Geofence Check' };
     }
@@ -152,27 +155,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (err) {
       console.error('Failed to fetch ARG data:', err);
     }
-  } else if (!isCreateMode) {
-    // Demo data for visual testing if no ID provided in edit mode
+  } else {
+    // Create Mode (no ID provided)
     const skeleton = document.getElementById('builder-header-skeleton');
     const fields = document.getElementById('builder-header-fields');
     if (skeleton) skeleton.style.display = 'none';
     if (fields) fields.style.display = 'block';
 
-    if (titleEl) titleEl.textContent = 'Operation: Midnight Sun';
-    if (descEl) descEl.textContent = 'A fast-paced urban scavenger hunt across the downtown district, challenging players to uncover hidden corporate secrets.';
+    if (titleEl) titleEl.textContent = 'Untitled WARG';
+    if (descEl) descEl.textContent = 'A new WARG ready to be built...';
 
-    nodes = [
-      { id: 'wp1', lat: -26.19233, lng: 28.02987, title: 'The Great Hall', description: 'Find the plaque near the entrance.', games: [{ gamemode: 'GPS Location', type: 'gps' }] },
-      { id: 'wp2', lat: -26.19075, lng: 28.03215, title: 'Library Archway', description: 'Scan the historic archway to reveal the hidden message.', games: [{ gamemode: 'AR Object Scan', type: 'ar' }] },
-      { id: 'wp3', lat: -26.19320, lng: 28.02790, title: 'Coffee Shop Secret', description: 'Scan the special barcode on the cup.', games: [{ gamemode: 'Barcode Game', type: 'barcode' }] }
-    ];
-    edges = [
-      { id: 'e1', from: 'wp1', to: 'wp2', triggers: [] },
-      { id: 'e2', from: 'wp2', to: 'wp3', triggers: [] }
-    ];
-    nextId = 4;
-    nextEdgeId = 3;
+    nodes = [];
+    edges = [];
+    nextId = 1;
+    nextEdgeId = 1;
   }
 
   let selectedId = null;
@@ -650,7 +646,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (!currentArgId && data.arg_id) {
           currentArgId = data.arg_id;
-          window.history.pushState({}, '', `edit_warg?id=${currentArgId}`);
+          window.history.pushState({}, '', `edit_warg.html?id=${currentArgId}`);
         }
 
         currentStatus = effectiveStatus;

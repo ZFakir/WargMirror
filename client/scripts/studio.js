@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     studioHero.addEventListener('click', (e) => {
       // Don't double-navigate if they clicked the CTA button
       if (!e.target.closest('a')) {
-        window.location.href = 'create_warg.html';
+        window.location.href = 'edit_warg.html';
       }
     });
   }
@@ -80,7 +80,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const heroCard = document.querySelector('.studio-hero');
   if (heroCard) {
     heroCard.addEventListener('click', () => {
-      window.location.href = 'create_warg.html';
+      window.location.href = 'edit_warg.html';
     });
   }
 
