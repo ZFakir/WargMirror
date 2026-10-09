@@ -9,9 +9,108 @@ import { FlagModal } from './components/FlagModal.js';
 import mapModal from './components/MapModal.js';
 import { getMinigameHandler } from './components/minigame-handlers.js';
 import { startSensors, stopSensors, logPosition, getSensorDataAndReset } from './sensors.js';
+import { CameraCapture } from './components/CameraCapture.js';
+
+function setupConnectionBanner() {
+  const banner = document.createElement('div');
+  banner.id = 'connection-banner';
+  banner.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; padding: 10px; text-align: center; font-weight: bold; z-index: 10000; transition: all 0.3s ease; display: none;';
+  document.body.appendChild(banner);
+
+  const updateBanner = () => {
+    if (!navigator.onLine) {
+      banner.textContent = 'Offline Mode - Progress will sync when reconnected.';
+      banner.style.backgroundColor = 'var(--color-warning, #f0ad4e)';
+      banner.style.color = '#fff';
+      banner.style.display = 'block';
+    } else {
+      banner.textContent = 'Back Online! Syncing progress...';
+      banner.style.backgroundColor = 'var(--color-success, #5cb85c)';
+      
+      // Fallback for browsers without Background Sync API
+      if (!('SyncManager' in window) && navigator.serviceWorker && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({ type: 'MANUAL_SYNC' });
+      }
+
+      // Dispatch reconnect event for state reconciliation
+      window.dispatchEvent(new Event('warg:reconnect'));
+
+      setTimeout(() => {
+        banner.style.display = 'none';
+      }, 3000);
+    }
+  };
+
+  window.addEventListener('online', updateBanner);
+  window.addEventListener('offline', updateBanner);
+  // Initial check
+  if (!navigator.onLine) updateBanner();
+}
+
+// Ensure showToast is available on the game page
+window.showToast = function(message) {
+  const toast = document.createElement('div');
+  toast.className = 'toast show';
+  toast.style.cssText = 'position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background-color: var(--color-surface, #1e1e1e); color: var(--color-on-surface, #ffffff); padding: 12px 24px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); z-index: 10000; font-weight: 500; border: 1px solid var(--color-border, #333);';
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transition = 'opacity 0.3s ease';
+    setTimeout(() => toast.remove(), 300);
+  }, 4000);
+};
 
 document.addEventListener('DOMContentLoaded', () => {
+  setupConnectionBanner();
   const API_BASE = window.API_BASE_URL || 'https://wargmirror.onrender.com';
+
+  const syncChannel = new BroadcastChannel('warg_sync_channel');
+  syncChannel.onmessage = (event) => {
+    if (event.data.type === 'SYNC_RESULT') {
+      const result = event.data.result;
+      if (event.data.success) {
+        if (window.showToast) {
+          window.showToast(result.passed ? `Offline attempt passed! +${result.points_awarded} pts` : 'Offline attempt analyzed: Not Quite...');
+        }
+        // Update in-game overlay if it is still open
+        const overlay = document.getElementById('camera-result-overlay');
+        if (overlay) {
+          overlay.className = `camera-result-overlay ${result.passed ? 'pass' : 'fail'}`;
+          overlay.innerHTML = `
+            <h2>${result.passed ? 'Match Found!' : 'Not Quite...'}</h2>
+            <p>Score: ${Math.round(result.confidence_score * 100)}%</p>
+            <p>+${result.points_awarded} Points</p>
+            <p>${result.message || ''}</p>
+            <button id="camera-overlay-close-btn-sync" class="btn-primary" style="margin-top: 15px;">Close</button>
+          `;
+          document.getElementById('camera-overlay-close-btn-sync').addEventListener('click', () => {
+            overlay.remove();
+            playModal.close();
+          });
+        }
+        // Reload the game state to update the map markers
+        loadGameStateAndInitMap();
+      } else {
+        if (window.showToast) {
+          window.showToast('Offline sync failed: ' + event.data.error);
+        }
+        const overlay = document.getElementById('camera-result-overlay');
+        if (overlay) {
+          overlay.className = 'camera-result-overlay fail';
+          overlay.innerHTML = `
+            <h2>Sync Failed</h2>
+            <p>${event.data.error}</p>
+            <button id="camera-overlay-close-btn-sync-fail" class="btn-primary" style="margin-top: 15px;">Close</button>
+          `;
+          document.getElementById('camera-overlay-close-btn-sync-fail').addEventListener('click', () => {
+            overlay.remove();
+            playModal.close();
+          });
+        }
+      }
+    }
+  };
 
   // Initialize the reusable Flag Modal
   const flagModal = new FlagModal();
@@ -21,6 +120,14 @@ document.addEventListener('DOMContentLoaded', () => {
       flagModal.open('Issue with this WARG');
     });
   }
+  
+  // Re-fetch game state when coming back online
+  window.addEventListener('warg:reconnect', () => {
+    if (argId && gameState) {
+      loadGameStateAndInitMap();
+    }
+  });
+
   // Get the ARG ID from the URL parameters
   const urlParams = new URLSearchParams(window.location.search);
   const argId = urlParams.get('id');
@@ -82,6 +189,33 @@ document.addEventListener('DOMContentLoaded', () => {
             progLabel: progLabel
           });
         });
+      }
+
+      // Prefetch minigame references for unlocked waypoints so they are cached offline
+      const doPrefetch = () => {
+        const prefetchPromises = [];
+        nodes.filter(n => n.status === 'unlocked' || n.status === 'in_progress').forEach(node => {
+          if (node.minigames) {
+            node.minigames.forEach(mg => {
+              if (mg.game_id) {
+                prefetchPromises.push(
+                  // Use the API helper which SW will intercept and cache
+                  api.getMinigameReference(mg.game_id).catch(err => console.warn('Prefetch failed for game:', mg.game_id, err))
+                );
+              }
+            });
+          }
+        });
+        Promise.allSettled(prefetchPromises);
+      };
+
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.ready.then(() => {
+          // Small delay to ensure SW has fully claimed clients
+          setTimeout(doPrefetch, 500);
+        });
+      } else {
+        doPrefetch();
       }
 
       // Wait for an ARG fetch just to get title
@@ -241,7 +375,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
       try {
         const refData = await api.getMinigameReference(cvMinigame.game_id);
-        const { CameraCapture } = await import('./components/CameraCapture.js');
 
         const camera = new CameraCapture(container, cvMinigame.game_type, refData);
 
@@ -275,38 +408,59 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Show result overlay
             const overlay = document.createElement('div');
-            overlay.className = `camera-result-overlay ${result.passed ? 'pass' : 'fail'}`;
-            
-            if (result.passed) {
+            overlay.id = 'camera-result-overlay';
+            if (result.offline) {
+              overlay.className = 'camera-result-overlay pending';
               overlay.innerHTML = `
-                <h2>Match Found!</h2>
-                <p>Score: ${Math.round(result.confidence_score * 100)}%</p>
-                <p>+${result.points_awarded} Points</p>
+                <h2>Saved Offline</h2>
+                <p>We'll analyze your attempt when you reconnect.</p>
                 <p>${result.message || ''}</p>
+                <button id="camera-overlay-close-btn-offline" class="btn-primary" style="margin-top: 15px;">Close</button>
               `;
             } else {
-              overlay.innerHTML = `
-                <h2>Not Quite...</h2>
-                <p>Score: ${Math.round(result.confidence_score * 100)}%</p>
-                <p>${result.message || ''}</p>
-                <button id="btn-retry-ar" class="btn btn--outline" style="margin-top: 1rem; border-color: white; color: white;">Try Again</button>
-              `;
+              overlay.className = `camera-result-overlay ${result.passed ? 'pass' : 'fail'}`;
+              
+              if (result.passed) {
+                overlay.innerHTML = `
+                  <h2>Match Found!</h2>
+                  <p>Score: ${Math.round(result.confidence_score * 100)}%</p>
+                  <p>+${result.points_awarded} Points</p>
+                  <p>${result.message || ''}</p>
+                `;
+              } else {
+                overlay.innerHTML = `
+                  <h2>Not Quite...</h2>
+                  <p>Score: ${Math.round(result.confidence_score * 100)}%</p>
+                  <p>${result.message || ''}</p>
+                  <button id="btn-retry-ar" class="btn btn--outline" style="margin-top: 1rem; border-color: white; color: white;">Try Again</button>
+                `;
+              }
             }
             container.appendChild(overlay);
 
-            if (!result.passed) {
-              const retryBtn = overlay.querySelector('#btn-retry-ar');
-              if (retryBtn) {
-                retryBtn.addEventListener('click', () => {
+            if (result.offline) {
+              const closeBtn = document.getElementById('camera-overlay-close-btn-offline');
+              if (closeBtn) {
+                closeBtn.addEventListener('click', () => {
                   overlay.remove();
-                  feedbackDiv.textContent = 'Aligning...';
+                  playModal.close();
                 });
               }
             } else {
-              setTimeout(() => {
-                if (typeof playModal !== 'undefined') playModal.close();
-                if (typeof mapModal !== 'undefined' && typeof mapModal.focusNode === 'function') mapModal.focusNode(argId);
-              }, 2000);
+              if (!result.passed) {
+                const retryBtn = overlay.querySelector('#btn-retry-ar');
+                if (retryBtn) {
+                  retryBtn.addEventListener('click', () => {
+                    overlay.remove();
+                    feedbackDiv.textContent = 'Aligning...';
+                  });
+                }
+              } else {
+                setTimeout(() => {
+                  if (typeof playModal !== 'undefined') playModal.close();
+                  if (typeof mapModal !== 'undefined' && typeof mapModal.focusNode === 'function') mapModal.focusNode(argId);
+                }, 2000);
+              }
             }
 
           } catch (err) {
