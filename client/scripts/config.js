@@ -15,6 +15,19 @@ if (window.location.hostname === 'localhost' || window.location.hostname === '12
 window.API_BASE_URL = API_BASE_URL;
 window.API_BASE = API_BASE_URL;
 
+// Register Service Worker for offline capabilities
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    // Determine the correct base path for the service worker.
+    // By using a relative path, it registers correctly regardless of the root folder.
+    navigator.serviceWorker.register('sw.js').then(registration => {
+      console.log('ServiceWorker registration successful with scope: ', registration.scope);
+    }).catch(err => {
+      console.log('ServiceWorker registration failed: ', err);
+    });
+  });
+}
+
 // Global Search UI Handler
 document.addEventListener('DOMContentLoaded', () => {
   const searchInput = document.getElementById('search-input');
