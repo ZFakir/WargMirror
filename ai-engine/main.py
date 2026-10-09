@@ -8,7 +8,16 @@ from vision import sam_extractor, hsv_matcher, mobilenet_extractor, then_vs_now,
 app = FastAPI(title="WARG AI Engine")
 
 # ── Security ──────────────────────────────────────────────────────
-API_KEY = os.getenv("AI_KEY", "dev-secret-key")
+# Fail fast in production rather than silently authenticating with a known
+# constant. WARG_ENV=production is set in the Dockerfile; local dev keeps
+# the shared fallback key.
+API_KEY = os.getenv("AI_KEY")
+if not API_KEY:
+    if os.getenv("WARG_ENV") == "production":
+        raise RuntimeError(
+            "AI_KEY must be set in production; refusing to use the shared dev fallback key."
+        )
+    API_KEY = "dev-secret-key"
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=True)
 
 async def verify_api_key(api_key: str = Security(api_key_header)):

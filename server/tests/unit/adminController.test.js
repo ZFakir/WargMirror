@@ -65,14 +65,32 @@ describe('adminController', () => {
   });
 
   describe('toggleBanUser', () => {
-    it('should toggle user ban status', async () => {
+    it('should toggle user ban status (is_suspended, not is_flagged)', async () => {
       req.params.id = 2;
-      const mockUser = { user_id: 2, is_flagged: false, save: jest.fn() };
+      const mockUser = { user_id: 2, username: 'test', is_flagged: false, is_suspended: false, save: jest.fn() };
       User.findByPk.mockResolvedValue(mockUser);
       await toggleBanUser(req, res);
-      expect(mockUser.is_flagged).toBe(true);
+      expect(mockUser.is_suspended).toBe(true);
+      expect(mockUser.is_flagged).toBe(false); // bans must not touch the anti-spoofing trust signal
       expect(mockUser.save).toHaveBeenCalled();
-      expect(res.json).toHaveBeenCalled();
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ message: 'User banned successfully' }));
+    });
+
+    it('should not leak sensitive fields in the ban response', async () => {
+      req.params.id = 2;
+      const mockUser = {
+        user_id: 2, username: 'test', email: 't@t.com', role: 'user',
+        trust_score: 80, is_flagged: false, is_suspended: false,
+        password_hash: 'SECRET_HASH', session_token: 'SECRET_TOKEN', google_uid: 'SECRET_UID',
+        save: jest.fn()
+      };
+      User.findByPk.mockResolvedValue(mockUser);
+      await toggleBanUser(req, res);
+      const sent = res.json.mock.calls[0][0];
+      expect(sent.user).toEqual(expect.objectContaining({ user_id: 2, is_suspended: true }));
+      expect(sent.user).not.toHaveProperty('password_hash');
+      expect(sent.user).not.toHaveProperty('session_token');
+      expect(sent.user).not.toHaveProperty('google_uid');
     });
   });
 

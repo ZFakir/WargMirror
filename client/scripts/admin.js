@@ -4,7 +4,55 @@
  * Handles fetching real data for flagged games, recent flags, and player search.
  */
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  // ── Admin guard: only admins belong here ──
+  if (typeof api !== 'undefined') {
+    const user = await api.getCurrentUser();
+    if (!user) {
+      window.location.href = 'login.html';
+      return;
+    }
+    if (user.role !== 'admin') {
+      window.location.href = 'home.html';
+      return;
+    }
+  }
+
+  // ── Platform Metrics ──
+  async function loadMetrics() {
+    const metricsEl = document.getElementById('admin-metrics');
+    if (!metricsEl) return;
+    try {
+      const res = await fetch(`${window.API_BASE_URL || ''}/api/admin/metrics`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch metrics');
+      const m = await res.json();
+
+      const items = [
+        ['Total Users', m.total_users],
+        ['Published WARGs', m.published_args],
+        ['Open Flags', m.open_flags],
+        ['Active Sessions', m.active_sessions],
+        ['Completed Sessions', m.completed_sessions]
+      ];
+
+      metricsEl.innerHTML = '';
+      items.forEach(([label, value]) => {
+        const cell = document.createElement('div');
+        cell.style.cssText = 'background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:var(--space-3);text-align:center;';
+        const v = document.createElement('div');
+        v.style.cssText = 'font-size:1.5rem;font-weight:700;';
+        v.textContent = value !== undefined ? value : '—';
+        const l = document.createElement('div');
+        l.style.cssText = 'font-size:var(--font-size-caption);color:var(--color-text-muted);margin-top:2px;';
+        l.textContent = label;
+        cell.append(v, l);
+        metricsEl.appendChild(cell);
+      });
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
   // ── Render Flagged Games Row ──
   const flaggedGamesRow = document.getElementById('row-flagged-games');
   
@@ -42,40 +90,68 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      flagsList.innerHTML = flags.map(flag => {
+      // Built with DOM APIs + textContent so user-typed content (flag
+      // descriptions, game titles, usernames) is never rendered as HTML.
+      flagsList.innerHTML = '';
+      flags.forEach(flag => {
         const isHigh = flag.reason === 'inappropriate_content' || flag.reason === 'safety_concern';
-        const icon = isHigh 
+        const icon = isHigh
           ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>`
           : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`;
 
-        const title = flag.reason.replace('_', ' ').toUpperCase();
-        const meta = `Game: ${flag.Arg?.title || 'Unknown'} · Reported by @${flag.Reporter?.username || 'unknown'}`;
+        const item = document.createElement('div');
+        item.className = 'flag-item' + (isHigh ? ' flag-item--high' : '');
+        item.dataset.id = flag.flag_id;
 
-        return `
-          <div class="flag-item ${isHigh ? 'flag-item--high' : ''}" data-id="${flag.flag_id}">
-            <div class="flag-item__icon">
-              ${icon}
-            </div>
-            <div class="flag-item__content">
-              <div class="flag-item__title">${title}</div>
-              <div class="flag-item__desc">${flag.description || 'No description provided.'}</div>
-              <div class="flag-item__meta">${meta}</div>
-            </div>
-            <button class="btn btn--outline btn--small btn-review-flag" data-id="${flag.flag_id}" data-desc="${flag.description || 'N/A'}" data-meta="${meta}" data-title="${title}" data-gameid="${flag.Arg?.arg_id}">Review</button>
-          </div>
-        `;
-      }).join('');
+        const iconBox = document.createElement('div');
+        iconBox.className = 'flag-item__icon';
+        iconBox.innerHTML = icon;
 
-      // Render the unique flagged games in the row
-      if (flaggedGamesRow && typeof GameCard !== 'undefined' && typeof GAMES !== 'undefined') {
+        const content = document.createElement('div');
+        content.className = 'flag-item__content';
+
+        const title = document.createElement('div');
+        title.className = 'flag-item__title';
+        title.textContent = (flag.reason || '').replace('_', ' ').toUpperCase();
+
+        const desc = document.createElement('div');
+        desc.className = 'flag-item__desc';
+        desc.textContent = flag.description || 'No description provided.';
+
+        const meta = document.createElement('div');
+        meta.className = 'flag-item__meta';
+        meta.textContent = `Game: ${flag.Arg?.title || 'Unknown'} · Reported by @${flag.Reporter?.username || 'unknown'}`;
+
+        content.append(title, desc, meta);
+
+        const btn = document.createElement('button');
+        btn.className = 'btn btn--outline btn--small btn-review-flag';
+        btn.textContent = 'Review';
+        btn.dataset.id = flag.flag_id;
+        btn.dataset.title = title.textContent;
+        btn.dataset.desc = flag.description || 'N/A';
+        btn.dataset.meta = meta.textContent;
+        if (flag.Arg?.arg_id) btn.dataset.gameid = flag.Arg.arg_id;
+
+        item.append(iconBox, content, btn);
+        flagsList.appendChild(item);
+      });
+
+      // Render the unique flagged games in the row from real data
+      if (flaggedGamesRow && typeof GameCard !== 'undefined' && typeof api !== 'undefined') {
+        flaggedGamesRow.innerHTML = '';
         const uniqueGameIds = [...new Set(flags.map(f => f.Arg?.arg_id).filter(id => id))];
-        // For demonstration, map these to mock GAMES if possible, or fetch real games. 
-        // Here we just use GAMES mock matching IDs if they exist, or fallback to GAMES.slice(0, 4) if none match mock data
-        let flaggedGames = GAMES.filter(g => uniqueGameIds.includes(Number(g.id)));
-        if (flaggedGames.length === 0 && uniqueGameIds.length > 0) {
-           flaggedGames = GAMES.slice(0, uniqueGameIds.length); // Fallback mock 
+        if (uniqueGameIds.length > 0) {
+          const cards = await Promise.all(uniqueGameIds.slice(0, 6).map(id =>
+            api.getArgById(id).catch(() => null)
+          ));
+          const valid = cards.filter(Boolean);
+          if (valid.length > 0) {
+            GameCard.renderRow(valid, flaggedGamesRow, { hideProgress: true });
+          } else {
+            flaggedGamesRow.innerHTML = '<p style="color:var(--color-text-muted);padding:var(--space-3) 0;">Flagged games could not be loaded.</p>';
+          }
         }
-        GameCard.renderRow(flaggedGames, flaggedGamesRow);
       }
 
     } catch (error) {
@@ -85,6 +161,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   loadFlags();
+  loadMetrics();
 
   // Handle Review Flag clicks (Delegation)
   if (flagsList) {
@@ -208,20 +285,50 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      searchResultsContainer.innerHTML = users.map(user => `
-        <div class="user-search-result" style="display: flex; align-items: center; justify-content: space-between; padding: var(--space-3); border-bottom: 1px solid var(--color-border); background: var(--color-surface);">
-          <div>
-            <div style="font-weight: 500;">${user.username}</div>
-            <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">${user.email}</div>
-          </div>
-          <div style="text-align: right;">
-            <div style="font-size: var(--font-size-sm); margin-bottom: 4px; ${user.trust_score < 50 ? 'color: var(--color-danger); font-weight: bold;' : 'color: var(--color-text-muted);'}">Trust: ${user.trust_score}</div>
-            <button class="btn btn--small btn--outline btn-toggle-ban" data-id="${user.user_id}" style="border-color: ${user.is_flagged ? 'var(--color-primary)' : 'var(--color-danger)'}; color: ${user.is_flagged ? 'var(--color-primary)' : 'var(--color-danger)'};">
-              ${user.is_flagged ? 'Unban User' : 'Ban User'}
-            </button>
-          </div>
-        </div>
-      `).join('');
+      searchResultsContainer.innerHTML = '';
+      users.forEach(user => {
+        // Built with DOM APIs + textContent — usernames/emails are user data.
+        const row = document.createElement('div');
+        row.className = 'user-search-result';
+        row.style.cssText = 'display: flex; align-items: center; justify-content: space-between; padding: var(--space-3); border-bottom: 1px solid var(--color-border); background: var(--color-surface);';
+
+        const left = document.createElement('div');
+        const nameEl = document.createElement('div');
+        nameEl.style.fontWeight = '500';
+        nameEl.textContent = user.username;
+        const emailEl = document.createElement('div');
+        emailEl.style.cssText = 'font-size: var(--font-size-sm); color: var(--color-text-secondary);';
+        emailEl.textContent = user.email;
+        left.append(nameEl, emailEl);
+
+        const right = document.createElement('div');
+        right.style.textAlign = 'right';
+
+        const trustEl = document.createElement('div');
+        trustEl.style.cssText = 'font-size: var(--font-size-sm); margin-bottom: 4px; ' + (user.trust_score < 50 ? 'color: var(--color-danger); font-weight: bold;' : 'color: var(--color-text-muted);');
+        trustEl.textContent = `Trust: ${user.trust_score}`;
+
+        const banned = user.is_suspended === true;
+        const banBtn = document.createElement('button');
+        banBtn.className = 'btn btn--small btn--outline btn-toggle-ban';
+        banBtn.dataset.id = user.user_id;
+        banBtn.dataset.banned = banned ? '1' : '0';
+        banBtn.style.borderColor = banned ? 'var(--color-primary)' : 'var(--color-danger)';
+        banBtn.style.color = banned ? 'var(--color-primary)' : 'var(--color-danger)';
+        banBtn.textContent = banned ? 'Unban User' : 'Ban User';
+
+        right.append(trustEl, banBtn);
+
+        if (user.is_flagged) {
+          const flagNote = document.createElement('div');
+          flagNote.style.cssText = 'font-size: 11px; margin-top: 4px; color: var(--color-warning, #f59e0b);';
+          flagNote.textContent = 'Trust flag (anti-spoofing)';
+          right.appendChild(flagNote);
+        }
+
+        row.append(left, right);
+        searchResultsContainer.appendChild(row);
+      });
     } catch (error) {
       console.error(error);
       searchResultsContainer.innerHTML = `<p style="color: var(--color-danger);">Error loading users.</p>`;
@@ -242,13 +349,16 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!btn) return;
       
       const userId = btn.dataset.id;
-      const actionText = btn.textContent.trim(); // "Ban User" or "Unban User"
+      const isBanned = btn.dataset.banned === '1';
+      const actionText = isBanned ? 'Unban User' : 'Ban User';
 
       if (window.confirmModal) {
         window.confirmModal.open({
           title: actionText,
-          desc: `Are you sure you want to ${actionText.toLowerCase()}?`,
-          confirmText: 'Confirm',
+          desc: isBanned
+            ? 'Restore this user\'s access to the platform?'
+            : 'Suspend this user and block them from logging in? Their game history stays intact.',
+          confirmText: isBanned ? 'Unban' : 'Ban',
           callback: async () => {
             try {
               const res = await fetch(`${window.API_BASE_URL || ''}/api/admin/users/${userId}/ban`, { method: 'PUT', credentials: 'include' });

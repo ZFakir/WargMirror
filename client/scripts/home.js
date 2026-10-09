@@ -743,13 +743,30 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.target === friendProfileModal) closeFriendProfileModal();
   });
 
-  btnRemoveFriend?.addEventListener('click', async () => {
+  btnRemoveFriend?.addEventListener('click', () => {
     if (!currentProfileFriendId) return;
-    
+
+    // Confirm before removing — matches the user feedback request and makes an
+    // irreversible action explicit.
+    if (window.confirmModal) {
+      window.confirmModal.open({
+        title: 'Remove Friend',
+        desc: 'Are you sure you want to remove this friend? You will no longer appear in each other\'s friends lists.',
+        confirmText: 'Remove',
+        callback: () => removeFriendNow()
+      });
+    } else {
+      removeFriendNow();
+    }
+  });
+
+  async function removeFriendNow() {
+    if (!currentProfileFriendId || !btnRemoveFriend) return;
+
     const originalText = btnRemoveFriend.textContent;
     btnRemoveFriend.disabled = true;
     btnRemoveFriend.textContent = 'Removing...';
-    
+
     try {
       const currentUser = await api.getCurrentUser();
       await api.removeFriend(currentUser.user_id, currentProfileFriendId);
@@ -764,7 +781,7 @@ document.addEventListener('DOMContentLoaded', () => {
         btnRemoveFriend.textContent = originalText;
       }
     }
-  });
+  }
 });
 
 /* ── Theme Toggle ── */

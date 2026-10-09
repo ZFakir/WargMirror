@@ -10,10 +10,16 @@ module.exports = {
       displayName: 'mocked',
       testEnvironment: 'node',
       setupFiles: ['<rootDir>/tests/setup/loadEnv.js'],
-      testMatch: ['<rootDir>/tests/{models,controllers,routes,config}/**/*.test.js'],
+      // Note: brace globs ("{a,b}") break under jest-on-Windows path handling,
+      // so the four dirs are listed explicitly.
+      testMatch: [
+        '<rootDir>/tests/models/**/*.test.js',
+        '<rootDir>/tests/controllers/**/*.test.js',
+        '<rootDir>/tests/routes/**/*.test.js',
+        '<rootDir>/tests/config/**/*.test.js'
+      ],
       testPathIgnorePatterns: [
         '/node_modules/',
-        'tests/controllers/argController.test.js',
         'tests/controllers/userController.test.js',
         'tests/routes/authRoutes.test.js'
       ]

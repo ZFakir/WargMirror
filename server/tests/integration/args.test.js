@@ -5,6 +5,15 @@ const { createUser, createArg } = require('../setup/fixtures');
 
 const app = createApp();
 
+// Logs a fixture user in and returns a supertest agent carrying their session
+// cookie — required for the routes that sit behind requireAuth.
+async function loginUser(user, password) {
+  const agent = request.agent(app);
+  const res = await agent.post('/auth/login').send({ email: user.email, password });
+  expect(res.status).toBe(200);
+  return agent;
+}
+
 describe('ARG API (/api/args)', () => {
   beforeEach(async () => {
     await resetDatabase();
@@ -49,12 +58,12 @@ describe('ARG API (/api/args)', () => {
 
   describe('POST /api/args', () => {
     it('creates an ARG with waypoints and edges in one transaction', async () => {
-      const { user } = await createUser();
+      const { user, password } = await createUser();
+      const agent = await loginUser(user, password);
 
-      const res = await request(app)
+      const res = await agent
         .post('/api/args')
         .send({
-          creator_id: user.user_id,
           title: 'Campus Hunt',
           description: 'A quick loop around campus',
           status: 'unpublished',
@@ -72,28 +81,38 @@ describe('ARG API (/api/args)', () => {
       expect(fetched.body.Waypoints).toHaveLength(2);
       expect(fetched.body.WaypointEdges).toHaveLength(1);
     });
+
+    it('rejects anonymous creates with 401', async () => {
+      const res = await request(app)
+        .post('/api/args')
+        .send({ title: 'Ghost ARG' });
+
+      expect(res.status).toBe(401);
+    });
   });
 
   describe('PUT /api/args/:id', () => {
     it('rejects updates from a user who is not the creator', async () => {
       const { user: owner } = await createUser();
-      const { user: intruder } = await createUser();
+      const { user: intruder, password } = await createUser();
       const arg = await createArg(owner, { title: 'Owned Arg' });
+      const agent = await loginUser(intruder, password);
 
-      const res = await request(app)
+      const res = await agent
         .put(`/api/args/${arg.arg_id}`)
-        .send({ creator_id: intruder.user_id, title: 'Hijacked' });
+        .send({ title: 'Hijacked' });
 
       expect(res.status).toBe(403);
     });
 
     it('allows the creator to update the title', async () => {
-      const { user } = await createUser();
+      const { user, password } = await createUser();
       const arg = await createArg(user, { title: 'Old Title' });
+      const agent = await loginUser(user, password);
 
-      const res = await request(app)
+      const res = await agent
         .put(`/api/args/${arg.arg_id}`)
-        .send({ creator_id: user.user_id, title: 'New Title' });
+        .send({ title: 'New Title' });
 
       expect(res.status).toBe(200);
       expect(res.body.title).toBe('New Title');
@@ -102,29 +121,65 @@ describe('ARG API (/api/args)', () => {
 
   describe('POST /api/args/:id/vote', () => {
     it('registers a like, then toggles it off on a repeat vote', async () => {
-      const { user } = await createUser();
+      const { user, password } = await createUser();
       const arg = await createArg(user);
+      const agent = await loginUser(user, password);
 
-      const liked = await request(app)
+      const liked = await agent
         .post(`/api/args/${arg.arg_id}/vote`)
-        .send({ user_id: user.user_id, vote: 'like' });
+        .send({ vote: 'like' });
 
       expect(liked.status).toBe(200);
       expect(liked.body).toMatchObject({ action: 'voted', like_count: 1, dislike_count: 0 });
 
-      const unliked = await request(app)
+      const unliked = await agent
         .post(`/api/args/${arg.arg_id}/vote`)
-        .send({ user_id: user.user_id, vote: 'like' });
+        .send({ vote: 'like' });
 
       expect(unliked.body).toMatchObject({ action: 'unvoted', like_count: 0, dislike_count: 0 });
     });
 
-    it('requires user_id and vote', async () => {
+    it('rejects votes from unauthenticated guests with 401', async () => {
       const { user } = await createUser();
       const arg = await createArg(user);
 
-      const res = await request(app).post(`/api/args/${arg.arg_id}/vote`).send({});
-      expect(res.status).toBe(400);
+      const res = await request(app)
+        .post(`/api/args/${arg.arg_id}/vote`)
+        .send({ vote: 'like' });
+
+      expect(res.status).toBe(401);
+    });
+
+    it('votes as the session user, ignoring a spoofed body user_id', async () => {
+      const { user, password } = await createUser();
+      const arg = await createArg(user);
+      const agent = await loginUser(user, password);
+
+      const res = await agent
+        .post(`/api/args/${arg.arg_id}/vote`)
+        .send({ user_id: 999, vote: 'like' });
+
+      expect(res.status).toBe(200);
+
+      // The session user sees their own vote …
+      const own = await agent.get(`/api/args/${arg.arg_id}`);
+      expect(own.body.user_vote).toBe('like');
+
+      // … and guests never see another user's vote state.
+      const guest = await request(app).get(`/api/args/${arg.arg_id}`);
+      expect(guest.body.user_vote).toBeNull();
+    });
+
+    it('rejects a missing or invalid vote value', async () => {
+      const { user, password } = await createUser();
+      const arg = await createArg(user);
+      const agent = await loginUser(user, password);
+
+      const missing = await agent.post(`/api/args/${arg.arg_id}/vote`).send({});
+      expect(missing.status).toBe(400);
+
+      const invalid = await agent.post(`/api/args/${arg.arg_id}/vote`).send({ vote: 'up' });
+      expect(invalid.status).toBe(400);
     });
   });
 

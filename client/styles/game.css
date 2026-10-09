@@ -594,6 +594,21 @@
   line-height: 1.5;
 }
 
+/* Spoiler bodies are rendered as text (never HTML) and hidden until clicked. */
+.spoiler-text {
+  cursor: pointer;
+  background-color: var(--color-text);
+  color: transparent;
+  border-radius: var(--radius-full);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.spoiler-text.is-revealed {
+  cursor: auto;
+  background-color: transparent;
+  color: inherit;
+}
+
 .comment-replies {
   margin-top: var(--spacing-sm);
   margin-left: 20px;
