@@ -6,6 +6,8 @@ const { requireAdmin } = require('../middleware/authMiddleware');
 // All routes in this file will be protected by requireAuth and requireAdmin in app.js
 // but we could also add requireAdmin here just to be safe. We'll add it in app.js.
 
+router.get('/metrics', adminController.getMetrics);
+
 router.get('/flags', adminController.getFlags);
 router.put('/flags/:id/resolve', adminController.resolveFlag);
 

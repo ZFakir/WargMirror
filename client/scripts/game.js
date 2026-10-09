@@ -9,9 +9,108 @@ import { FlagModal } from './components/FlagModal.js';
 import mapModal from './components/MapModal.js';
 import { getMinigameHandler } from './components/minigame-handlers.js';
 import { startSensors, stopSensors, logPosition, getSensorDataAndReset } from './sensors.js';
+import { CameraCapture } from './components/CameraCapture.js';
+
+function setupConnectionBanner() {
+  const banner = document.createElement('div');
+  banner.id = 'connection-banner';
+  banner.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; padding: 10px; text-align: center; font-weight: bold; z-index: 10000; transition: all 0.3s ease; display: none;';
+  document.body.appendChild(banner);
+
+  const updateBanner = () => {
+    if (!navigator.onLine) {
+      banner.textContent = 'Offline Mode - Progress will sync when reconnected.';
+      banner.style.backgroundColor = 'var(--color-warning, #f0ad4e)';
+      banner.style.color = '#fff';
+      banner.style.display = 'block';
+    } else {
+      banner.textContent = 'Back Online! Syncing progress...';
+      banner.style.backgroundColor = 'var(--color-success, #5cb85c)';
+      
+      // Fallback for browsers without Background Sync API
+      if (!('SyncManager' in window) && navigator.serviceWorker && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({ type: 'MANUAL_SYNC' });
+      }
+
+      // Dispatch reconnect event for state reconciliation
+      window.dispatchEvent(new Event('warg:reconnect'));
+
+      setTimeout(() => {
+        banner.style.display = 'none';
+      }, 3000);
+    }
+  };
+
+  window.addEventListener('online', updateBanner);
+  window.addEventListener('offline', updateBanner);
+  // Initial check
+  if (!navigator.onLine) updateBanner();
+}
+
+// Ensure showToast is available on the game page
+window.showToast = function(message) {
+  const toast = document.createElement('div');
+  toast.className = 'toast show';
+  toast.style.cssText = 'position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background-color: var(--color-surface, #1e1e1e); color: var(--color-on-surface, #ffffff); padding: 12px 24px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); z-index: 10000; font-weight: 500; border: 1px solid var(--color-border, #333);';
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transition = 'opacity 0.3s ease';
+    setTimeout(() => toast.remove(), 300);
+  }, 4000);
+};
 
 document.addEventListener('DOMContentLoaded', () => {
+  setupConnectionBanner();
   const API_BASE = window.API_BASE_URL || 'https://wargmirror.onrender.com';
+
+  const syncChannel = new BroadcastChannel('warg_sync_channel');
+  syncChannel.onmessage = (event) => {
+    if (event.data.type === 'SYNC_RESULT') {
+      const result = event.data.result;
+      if (event.data.success) {
+        if (window.showToast) {
+          window.showToast(result.passed ? `Offline attempt passed! +${result.points_awarded} pts` : 'Offline attempt analyzed: Not Quite...');
+        }
+        // Update in-game overlay if it is still open
+        const overlay = document.getElementById('camera-result-overlay');
+        if (overlay) {
+          overlay.className = `camera-result-overlay ${result.passed ? 'pass' : 'fail'}`;
+          overlay.innerHTML = `
+            <h2>${result.passed ? 'Match Found!' : 'Not Quite...'}</h2>
+            <p>Score: ${Math.round(result.confidence_score * 100)}%</p>
+            <p>+${result.points_awarded} Points</p>
+            <p>${result.message || ''}</p>
+            <button id="camera-overlay-close-btn-sync" class="btn-primary" style="margin-top: 15px;">Close</button>
+          `;
+          document.getElementById('camera-overlay-close-btn-sync').addEventListener('click', () => {
+            overlay.remove();
+            playModal.close();
+          });
+        }
+        // Reload the game state to update the map markers
+        loadGameStateAndInitMap();
+      } else {
+        if (window.showToast) {
+          window.showToast('Offline sync failed: ' + event.data.error);
+        }
+        const overlay = document.getElementById('camera-result-overlay');
+        if (overlay) {
+          overlay.className = 'camera-result-overlay fail';
+          overlay.innerHTML = `
+            <h2>Sync Failed</h2>
+            <p>${event.data.error}</p>
+            <button id="camera-overlay-close-btn-sync-fail" class="btn-primary" style="margin-top: 15px;">Close</button>
+          `;
+          document.getElementById('camera-overlay-close-btn-sync-fail').addEventListener('click', () => {
+            overlay.remove();
+            playModal.close();
+          });
+        }
+      }
+    }
+  };
 
   // Initialize the reusable Flag Modal
   const flagModal = new FlagModal();
@@ -21,6 +120,14 @@ document.addEventListener('DOMContentLoaded', () => {
       flagModal.open('Issue with this WARG');
     });
   }
+  
+  // Re-fetch game state when coming back online
+  window.addEventListener('warg:reconnect', () => {
+    if (argId && gameState) {
+      loadGameStateAndInitMap();
+    }
+  });
+
   // Get the ARG ID from the URL parameters
   const urlParams = new URLSearchParams(window.location.search);
   const argId = urlParams.get('id');
@@ -82,6 +189,33 @@ document.addEventListener('DOMContentLoaded', () => {
             progLabel: progLabel
           });
         });
+      }
+
+      // Prefetch minigame references for unlocked waypoints so they are cached offline
+      const doPrefetch = () => {
+        const prefetchPromises = [];
+        nodes.filter(n => n.status === 'unlocked' || n.status === 'in_progress').forEach(node => {
+          if (node.minigames) {
+            node.minigames.forEach(mg => {
+              if (mg.game_id) {
+                prefetchPromises.push(
+                  // Use the API helper which SW will intercept and cache
+                  api.getMinigameReference(mg.game_id).catch(err => console.warn('Prefetch failed for game:', mg.game_id, err))
+                );
+              }
+            });
+          }
+        });
+        Promise.allSettled(prefetchPromises);
+      };
+
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.ready.then(() => {
+          // Small delay to ensure SW has fully claimed clients
+          setTimeout(doPrefetch, 500);
+        });
+      } else {
+        doPrefetch();
       }
 
       // Wait for an ARG fetch just to get title
@@ -156,6 +290,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const isPressed = activeBtn && activeBtn.classList.contains('is-active');
 
+    // Pre-click state, restored if the server rejects the vote (guests).
+    const prevLikes = currentLikes;
+    const prevDislikes = currentDislikes;
+    const prevLikeActive = btnLike ? btnLike.classList.contains('is-active') : false;
+    const prevDislikeActive = btnDislike ? btnDislike.classList.contains('is-active') : false;
+    let prevStoredVote = null;
+    try { prevStoredVote = (JSON.parse(localStorage.getItem('warg_votes') || '{}'))[argId] || null; } catch { /* ignore */ }
+
     if (activeBtn) activeBtn.classList.toggle('is-active', !isPressed);
 
     if (action === 'like') {
@@ -190,7 +332,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const res = await fetch(`${API_BASE}/api/args/${argId}/vote`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ vote: action, user_id: 1 }),
+        body: JSON.stringify({ vote: action }),
         credentials: 'include'
       });
 
@@ -207,6 +349,26 @@ document.addEventListener('DOMContentLoaded', () => {
             if (btnDislike) btnDislike.classList.toggle('is-active', data.action === 'voted');
             if (btnLike) btnLike.classList.remove('is-active');
           }
+        }
+      } else if (res.status === 401) {
+        // Guests cannot vote — undo the optimistic update and offer login.
+        if (btnLike) btnLike.classList.toggle('is-active', prevLikeActive);
+        if (btnDislike) btnDislike.classList.toggle('is-active', prevDislikeActive);
+        if (btnLike) btnLike.querySelector('span').textContent = `(${prevLikes})`;
+        if (btnDislike) btnDislike.querySelector('span').textContent = `(${prevDislikes})`;
+        try {
+          const localVotes = JSON.parse(localStorage.getItem('warg_votes') || '{}');
+          if (prevStoredVote) localVotes[argId] = prevStoredVote;
+          else delete localVotes[argId];
+          localStorage.setItem('warg_votes', JSON.stringify(localVotes));
+        } catch { /* ignore */ }
+        if (window.confirmModal) {
+          window.confirmModal.open({
+            title: 'Login required',
+            desc: 'Log in to like or dislike games.',
+            confirmText: 'Log in',
+            callback: () => { window.location.href = 'login.html'; }
+          });
         }
       }
     } catch (err) {
@@ -278,38 +440,59 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Show result overlay
             const overlay = document.createElement('div');
-            overlay.className = `camera-result-overlay ${result.passed ? 'pass' : 'fail'}`;
-            
-            if (result.passed) {
+            overlay.id = 'camera-result-overlay';
+            if (result.offline) {
+              overlay.className = 'camera-result-overlay pending';
               overlay.innerHTML = `
-                <h2>Match Found!</h2>
-                <p>Score: ${Math.round(result.confidence_score * 100)}%</p>
-                <p>+${result.points_awarded} Points</p>
+                <h2>Saved Offline</h2>
+                <p>We'll analyze your attempt when you reconnect.</p>
                 <p>${result.message || ''}</p>
+                <button id="camera-overlay-close-btn-offline" class="btn-primary" style="margin-top: 15px;">Close</button>
               `;
             } else {
-              overlay.innerHTML = `
-                <h2>Not Quite...</h2>
-                <p>Score: ${Math.round(result.confidence_score * 100)}%</p>
-                <p>${result.message || ''}</p>
-                <button id="btn-retry-ar" class="btn btn--outline" style="margin-top: 1rem; border-color: white; color: white;">Try Again</button>
-              `;
+              overlay.className = `camera-result-overlay ${result.passed ? 'pass' : 'fail'}`;
+              
+              if (result.passed) {
+                overlay.innerHTML = `
+                  <h2>Match Found!</h2>
+                  <p>Score: ${Math.round(result.confidence_score * 100)}%</p>
+                  <p>+${result.points_awarded} Points</p>
+                  <p>${result.message || ''}</p>
+                `;
+              } else {
+                overlay.innerHTML = `
+                  <h2>Not Quite...</h2>
+                  <p>Score: ${Math.round(result.confidence_score * 100)}%</p>
+                  <p>${result.message || ''}</p>
+                  <button id="btn-retry-ar" class="btn btn--outline" style="margin-top: 1rem; border-color: white; color: white;">Try Again</button>
+                `;
+              }
             }
             container.appendChild(overlay);
 
-            if (!result.passed) {
-              const retryBtn = overlay.querySelector('#btn-retry-ar');
-              if (retryBtn) {
-                retryBtn.addEventListener('click', () => {
+            if (result.offline) {
+              const closeBtn = document.getElementById('camera-overlay-close-btn-offline');
+              if (closeBtn) {
+                closeBtn.addEventListener('click', () => {
                   overlay.remove();
-                  feedbackDiv.textContent = 'Aligning...';
+                  playModal.close();
                 });
               }
             } else {
-              setTimeout(() => {
-                if (typeof playModal !== 'undefined') playModal.close();
-                if (typeof mapModal !== 'undefined' && typeof mapModal.focusNode === 'function') mapModal.focusNode(argId);
-              }, 2000);
+              if (!result.passed) {
+                const retryBtn = overlay.querySelector('#btn-retry-ar');
+                if (retryBtn) {
+                  retryBtn.addEventListener('click', () => {
+                    overlay.remove();
+                    feedbackDiv.textContent = 'Aligning...';
+                  });
+                }
+              } else {
+                setTimeout(() => {
+                  if (typeof playModal !== 'undefined') playModal.close();
+                  if (typeof mapModal !== 'undefined' && typeof mapModal.focusNode === 'function') mapModal.focusNode(argId);
+                }, 2000);
+              }
             }
 
           } catch (err) {
@@ -377,7 +560,9 @@ document.addEventListener('DOMContentLoaded', () => {
           if (!arriveRes.ok) throw new Error('Arrive check failed');
           const arriveData = await arriveRes.json();
 
+          let geofenceOverride = false;
           if (!arriveData.within_radius) {
+            // TEMP: Dev Override kept for ongoing testing — remove/gate before release.
             const unit = localStorage.getItem('warg_units') || 'metric';
             const dist = unit === 'imperial' ? (arriveData.distance * 3.28084).toFixed(1) + 'ft' : Math.round(arriveData.distance) + 'm';
             const rad = unit === 'imperial' ? (arriveData.radius * 3.28084).toFixed(1) + 'ft' : arriveData.radius + 'm';
@@ -386,6 +571,9 @@ document.addEventListener('DOMContentLoaded', () => {
               playModal.close();
               return;
             }
+            // Sent with the minigame submission so the server's proximity
+            // re-check keeps honouring the override (remove together with it).
+            geofenceOverride = true;
           }
 
           // Restore actual description
@@ -447,7 +635,8 @@ document.addEventListener('DOMContentLoaded', () => {
                   body: JSON.stringify({
                     game_id: minigame.game_id,
                     game_type: minigame.game_type,
-                    submission
+                    submission,
+                    geofence_override: geofenceOverride
                   })
                 });
                 if (!submitRes.ok) throw new Error('Submission failed');
@@ -593,63 +782,81 @@ document.addEventListener('DOMContentLoaded', () => {
 
       function renderCommentNode(comment, isReply = false) {
         const timeString = new Date(comment.created_at).toLocaleString();
-        const avatarSeed = comment.User ? comment.User.username : 'default';
         const username = comment.User ? comment.User.username : 'Unknown User';
-
-        let bodyHtml = comment.body;
-        if (comment.is_spoiler) bodyHtml = `<span class="spoiler-text" title="Click to reveal spoiler">${comment.body}</span>`;
+        const avatarSeed = comment.User ? comment.User.username : 'default';
 
         const div = document.createElement('div');
         div.className = `comment-item ${isReply ? 'is-reply' : ''}`;
-        div.innerHTML = `
-          <div class="comment-item__avatar">
-            <img src="https://api.dicebear.com/9.x/identicon/svg?seed=${avatarSeed}&backgroundColor=1a1816" alt="${username}" />
-          </div>
-          <div class="comment-item__content">
-            <div class="comment-item__header">
-              <strong>${username}</strong>
-              <span class="comment-item__time">${timeString}</span>
-            </div>
-            <p>${bodyHtml}</p>
-            <button class="btn-reply" style="background: none; border: none; color: var(--color-brand); font-size: 12px; cursor: pointer; padding: 0; margin-top: 4px;">Reply</button>
-            ${isAdmin ? `<button class="btn-delete" style="background: none; border: none; color: var(--color-danger); font-size: 12px; cursor: pointer; padding: 0; margin-top: 4px; margin-left: 12px;">Delete</button>` : ''}
-          </div>
-        `;
 
+        const avatarWrap = document.createElement('div');
+        avatarWrap.className = 'comment-item__avatar';
+        const avatarImg = document.createElement('img');
+        avatarImg.src = `https://api.dicebear.com/9.x/identicon/svg?seed=${encodeURIComponent(avatarSeed)}&backgroundColor=1a1816`;
+        avatarImg.alt = username;
+        avatarWrap.appendChild(avatarImg);
+
+        const content = document.createElement('div');
+        content.className = 'comment-item__content';
+
+        const header = document.createElement('div');
+        header.className = 'comment-item__header';
+        const nameEl = document.createElement('strong');
+        nameEl.textContent = username;
+        const timeEl = document.createElement('span');
+        timeEl.className = 'comment-item__time';
+        timeEl.textContent = timeString;
+        header.append(nameEl, timeEl);
+
+        // Comment bodies are user content — render as text, never as HTML.
+        const bodyEl = document.createElement('p');
         if (comment.is_spoiler) {
-          const spoilerSpan = div.querySelector('.spoiler-text');
-          spoilerSpan.addEventListener('click', () => spoilerSpan.classList.add('is-revealed'), { once: true });
+          const spoiler = document.createElement('span');
+          spoiler.className = 'spoiler-text';
+          spoiler.title = 'Click to reveal spoiler';
+          spoiler.textContent = comment.body;
+          spoiler.addEventListener('click', () => spoiler.classList.add('is-revealed'), { once: true });
+          bodyEl.appendChild(spoiler);
+        } else {
+          bodyEl.textContent = comment.body;
         }
+
+        const replyBtn = document.createElement('button');
+        replyBtn.className = 'btn-reply';
+        replyBtn.style.cssText = 'background: none; border: none; color: var(--color-brand); font-size: 12px; cursor: pointer; padding: 0; margin-top: 4px;';
+        replyBtn.textContent = 'Reply';
+
+        content.append(header, bodyEl, replyBtn);
 
         if (isAdmin) {
-          const btnDelete = div.querySelector('.btn-delete');
-          if (btnDelete) {
-            btnDelete.addEventListener('click', async () => {
-              if (window.confirmModal) {
-                window.confirmModal.open({
-                  title: 'Delete Comment',
-                  desc: 'Are you sure you want to delete this comment?',
-                  confirmText: 'Delete',
-                  callback: async () => {
-                    try {
-                      const res = await fetch(`${API_BASE}/api/admin/comments/${comment.comment_id}`, { method: 'DELETE', credentials: 'include' });
-                      if (res.ok) {
-                        loadComments(); // refresh the list
-                      } else {
-                        if (typeof showToast !== 'undefined') showToast('Failed to delete comment.');
-                      }
-                    } catch (e) {
-                      console.error(e);
-                      if (typeof showToast !== 'undefined') showToast('Error deleting comment.');
+          const btnDelete = document.createElement('button');
+          btnDelete.className = 'btn-delete';
+          btnDelete.style.cssText = 'background: none; border: none; color: var(--color-danger); font-size: 12px; cursor: pointer; padding: 0; margin-top: 4px; margin-left: 12px;';
+          btnDelete.textContent = 'Delete';
+          btnDelete.addEventListener('click', async () => {
+            if (window.confirmModal) {
+              window.confirmModal.open({
+                title: 'Delete Comment',
+                desc: 'Are you sure you want to delete this comment?',
+                confirmText: 'Delete',
+                callback: async () => {
+                  try {
+                    const res = await fetch(`${API_BASE}/api/admin/comments/${comment.comment_id}`, { method: 'DELETE', credentials: 'include' });
+                    if (res.ok) {
+                      loadComments(); // refresh the list
+                    } else {
+                      if (typeof showToast !== 'undefined') showToast('Failed to delete comment.');
                     }
+                  } catch (e) {
+                    console.error(e);
+                    if (typeof showToast !== 'undefined') showToast('Error deleting comment.');
                   }
-                });
-              }
-            });
-          }
+                }
+              });
+            }
+          });
+          content.appendChild(btnDelete);
         }
 
-        const replyBtn = div.querySelector('.btn-reply');
         replyBtn.addEventListener('click', () => {
           const currentReply = document.querySelector('.reply-input-wrapper');
           if (currentReply) currentReply.remove();
@@ -661,7 +868,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <input type="text" class="input-field reply-input" placeholder="Write a reply..." />
             <button class="btn btn--primary btn--sm btn-post-reply">Post</button>
           `;
-          div.querySelector('.comment-item__content').appendChild(replyWrapper);
+          content.appendChild(replyWrapper);
 
           const btnPostReply = replyWrapper.querySelector('.btn-post-reply');
           const replyInput = replyWrapper.querySelector('.reply-input');
@@ -672,6 +879,7 @@ document.addEventListener('DOMContentLoaded', () => {
           });
         });
 
+        div.append(avatarWrap, content);
         return div;
       }
 

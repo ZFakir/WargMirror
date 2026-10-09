@@ -15,6 +15,34 @@ processing request pushes it over the limit, causing an OOM kill and a **502 Bad
 
 ---
 
+## Required secret: `AI_KEY`
+
+The container image sets `WARG_ENV=production`, which makes the service **refuse to boot**
+when `AI_KEY` is missing — previously it silently authenticated the Express backend with a
+hard-coded fallback key. Generate a strong random value (e.g. `openssl rand -hex 32`) and set
+the **same value** on both sides:
+
+- **AI engine (Lightsail):** container environment variable `AI_KEY`
+- **Express backend (Render):** environment variable `AI_KEY`
+
+Local development is unaffected: without `WARG_ENV=production`, both sides fall back to the
+shared dev key.
+
+---
+
+## Model weights (`weights/mobile_sam.pt`)
+
+`mobile_sam.pt` (~40 MB) is no longer committed to git — download it before building the
+Docker image or running locally. Without it, the SAM endpoint reports `"sam": false` on
+`/health`:
+
+```bash
+cd ai-engine
+curl -L -o weights/mobile_sam.pt https://github.com/ChaoningZhang/MobileSAM/raw/master/weights/mobile_sam.pt
+```
+
+---
+
 ## Deploying to AWS Lightsail (Container Service)
 
 ### Prerequisites
@@ -36,7 +64,7 @@ aws lightsail create-container-service --service-name warg-ai-engine --power mic
 aws lightsail push-container-image --service-name warg-ai-engine --label warg-ai --image warg-ai-engine:latest --region eu-west-1
 
 # 4. Create a deployment (replace YOUR_IMAGE_TAG with the output from step 3, e.g. :warg-ai-engine.warg-ai.1)
-aws lightsail create-container-service-deployment --service-name warg-ai-engine --containers "{\"warg-ai\":{\"image\":\"YOUR_IMAGE_TAG\",\"ports\":{\"8080\":\"HTTP\"},\"environment\":{\"PORT\":\"8080\"}}}" --public-endpoint "{\"containerName\":\"warg-ai\",\"containerPort\":8080}" --region eu-west-1
+aws lightsail create-container-service-deployment --service-name warg-ai-engine --containers "{\"warg-ai\":{\"image\":\"YOUR_IMAGE_TAG\",\"ports\":{\"8080\":\"HTTP\"},\"environment\":{\"PORT\":\"8080\",\"AI_KEY\":\"YOUR_AI_KEY\"}}}" --public-endpoint "{\"containerName\":\"warg-ai\",\"containerPort\":8080}" --region eu-west-1
 
 # 5. Get the public URL
 aws lightsail get-container-services --service-name warg-ai-engine --region eu-west-1

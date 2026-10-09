@@ -392,6 +392,16 @@ var GameCard = (function () {
       var currentLikes = parseCount(likeCountSpan);
       var currentDislikes = parseCount(dislikeCountSpan);
 
+      // Pre-click state, restored if the server rejects the vote (guests).
+      var likeBtnEl = article.querySelector('[data-action="like"]');
+      var dislikeBtnEl = article.querySelector('[data-action="dislike"]');
+      var prevLikes = currentLikes;
+      var prevDislikes = currentDislikes;
+      var prevLikePressed = likeBtnEl ? likeBtnEl.getAttribute('aria-pressed') === 'true' : false;
+      var prevDislikePressed = dislikeBtnEl ? dislikeBtnEl.getAttribute('aria-pressed') === 'true' : false;
+      var prevStoredVote = null;
+      try { prevStoredVote = (JSON.parse(localStorage.getItem('warg_votes') || '{}'))[argId] || null; } catch { /* ignore */ }
+
       btn.setAttribute('aria-pressed', String(!isPressed));
       btn.classList.toggle('is-active', !isPressed);
 
@@ -447,7 +457,44 @@ var GameCard = (function () {
             if (dislikeCount) dislikeCount.textContent = formatCount(res.dislike_count);
           }
         }).catch(err => {
-          console.error('[GameCard] Failed to vote:', err);
+          if (err && err.status === 401) {
+            // Guests cannot vote — undo the optimistic update and offer login.
+            if (likeBtnEl) {
+              likeBtnEl.setAttribute('aria-pressed', String(prevLikePressed));
+              likeBtnEl.classList.toggle('is-active', prevLikePressed);
+            }
+            if (dislikeBtnEl) {
+              dislikeBtnEl.setAttribute('aria-pressed', String(prevDislikePressed));
+              dislikeBtnEl.classList.toggle('is-active', prevDislikePressed);
+            }
+            if (likeCountSpan) likeCountSpan.textContent = formatCount(prevLikes);
+            if (dislikeCountSpan) dislikeCountSpan.textContent = formatCount(prevDislikes);
+            try {
+              var storedVotes = JSON.parse(localStorage.getItem('warg_votes') || '{}');
+              if (prevStoredVote) storedVotes[argId] = prevStoredVote;
+              else delete storedVotes[argId];
+              localStorage.setItem('warg_votes', JSON.stringify(storedVotes));
+            } catch { /* ignore */ }
+            var offerLogin = function () {
+              if (!window.confirmModal) return;
+              window.confirmModal.open({
+                title: 'Login required',
+                desc: 'Log in to like or dislike games.',
+                confirmText: 'Log in',
+                callback: function () { window.location.href = 'login.html'; }
+              });
+            };
+            if (window.confirmModal) {
+              offerLogin();
+            } else {
+              var modalScript = document.createElement('script');
+              modalScript.src = 'scripts/components/ConfirmModal.js';
+              modalScript.onload = offerLogin;
+              document.head.appendChild(modalScript);
+            }
+          } else {
+            console.error('[GameCard] Failed to vote:', err);
+          }
         });
       }
     });

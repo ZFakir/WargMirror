@@ -136,8 +136,12 @@
       
       <!-- Analytics Header -->
       <section class="analytics-header">
-        <h1 class="analytics-header__title" id="arg-title">Operation: Midnight Sun</h1>
-        <p class="analytics-header__desc" id="arg-desc">A fast-paced urban scavenger hunt across the downtown district, challenging players to uncover hidden corporate secrets.</p>
+        <h1 class="analytics-header__title" id="arg-title">Loading…</h1>
+        <p class="analytics-header__desc" id="arg-desc">Loading your WARG analytics…</p>
+        <div id="analytics-arg-select-container" style="display:none;margin-top:var(--space-3);">
+          <label for="analytics-arg-select" style="font-size:var(--font-size-caption);color:var(--color-text-muted);margin-right:8px;">WARG</label>
+          <select id="analytics-arg-select" style="max-width:320px;padding:6px 10px;border-radius:var(--radius-sm);background:var(--color-surface);color:var(--color-text);border:1px solid var(--color-border);"></select>
+        </div>
       </section>
 
       <!-- Dashboard Grid -->
@@ -162,8 +166,8 @@
               <span class="stat-item__label">Completed</span>
             </div>
             <div class="stat-item">
-              <span class="stat-item__value" id="stat-avg-progress">2.4</span>
-              <span class="stat-item__label">Avg Waypoints/Day</span>
+              <span class="stat-item__value" id="stat-attempts">0</span>
+              <span class="stat-item__label">Total Attempts</span>
             </div>
           </div>
 
@@ -186,7 +190,7 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="title-icon"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>
               Flags & Reports
             </h2>
-            <span class="badge badge--warning">3 New</span>
+            <span class="badge badge--warning" id="flag-badge" style="display:none;">0 New</span>
           </div>
           
           <div class="flags-list" id="flags-list">
@@ -194,7 +198,6 @@
           </div>
 
           <div class="flags-card__footer">
-            <button class="btn btn--outline btn--small" id="btn-load-more-flags">Load More</button>
             <button class="btn btn--ghost btn--small" id="btn-view-resolved">View Resolved Flags</button>
           </div>
         </div>
@@ -251,6 +254,8 @@
 </div>
 
 <script src="scripts/config.js"></script>
+<script src="scripts/api.js"></script>
+<script src="scripts/components/ConfirmModal.js"></script>
   <script src="scripts/home.js"></script> <!-- Includes navigation drawer logic -->
 <script src="scripts/analytics.js"></script>
 

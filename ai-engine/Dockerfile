@@ -32,8 +32,10 @@ COPY vision/ ./vision/
 COPY weights/ ./weights/
 
 # ── Expose port & launch ────────────────────────────────────────
-# Cloud Run injects $PORT; default to 8080 for convention
-ENV PORT=8080
+# Cloud Run injects $PORT; default to 8080 for convention.
+# WARG_ENV=production makes the app refuse to boot without a real AI_KEY.
+ENV WARG_ENV=production \
+    PORT=8080
 EXPOSE ${PORT}
 
 CMD uvicorn main:app --host 0.0.0.0 --port ${PORT}

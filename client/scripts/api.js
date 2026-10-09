@@ -143,6 +143,19 @@ var api = (function () {
   }
 
   /**
+   * Returns the currently authenticated user, or redirects guests to the
+   * login page. For pages that have no meaningful guest view (editor,
+   * analytics, admin).
+   */
+  async function requireAuthPage() {
+    const user = await getCurrentUser();
+    if (!user) {
+      window.location.href = 'login.html';
+    }
+    return user;
+  }
+
+  /**
    * Returns all published ARGs normalised for GameCard.
    * Public endpoint — works for guests.
    */
@@ -229,8 +242,8 @@ var api = (function () {
   }
 
   /* ── Game Actions ───────────────────────────────────────── */
-  async function voteArg(argId, voteType, userId = 1) { // Defaulting user_id to 1 until auth is hooked up
-    return _post('/api/args/' + argId + '/vote', { vote: voteType, user_id: userId });
+  async function voteArg(argId, voteType) {
+    return _post('/api/args/' + argId + '/vote', { vote: voteType });
   }
 
   async function flagArg(argId, reason, description, reporterId = 1) { // Defaulting user_id to 1 until auth is hooked up
@@ -242,8 +255,28 @@ var api = (function () {
   }
 
   async function getMinigameReference(gameId) {
-    const res = await fetch(API_BASE + '/api/minigames/' + gameId + '/reference/image', { credentials: 'include' });
-    if (!res.ok) throw new Error('Failed to fetch reference');
+    const url = API_BASE + '/api/minigames/' + gameId + '/reference/image';
+    const req = new Request(url, { credentials: 'include' });
+    
+    let res;
+    try {
+      res = await fetch(req);
+      if (!res.ok) throw new Error('Failed to fetch reference');
+      
+      // Explicitly cache it for offline use (protects against SW bypass)
+      if ('caches' in window) {
+         const resClone = res.clone();
+         caches.open('warg-dynamic-cache').then(cache => cache.put(req, resClone)).catch(console.error);
+      }
+    } catch (err) {
+      // If we are offline or fetch fails, manually fallback to cache!
+      if ('caches' in window) {
+         res = await caches.match(req, { ignoreSearch: true, ignoreVary: true });
+         if (!res) throw err;
+      } else {
+         throw err;
+      }
+    }
 
     const contentType = res.headers.get('content-type');
     if (contentType && contentType.includes('application/json')) {
@@ -253,19 +286,44 @@ var api = (function () {
   }
 
   async function submitMinigameAttempt(gameId, imageBlob) {
+    const apiUrl = API_BASE + '/api/minigames/' + gameId + '/attempt';
+
+    // Helper to save offline
+    const saveOffline = async () => {
+      if (window.offlineDB) {
+        await window.offlineDB.addPendingAttempt({ gameId, imageBlob, apiUrl });
+        if ('serviceWorker' in navigator && 'SyncManager' in window) {
+          const registration = await navigator.serviceWorker.ready;
+          await registration.sync.register('sync-attempts').catch(console.error);
+        }
+      }
+      return { offline: true, message: "Attempt saved offline. It will be synced when you reconnect." };
+    };
+
+    if (!navigator.onLine) {
+      return saveOffline();
+    }
+
     const formData = new FormData();
     formData.append('image', imageBlob, 'attempt.jpg');
 
-    const res = await fetch(API_BASE + '/api/minigames/' + gameId + '/attempt', {
-      method: 'POST',
-      body: formData,
-      credentials: 'include'
-    });
-    if (!res.ok) {
-      const errText = await res.text();
-      throw new Error(errText || 'Failed to submit attempt');
+    try {
+      const res = await fetch(apiUrl, {
+        method: 'POST',
+        body: formData,
+        credentials: 'include'
+      });
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(errText || 'Failed to submit attempt');
+      }
+      return res.json();
+    } catch (err) {
+      if (!navigator.onLine || err.name === 'TypeError' || err.message === 'Failed to fetch') {
+        return saveOffline();
+      }
+      throw err;
     }
-    return res.json();
   }
 
   async function uploadMinigameReference(gameId, imageBlob) {
@@ -288,6 +346,36 @@ var api = (function () {
     return _post('/api/feedback', feedbackData);
   }
 
+  /**
+   * Clears a specific game and the game catalogue from the local cache.
+   * Useful when a developer updates a game and needs to bust the Stale-While-Revalidate cache.
+   */
+  async function clearGameCache(gameId) {
+    if (!('caches' in window)) return;
+    try {
+      const cacheNames = await caches.keys();
+      for (const name of cacheNames) {
+        const cache = await caches.open(name);
+        
+        // Clear specific ARG
+        if (gameId) {
+          const gameUrl = new URL(API_BASE + '/api/args/' + gameId);
+          await cache.delete(gameUrl.href, { ignoreSearch: true });
+        }
+        
+        // Clear lists
+        const argsUrl = new URL(API_BASE + '/api/args');
+        await cache.delete(argsUrl.href, { ignoreSearch: true });
+        
+        const minigamesUrl = new URL(API_BASE + '/api/minigames');
+        await cache.delete(minigamesUrl.href, { ignoreSearch: true });
+      }
+      console.log('Cleared game cache for gameId:', gameId);
+    } catch (e) {
+      console.warn('Failed to clear cache', e);
+    }
+  }
+
   async function logout() {
     // Fetch directly because _get expects JSON but /auth/logout redirects
     return fetch(API_BASE + '/auth/logout', { credentials: 'include' });
@@ -304,6 +392,7 @@ var api = (function () {
   /* ── Public API ─────────────────────────────────────────── */
   return {
     getCurrentUser,
+    requireAuthPage,
     getArgs,
     getAllBadges,
     getArgById,
@@ -324,6 +413,7 @@ var api = (function () {
     submitMinigameAttempt,
     uploadMinigameReference,
     submitFeedback,
+    clearGameCache,
     logout,
     updateAccount,
     deleteAccount,

@@ -11,12 +11,17 @@ SET FOREIGN_KEY_CHECKS = 0;
 -- §1  USERS & AUTHENTICATION
 -- ============================================================
 
--- Core user table. OAuth provider linkage is in user_auth_providers.
+-- Core user table. Google OAuth accounts store their provider id in
+-- google_uid; local (email + password) accounts use password_hash instead.
+-- auth_provider records which flow the account was created with.
 CREATE TABLE IF NOT EXISTS users (
     user_id           INT UNSIGNED     NOT NULL AUTO_INCREMENT,
-    google_uid        VARCHAR(256)     NOT NULL,
+    google_uid        VARCHAR(256)         NULL DEFAULT NULL,
+    auth_provider     ENUM('local','google')
+                                       NOT NULL DEFAULT 'google',
     username          VARCHAR(64)      NOT NULL,
     email             VARCHAR(256)     NOT NULL,
+    password_hash     VARCHAR(255)        NULL DEFAULT NULL, -- local accounts only
     avatar            MEDIUMBLOB           NULL DEFAULT NULL,
     role              ENUM('player','creator','admin')
                                        NOT NULL DEFAULT 'player',
