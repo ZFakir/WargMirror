@@ -381,8 +381,24 @@ export class MapModal {
       maxBoundsViscosity: 1.0,
     });
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors',
+    const mapStyle = localStorage.getItem('warg_map_style') || 'dark';
+    
+    let tileUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+    let attribution = '&copy; OpenStreetMap contributors';
+
+    if (mapStyle === 'satellite') {
+      tileUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+      attribution = 'Tiles &copy; Esri';
+    }
+
+    if (mapStyle === 'light' || mapStyle === 'satellite') {
+      this.map.getContainer().classList.add('map-light-mode');
+    } else {
+      this.map.getContainer().classList.remove('map-light-mode');
+    }
+
+    L.tileLayer(tileUrl, {
+      attribution: attribution,
       subdomains: 'abc',
       maxZoom: cfg.maxZoom,
     }).addTo(this.map);
@@ -1069,12 +1085,25 @@ export class MapModal {
     const minigames = node.games || node.minigames || [];
     const isPD = minigames.some(g => g.type === 'point_domination' || g.game_type === 'point_domination');
     const pdClass = isPD ? ' pd-node' : '';
-    const cls = (node.status === 'completed' ? 'completed' : (node.status === 'current' ? 'current' : 'locked')) + pdClass;
-    let glyph = node.status === 'completed' ? '✓' : (node.status === 'locked' ? '•' : (this.BADGE_LABEL[node.type] ? this.BADGE_LABEL[node.type][0] : '•'));
-    if (isPD && node.status !== 'completed') {
-      glyph = '☠️'; // Skull and crossbones
-    }
-    const ping = node.status === 'current' ? '<span class="ping"></span><span class="ping delay"></span>' : '';
+
+    const isCurrent = node.status === 'current' || node.status === 'unlocked';
+    const isFailed = node.status === 'failed';
+    const isCompleted = node.status === 'completed';
+    
+    let cls = 'locked';
+    if (isCompleted) cls = 'completed';
+    else if (isFailed) cls = 'failed';
+    else if (isCurrent) cls = 'current';
+
+    cls += pdClass;
+
+    let glyph = '•';
+    if (isPD && !isCompleted) glyph = '☠️';
+    else if (isCompleted) glyph = '✓';
+    else if (isFailed) glyph = '✕';
+    else if (isCurrent) glyph = (this.BADGE_LABEL[node.type] ? this.BADGE_LABEL[node.type][0] : '?');
+
+    const ping = isCurrent ? '<span class="ping"></span><span class="ping delay"></span>' : '';
     return L.divIcon({
       className: '',
       html: `<div class="node-marker ${cls}">${ping}<div class="node-marker__core">${glyph}</div></div>`,
@@ -1146,6 +1175,14 @@ export class MapModal {
 
       // Update list
       this.renderList();
+    }
+  }
+
+  focusNode(nodeId) {
+    const node = this.NODES.find(n => n.id === nodeId);
+    if (node && this.map && this.markerLookup[nodeId]) {
+      this.map.flyTo([node.lat, node.lng], MapModal.MAP_CONFIG.startZoom, { duration: 0.6 });
+      this.markerLookup[nodeId].openPopup();
     }
   }
 

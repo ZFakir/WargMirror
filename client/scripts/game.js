@@ -174,6 +174,7 @@ document.addEventListener('DOMContentLoaded', () => {
           let progressPercent = 0;
           if (status === 'unlocked') { progLabel = 'Available'; progressPercent = 10; }
           if (status === 'completed') { progLabel = 'Completed'; progressPercent = 100; }
+          if (status === 'failed') { progLabel = 'Failed'; progressPercent = 100; }
 
           nodes.push({
             id: wp.waypoint_id.toString(),
@@ -258,6 +259,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Start watching player location
       if (navigator.geolocation) {
+        const gpsMode = localStorage.getItem('warg_gps_mode') || 'high';
+        const enableHighAccuracy = gpsMode === 'high';
+        const maximumAge = gpsMode === 'saver' ? 30000 : 10000;
+        
         navigator.geolocation.watchPosition((position) => {
           const { latitude, longitude, accuracy } = position.coords;
           window.lastPlayerLocation = { latitude, longitude, accuracy };
@@ -265,7 +270,7 @@ document.addEventListener('DOMContentLoaded', () => {
           mapModal.updatePlayerLocation(latitude, longitude, accuracy);
         }, (error) => {
           console.warn("Player location not available:", error);
-        }, { enableHighAccuracy: true, maximumAge: 10000 });
+        }, { enableHighAccuracy, maximumAge });
       }
     } catch (err) {
       console.error('Failed to load ARG data for map:', err);
@@ -358,7 +363,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Launch the game's actual Play Modal using the node's data
     playModal.open(node.name, node.desc);
 
-    const cvGameTypes = ['shape_match', 'colour_match', 'texture_match', 'sift_match', 'symmetry_finder'];
+    const cvGameTypes = ['shape_match', 'colour_match', 'texture_match', 'sift_match', 'symmetry_finder', 'plaque_scan'];
 
     // Check if the node has a CV minigame
     let cvMinigame = null;
@@ -412,25 +417,46 @@ document.addEventListener('DOMContentLoaded', () => {
                 <h2>Saved Offline</h2>
                 <p>We'll analyze your attempt when you reconnect.</p>
                 <p>${result.message || ''}</p>
-                <button id="camera-overlay-close-btn-offline" class="btn-primary" style="margin-top: 15px;">Close</button>
+                <button id="camera-overlay-close-btn" class="btn-primary" style="margin-top: 15px;">Close</button>
               `;
             } else {
               overlay.className = `camera-result-overlay ${result.passed ? 'pass' : 'fail'}`;
-              overlay.innerHTML = `
-                <h2>${result.passed ? 'Match Found!' : 'Not Quite...'}</h2>
-                <p>Score: ${Math.round(result.confidence_score * 100)}%</p>
-                <p>+${result.points_awarded} Points</p>
-                <p>${result.message || ''}</p>
-                <button id="camera-overlay-close-btn-online" class="btn-primary" style="margin-top: 15px;">Close</button>
-              `;
+              if (result.passed) {
+                overlay.innerHTML = `
+                  <h2>Match Found!</h2>
+                  <p>Score: ${Math.round(result.confidence_score * 100)}%</p>
+                  <p>+${result.points_awarded} Points</p>
+                  <p>${result.message || ''}</p>
+                  <button id="camera-overlay-close-btn" class="btn-primary" style="margin-top: 15px;">Close</button>
+                `;
+              } else {
+                overlay.innerHTML = `
+                  <h2>Not Quite...</h2>
+                  <p>Score: ${Math.round(result.confidence_score * 100)}%</p>
+                  <p>${result.message || ''}</p>
+                  <button id="btn-retry-ar" class="btn btn--outline" style="margin-top: 1rem; border-color: white; color: white;">Try Again</button>
+                  <button id="camera-overlay-close-btn" class="btn-primary" style="margin-top: 1rem; display: block; margin-left: auto; margin-right: auto;">Close</button>
+                `;
+              }
             }
             container.appendChild(overlay);
 
-            const closeBtn = document.getElementById('camera-overlay-close-btn-offline') || document.getElementById('camera-overlay-close-btn-online');
+            if (!result.offline && !result.passed) {
+              const retryBtn = overlay.querySelector('#btn-retry-ar');
+              if (retryBtn) {
+                retryBtn.addEventListener('click', () => {
+                  overlay.remove();
+                  feedbackDiv.textContent = 'Aligning...';
+                });
+              }
+            }
+            
+            const closeBtn = document.getElementById('camera-overlay-close-btn');
             if (closeBtn) {
               closeBtn.addEventListener('click', () => {
                 overlay.remove();
-                playModal.close();
+                if (typeof playModal !== 'undefined') playModal.close();
+                if (result.passed && typeof mapModal !== 'undefined' && typeof mapModal.focusNode === 'function') mapModal.focusNode(argId);
               });
             }
 
@@ -505,7 +531,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const proceedWithGame = () => {
             // Restore actual description
             playModal.open(node.name, node.desc);
-
+            
             // Find minigame config
             const wpData = gameState.waypoints.find(w => w.waypoint_id.toString() === node.id);
             const minigames = wpData.Minigames && wpData.Minigames.length > 0 ? wpData.Minigames : [{ game_type: 'gps_proximity' }];
@@ -579,7 +605,7 @@ document.addEventListener('DOMContentLoaded', () => {
                   const result = await submitRes.json();
 
                   const isLastGame = index === minigames.length - 1;
-                  playModal.showFeedback(result.outcome, isLastGame);
+                  playModal.showFeedback(result.outcome, isLastGame, result.can_retry);
 
                   if (result.can_retry && result.outcome === 'fail') {
                     setTimeout(() => {
@@ -597,12 +623,16 @@ document.addEventListener('DOMContentLoaded', () => {
                         renderMinigame(index + 1);
                       }, 2000);
                     } else {
-                      mapModal.updateNodeStatus(node.id, 'completed');
+                      const nodeStatus = result.outcome === 'fail' ? 'failed' : 'completed';
+                      mapModal.updateNodeStatus(node.id, nodeStatus);
                       if (result.session_completed) {
                         setTimeout(() => {
                           mapModal.showCompletedOverlay();
                         }, 1000); // Wait a second for popup to close / feedback to finish
                       }
+                      setTimeout(() => {
+                        playModal.close();
+                      }, 2000);
                     }
                   }
                 } catch (err) {
@@ -643,6 +673,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (window.lastPlayerLocation) {
         processLocation(window.lastPlayerLocation.latitude, window.lastPlayerLocation.longitude, window.lastPlayerLocation.accuracy);
       } else {
+        const gpsMode = localStorage.getItem('warg_gps_mode') || 'high';
         navigator.geolocation.getCurrentPosition((position) => {
           const { latitude, longitude, accuracy } = position.coords;
           window.lastPlayerLocation = { latitude, longitude, accuracy };
@@ -652,9 +683,9 @@ document.addEventListener('DOMContentLoaded', () => {
           console.error(error);
           playModal.close();
         }, {
-          enableHighAccuracy: true,
+          enableHighAccuracy: gpsMode === 'high',
           timeout: 10000,
-          maximumAge: 0
+          maximumAge: gpsMode === 'saver' ? 30000 : 0
         });
       }
     }

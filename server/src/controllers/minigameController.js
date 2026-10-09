@@ -1,16 +1,27 @@
-const Minigame = require('../models/Minigame');
+const { Minigame, Waypoint, Arg, MinigameAttempt, WaypointProgress, WaypointEdge, GameSession } = require('../models');
+const { evaluateConditions } = require('./gameController');
 const path = require('path');
 const fs = require('fs');
 
-const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://127.0.0.1:8000';
+const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
+const AI_KEY = process.env.AI_KEY || 'dev-secret-key';
 
 exports.uploadReference = async (req, res) => {
   try {
     const { gameId } = req.params;
     if (!req.file) return res.status(400).json({ error: 'No image uploaded' });
 
-    const minigame = await Minigame.findByPk(gameId);
+    const minigame = await Minigame.findByPk(gameId, {
+      include: [{
+        model: Waypoint,
+        include: [{ model: Arg }]
+      }]
+    });
     if (!minigame) return res.status(404).json({ error: 'Minigame not found' });
+    
+    if (!minigame.Waypoint || !minigame.Waypoint.Arg || minigame.Waypoint.Arg.author_id !== req.user.user_id) {
+      return res.status(403).json({ error: 'Unauthorized to modify this ARG' });
+    }
 
     // Update config JSON with the URL
     const config = minigame.config_json || {};
@@ -55,7 +66,9 @@ exports.submitAttempt = async (req, res) => {
     const { gameId } = req.params;
     if (!req.file) return res.status(400).json({ error: 'No attempt image uploaded' });
 
-    const minigame = await Minigame.findByPk(gameId);
+    const minigame = await Minigame.findByPk(gameId, {
+      include: [{ model: Waypoint }]
+    });
     if (!minigame) return res.status(404).json({ error: 'Minigame not found' });
 
     const attemptImage = req.file; // From memoryStorage
@@ -85,6 +98,10 @@ exports.submitAttempt = async (req, res) => {
         aiEndpoint = '/api/v1/symmetry';
         referenceKey = null; // Doesn't need a reference image
         break;
+      case 'plaque_scan':
+        aiEndpoint = '/api/v1/ocr-match';
+        referenceKey = 'reference_image';
+        break;
       default:
         return res.status(400).json({ error: 'Game type does not support AI evaluation via this endpoint' });
     }
@@ -106,6 +123,7 @@ exports.submitAttempt = async (req, res) => {
 
     const response = await fetch(`${AI_SERVICE_URL}${aiEndpoint}`, {
       method: 'POST',
+      headers: { 'X-API-Key': AI_KEY },
       body: formData
     });
 
@@ -116,6 +134,83 @@ exports.submitAttempt = async (req, res) => {
     }
 
     const data = await response.json();
+    
+    // Process progression
+    const user_id = req.user.user_id;
+    const waypoint_id = minigame.waypoint_id;
+    const arg_id = minigame.Waypoint ? minigame.Waypoint.arg_id : null;
+    
+    const transaction = await Minigame.sequelize.transaction();
+    try {
+      const outcome = data.passed ? 'pass' : 'fail';
+      
+      await MinigameAttempt.upsert({
+        user_id,
+        game_id: gameId,
+        outcome,
+        submission_json: `AI Score: ${data.confidence_score}`,
+        score: data.passed ? 1.0 : 0.0,
+        attempted_at: new Date()
+      }, { transaction });
+
+      if (outcome === 'fail') {
+        const config = minigame.config_json || {};
+        if (config.allow_multiple_attempts) {
+          await transaction.commit();
+          return res.json({ ...data, can_retry: true });
+        } else {
+          await WaypointProgress.upsert({
+            user_id,
+            waypoint_id,
+            status: 'failed',
+            completed_at: new Date()
+          }, { transaction });
+        }
+      } else {
+        // If passed, unlock waypoint
+        await WaypointProgress.upsert({
+          user_id,
+          waypoint_id,
+          status: 'completed',
+          completed_at: new Date()
+        }, { transaction });
+      }
+
+      const edges = await WaypointEdge.findAll({ where: { from_waypoint_id: waypoint_id }, transaction });
+      for (const edge of edges) {
+        const canUnlock = await evaluateConditions(user_id, edge.conditions_json, transaction);
+        if (canUnlock) {
+          await WaypointProgress.upsert({
+            user_id,
+            waypoint_id: edge.to_waypoint_id,
+            status: 'unlocked',
+            unlocked_at: new Date()
+          }, { transaction });
+        }
+      }
+
+      // Check if session completed
+      if (arg_id) {
+        const activeProgress = await WaypointProgress.findAll({ where: { user_id }, transaction });
+        const argWaypoints = await Waypoint.findAll({ where: { arg_id }, attributes: ['waypoint_id'], transaction });
+        const argWpIds = argWaypoints.map(w => w.waypoint_id);
+        const sessionProgress = activeProgress.filter(p => argWpIds.includes(p.waypoint_id));
+        const hasUnlocked = sessionProgress.some(p => p.status === 'unlocked');
+        
+        if (!hasUnlocked && sessionProgress.some(p => p.status === 'completed' || p.status === 'failed')) {
+          await GameSession.update({ status: 'completed', completed_at: new Date() }, {
+            where: { user_id, arg_id },
+            transaction
+          });
+        }
+      }
+
+      await transaction.commit();
+    } catch (dbErr) {
+      await transaction.rollback();
+      console.error('Database error during progression:', dbErr);
+    }
+
     return res.json(data);
   } catch (err) {
     console.error('Error in submitAttempt:', err);
