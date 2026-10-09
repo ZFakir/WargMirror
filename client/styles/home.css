@@ -1544,6 +1544,19 @@ body.admin-mode .gc-action--admin-delete {
     background: var(--color-brand-subtle);
     color: var(--color-text-primary);
   }
+  .btn-danger {
+    padding: 10px 20px;
+    border-radius: var(--radius-btn);
+    font-weight: var(--font-weight-semibold);
+    font-size: var(--font-size-body-sm);
+    transition: all var(--duration-fast);
+    background: rgba(255, 77, 79, 0.1);
+    color: #ff4d4f;
+    border: 1px solid rgba(255, 77, 79, 0.3);
+  }
+  .btn-danger:hover {
+    background: rgba(255, 77, 79, 0.2);
+  }
 
   /* Toast Notification */
   .toast {

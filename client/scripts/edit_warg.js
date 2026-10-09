@@ -377,23 +377,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <div class="sub-card" style="position: relative; flex-direction: column; align-items: stretch;" tabindex="0">
                   <div style="display: flex; justify-content: space-between; align-items: center;">
                     <span class="sub-card__text">${game.gamemode}</span>
-                    <button class="icon-btn sub-card__action btn-game-options" data-index="${index}" aria-label="More options">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
-                    </button>
                   </div>
                   <label style="display: inline-block; font-size: 11px; margin-top: 4px; cursor: pointer; color: var(--color-text-muted);">
                     <input type="checkbox" class="unlimited-attempts-checkbox" data-index="${index}" ${unlimitedChecked}>
                     Unlimited attempts
                   </label>
                   ${isCVGame ? `
-                    <button class="btn btn--outline btn-set-reference" data-index="${index}" style="width: 100%; margin-top: 8px;">
+                    <button class="btn-secondary btn-set-reference" data-index="${index}" style="width: 100%; margin-top: 8px;">
                       Set Reference Photo
                     </button>
                     ${game.reference_url ? `<img src="${game.reference_url}" style="width: 100%; max-height: 120px; object-fit: cover; border-radius: 4px; margin-top: 8px; border: 1px solid var(--border);" />` : ''}
                   ` : ''}
-                  <div class="sub-card__dropdown game-options-dropdown" id="game-dropdown-${index}">
-                    <button class="dropdown-item btn-edit-game" data-index="${index}">Edit Game</button>
-                    <button class="dropdown-item dropdown-item--danger btn-delete-game" data-index="${index}">Delete Game</button>
+                  <div style="display: flex; gap: 8px; margin-top: 12px;">
+                    <button class="btn-secondary btn-edit-game" data-index="${index}" style="flex: 1; padding: 6px; font-size: 12px;">Edit</button>
+                    <button class="btn-danger btn-delete-game" data-index="${index}" style="flex: 1; padding: 6px; font-size: 12px;">Delete</button>
                   </div>
                 </div>
               `;
@@ -456,14 +453,7 @@ document.addEventListener('DOMContentLoaded', async () => {
               });
             });
 
-            // Close dropdown when clicking outside
-            document.addEventListener('click', (e) => {
-              gamesList.querySelectorAll('.game-options-dropdown.show').forEach(d => {
-                if (!d.contains(e.target) && !e.target.closest('.btn-game-options')) {
-                  d.classList.remove('show');
-                }
-              });
-            });
+
             // Unlimited attempts checkbox logic
             gamesList.querySelectorAll('.unlimited-attempts-checkbox').forEach(cb => {
               cb.addEventListener('change', (e) => {
@@ -475,32 +465,13 @@ document.addEventListener('DOMContentLoaded', async () => {
               });
             });
 
-            // Wire up dropdown logic
-            const optionBtns = gamesList.querySelectorAll('.btn-game-options');
-            optionBtns.forEach(btn => {
-              btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const index = btn.getAttribute('data-index');
-                const dropdown = document.getElementById(`game-dropdown-${index}`);
-                
-                // close others
-                gamesList.querySelectorAll('.game-options-dropdown.show').forEach(d => {
-                  if (d !== dropdown) {
-                    d.classList.remove('show');
-                  }
-                });
-                if (dropdown) dropdown.classList.toggle('show');
-              });
-            });
+
 
               const editBtns = gamesList.querySelectorAll('.btn-edit-game');
               editBtns.forEach(btn => {
                 btn.addEventListener('click', (e) => {
                   e.stopPropagation();
                   const index = btn.getAttribute('data-index');
-                  const dropdown = document.getElementById(`game-dropdown-${index}`);
-                  dropdown.classList.remove('show');
-
                   const game = node.games[index];
                   if (game.gamemode === 'QnA / MCQ') {
                     openQnaModal(game.minigame_config, index);
@@ -519,8 +490,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 btn.addEventListener('click', (e) => {
                   e.stopPropagation();
                   const index = btn.getAttribute('data-index');
-                  const dropdown = document.getElementById(`game-dropdown-${index}`);
-                  dropdown.classList.remove('show');
 
                   openConfirmModal('Delete Game', 'Are you sure you want to remove this game from the waypoint?', () => {
                     node.games.splice(index, 1);
