@@ -315,6 +315,10 @@
   filter: invert(1) hue-rotate(190deg) brightness(0.92) contrast(0.88) saturate(0.55);
 }
 
+.map-modal .map-light-mode .leaflet-tile-pane {
+  filter: none;
+}
+
 /* Keep our own markers/popups/HUD unaffected by the tile filter */
 .map-modal .leaflet-marker-pane,
 .map-modal .leaflet-popup-pane {
@@ -500,6 +504,12 @@
   border-color: var(--color-secondary);
   color: var(--color-secondary);
   box-shadow: 0 0 14px var(--color-secondary-glow);
+}
+
+.map-modal .node-marker.failed .node-marker__core {
+  border-color: var(--color-danger, #ef4444);
+  color: var(--color-danger, #ef4444);
+  box-shadow: 0 0 14px rgba(239, 68, 68, 0.4);
 }
 
 .map-modal .node-marker.current .node-marker__core {

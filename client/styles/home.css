@@ -147,6 +147,13 @@
     flex-shrink: 0;
   }
 
+  .topbar__logo-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    mix-blend-mode: multiply;
+  }
+
   .topbar__wordmark {
     font-size: var(--font-size-h3);
     font-weight: var(--font-weight-bold);
@@ -264,6 +271,74 @@
 
     &:hover { border-color: var(--color-accent); }
     img { inline-size: 100%; block-size: 100%; object-fit: cover; }
+  }
+
+  .profile-dropdown {
+    position: absolute;
+    inset-inline-end: 0;
+    inset-block-start: calc(100% + var(--space-2));
+    background: var(--color-bg-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    min-inline-size: 200px;
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+    padding: var(--space-1) 0;
+    opacity: 0;
+    transform: translateY(-10px);
+    pointer-events: none;
+    transition: opacity var(--duration-fast) var(--ease-out), transform var(--duration-fast) var(--ease-out);
+  }
+
+  .profile-dropdown.is-open {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+
+  .profile-dropdown__item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    color: var(--color-text-primary);
+    font-size: var(--font-size-body-sm);
+    text-decoration: none;
+    background: transparent;
+    border: none;
+    width: 100%;
+    text-align: left;
+    transition: background var(--duration-fast);
+  }
+
+  .profile-dropdown__item:hover {
+    background: var(--color-brand-subtle);
+  }
+
+  .profile-dropdown__item svg {
+    inline-size: 18px;
+    block-size: 18px;
+    color: var(--color-text-secondary);
+  }
+
+  .profile-dropdown__item--danger {
+    color: #ff4d4f;
+  }
+  
+  .profile-dropdown__item--danger svg {
+    color: #ff4d4f;
+  }
+
+  .profile-dropdown__item--danger:hover {
+    background: rgba(255, 77, 79, 0.1);
+  }
+
+  .profile-dropdown__divider {
+    block-size: 1px;
+    background: var(--color-border);
+    margin: var(--space-1) 0;
   }
 }
 

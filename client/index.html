@@ -5,6 +5,18 @@
     <meta http-equiv="refresh" content="0; url=login.html">
     <title>Redirecting...</title>
   <script src="scripts/config.js"></script>
+  <script>
+    (function() {
+      var savedTheme = localStorage.getItem("warg_theme");
+      if (savedTheme === "light") {
+        document.documentElement.setAttribute("data-theme", "light");
+      }
+      var savedContrast = localStorage.getItem("warg_contrast");
+      if (savedContrast === "high") {
+        document.documentElement.setAttribute("data-contrast", "high");
+      }
+    })();
+  </script>
 </head>
 <body>
     <p>If you are not redirected automatically, <a href="login.html">click here to log in</a>.</p>

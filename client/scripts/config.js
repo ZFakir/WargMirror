@@ -27,3 +27,35 @@ if ('serviceWorker' in navigator) {
     });
   });
 }
+
+// Global Search UI Handler
+document.addEventListener('DOMContentLoaded', () => {
+  const searchInput = document.getElementById('search-input');
+  if (searchInput) {
+    searchInput.addEventListener('focus', () => {
+      searchInput.closest('.topbar__search')?.style.setProperty('max-inline-size', '560px');
+    });
+    searchInput.addEventListener('blur', () => {
+      searchInput.closest('.topbar__search')?.style.removeProperty('max-inline-size');
+    });
+    searchInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const query = searchInput.value.trim();
+        if (query) {
+          window.location.href = `catalogue.html?search=${encodeURIComponent(query)}`;
+        }
+      }
+    });
+  }
+});
+
+/* '/' shortcut to focus search */
+document.addEventListener('keydown', e => {
+  const tag = document.activeElement?.tagName?.toLowerCase();
+  if (e.key === '/' && tag !== 'input' && tag !== 'textarea') {
+    e.preventDefault();
+    const searchInput = document.getElementById('search-input');
+    searchInput?.focus();
+  }
+});
