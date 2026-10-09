@@ -33,7 +33,7 @@ exports.uploadReference = async (req, res) => {
 
     // Update config JSON with the URL
     const config = minigame.config_json || {};
-    config.reference_image_url = `/api/minigames/${gameId}/reference/image`;
+    config.reference_image_url = `/api/minigames/${gameId}/reference/image?ts=${Date.now()}`;
     
     // Convert buffer to base64 and store it
     config.reference_image_base64 = req.file.buffer.toString('base64');
