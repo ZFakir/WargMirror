@@ -19,7 +19,7 @@ exports.uploadReference = async (req, res) => {
     });
     if (!minigame) return res.status(404).json({ error: 'Minigame not found' });
     
-    if (!minigame.Waypoint || !minigame.Waypoint.Arg || minigame.Waypoint.Arg.author_id !== req.user.user_id) {
+    if (!minigame.Waypoint || !minigame.Waypoint.Arg || minigame.Waypoint.Arg.creator_id !== req.user.user_id) {
       return res.status(403).json({ error: 'Unauthorized to modify this ARG' });
     }
 
