@@ -379,8 +379,24 @@ export class MapModal {
       maxBoundsViscosity: 1.0,
     });
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors',
+    const mapStyle = localStorage.getItem('warg_map_style') || 'dark';
+    
+    let tileUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+    let attribution = '&copy; OpenStreetMap contributors';
+
+    if (mapStyle === 'satellite') {
+      tileUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+      attribution = 'Tiles &copy; Esri';
+    }
+
+    if (mapStyle === 'light' || mapStyle === 'satellite') {
+      this.map.getContainer().classList.add('map-light-mode');
+    } else {
+      this.map.getContainer().classList.remove('map-light-mode');
+    }
+
+    L.tileLayer(tileUrl, {
+      attribution: attribution,
       subdomains: 'abc',
       maxZoom: cfg.maxZoom,
     }).addTo(this.map);

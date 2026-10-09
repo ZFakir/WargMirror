@@ -315,6 +315,10 @@
   filter: invert(1) hue-rotate(190deg) brightness(0.92) contrast(0.88) saturate(0.55);
 }
 
+.map-modal .map-light-mode .leaflet-tile-pane {
+  filter: none;
+}
+
 /* Keep our own markers/popups/HUD unaffected by the tile filter */
 .map-modal .leaflet-marker-pane,
 .map-modal .leaflet-popup-pane {

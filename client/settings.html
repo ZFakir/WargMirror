@@ -4,13 +4,13 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="color-scheme" content="dark" />
-  <title>WARG - Friend Profile</title>
+  <title>WARG – Settings</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="styles/tokens.css" />
   <link rel="stylesheet" href="styles/home.css" />
-  <link rel="stylesheet" href="styles/profile.css" />
+  <link rel="stylesheet" href="styles/settings.css" />
   
 <script src="scripts/config.js"></script>
   <script>
@@ -51,6 +51,15 @@
         </svg>
         <span class="nav-item__label">Discover</span>
       </a>
+      
+      <a href="catalogue.html" id="nav-library" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+        </svg>
+        <span class="nav-item__label">My Library</span>
+        <span class="nav-item__badge" id="nav-library-badge" style="display:none">0</span>
+      </a>
+
       <a href="studio.html" id="nav-creator-studio" class="nav-item">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M12 20h9"/>
@@ -58,7 +67,8 @@
         </svg>
         <span class="nav-item__label">Creator Studio</span>
       </a>
-      <a href="user-profile.html" id="nav-account" class="nav-item active" aria-current="page">
+      
+      <a href="user-profile.html" id="nav-account" class="nav-item">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
           <circle cx="12" cy="7" r="4"/>
@@ -66,6 +76,17 @@
         <span class="nav-item__label">Account</span>
       </a>
     </nav>
+    
+    <div class="sidebar__footer">
+      <div class="sidebar__divider" role="separator"></div>
+      <a href="settings.html" id="nav-settings" class="nav-item active" aria-current="page">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+        <span class="nav-item__label">Settings</span>
+      </a>
+    </div>
   </aside>
 
   <!-- TOPBAR -->
@@ -78,11 +99,8 @@
       </svg>
     </button>
     <div class="topbar__brand">
-      <div class="topbar__logo" aria-hidden="true"><img src="assets/warg-logo.png" alt="" class="topbar__logo-img" /></div>
+      <div class="topbar__logo" aria-hidden="true">W</div>
       <span class="topbar__wordmark">WARG</span>
-    </div>
-    <div class="topbar__search" role="search">
-      <input type="search" placeholder="Search games, creators…" />
     </div>
     <div class="topbar__actions">
       <!-- Theme Toggle -->
@@ -148,129 +166,303 @@
   <!-- MAIN CONTENT -->
   <main class="main-content" id="main-content">
     <div class="main-content__inner">
-      <div class="profile-container">
+      <div class="settings-container">
         
-        <!-- Profile Header -->
-        <div class="profile-header">
-          <div class="profile-banner"></div>
-          <div class="profile-info">
-            <div class="profile-picture-container">
-              <img src="https://api.dicebear.com/9.x/identicon/svg?seed=Priya&backgroundColor=1a1816" alt="Friend avatar" class="profile-picture" />
-            </div>
-            <div class="profile-details">
-              <div class="profile-name-row">
-                <h1 class="profile-name">Priya R.</h1>
-              </div>
-              <div class="profile-title">
-                Level 15 Trailblazer
-              </div>
-              
-              <div class="friend-actions">
-                <button class="btn-primary">
-                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="12" r="10"></circle><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon>
-                  </svg>
-                  Invite to Game
-                </button>
-                <button class="btn-secondary">
-                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
-                  </svg>
-                  Message
-                </button>
-                <button class="btn-secondary">
-                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="18" y1="8" x2="23" y2="13"></line><line x1="23" y1="8" x2="18" y2="13"></line>
-                  </svg>
-                  Unfriend
-                </button>
-              </div>
-
-            </div>
-          </div>
+        <div class="settings-header">
+          <h1>Settings</h1>
+          <p>Manage your account, preferences, and privacy.</p>
         </div>
 
-        <!-- Stats Section -->
-        <div class="profile-stats-grid">
-          <div class="stat-card">
-            <div class="stat-header">
-              <h2 class="stat-title">Total Points</h2>
+        <form id="settings-form">
+          <!-- 1. Account Preferences -->
+          <section class="settings-section" aria-labelledby="acc-pref-title">
+            <div class="settings-section__header">
+              <svg class="settings-section__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              <h2 id="acc-pref-title" class="settings-section__title">Account Preferences</h2>
             </div>
-            <p class="stat-value">2,850</p>
-          </div>
-          <div class="stat-card">
-            <div class="stat-header">
-              <h2 class="stat-title">Games Completed</h2>
+            <div class="settings-group">
+              <label class="settings-group__label" for="setting-email">Email Address</label>
+              <input type="email" id="setting-email" class="settings-input" placeholder="player@example.com" />
             </div>
-            <p class="stat-value">47</p>
-          </div>
-          <div class="stat-card">
-            <div class="stat-header">
-              <h2 class="stat-title">Distance Walked</h2>
+            <div class="settings-group">
+              <label class="settings-group__label" for="setting-password">New Password</label>
+              <input type="password" id="setting-password" class="settings-input" placeholder="Leave blank to keep current" />
             </div>
-            <p class="stat-value">85 km</p>
-          </div>
-        </div>
+            
+            <div id="google-auth-warning" style="display: none; padding: var(--space-3); margin-top: var(--space-3); background: rgba(255, 209, 102, 0.1); border: 1px solid rgba(255, 209, 102, 0.3); border-radius: var(--radius-sm); color: var(--color-warning); font-size: var(--font-size-caption);">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px; display: inline-block; vertical-align: text-bottom; margin-right: 4px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              You logged in using Google. Email and password changes are managed through your Google account.
+            </div>
+          </section>
 
-        <!-- Badges Section -->
-        <div class="profile-section">
-          <div class="section-header">
-            <h2 class="section-title">Badges Earned</h2>
+          <!-- 2. Gameplay & Location Settings -->
+          <section class="settings-section" aria-labelledby="game-loc-title">
+            <div class="settings-section__header">
+              <svg class="settings-section__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
+              <h2 id="game-loc-title" class="settings-section__title">Gameplay & Location</h2>
+            </div>
+            <div class="settings-group">
+              <label class="settings-group__label" for="setting-gps">GPS Accuracy Mode</label>
+              <select id="setting-gps" class="settings-select">
+                <option value="high">High Precision (Recommended for ARGs)</option>
+                <option value="saver">Battery Saver</option>
+              </select>
+              <div id="gps-warning" style="display: none; padding: var(--space-3); margin-top: var(--space-3); background: rgba(255, 77, 79, 0.1); border: 1px solid rgba(255, 77, 79, 0.3); border-radius: var(--radius-sm); color: #ff4d4f; font-size: var(--font-size-caption);">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px; display: inline-block; vertical-align: text-bottom; margin-right: 4px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                Warning: Battery Saver relies on Wi-Fi and cell towers instead of your device's GPS chip. You may experience severe location drifting or find it impossible to unlock waypoints.
+              </div>
+            </div>
+            <div class="settings-group">
+              <label class="settings-group__label" for="setting-units">Unit of Measurement</label>
+              <select id="setting-units" class="settings-select">
+                <option value="metric">Metric (Kilometers)</option>
+                <option value="imperial">Imperial (Miles)</option>
+              </select>
+            </div>
+            <div class="settings-group">
+              <label class="settings-group__label" for="setting-mapstyle">Default Map Style</label>
+              <select id="setting-mapstyle" class="settings-select">
+                <option value="dark">WARG Dark</option>
+                <option value="light">Street Light</option>
+                <option value="satellite">Satellite</option>
+              </select>
+            </div>
+          </section>
+
+          <!-- 3. Appearance & Display -->
+          <section class="settings-section" aria-labelledby="appear-disp-title">
+            <div class="settings-section__header">
+              <svg class="settings-section__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+              <h2 id="appear-disp-title" class="settings-section__title">Appearance</h2>
+            </div>
+            <div class="settings-group">
+              <label class="settings-group__label" for="setting-theme">Theme</label>
+              <select id="setting-theme" class="settings-select">
+                <option value="dark">Dark Mode</option>
+                <option value="light">Light Mode</option>
+              </select>
+            </div>
+            <div class="settings-toggle">
+              <div class="settings-toggle__info">
+                <span class="settings-toggle__title">High Contrast Mode</span>
+                <span class="settings-toggle__desc">Increases visibility for text and interactive elements</span>
+              </div>
+              <label class="switch">
+                <input type="checkbox" id="setting-contrast">
+                <span class="slider"></span>
+              </label>
+            </div>
+          </section>
+
+
+
+          <!-- 5. Data & Storage -->
+          <section class="settings-section" aria-labelledby="data-title">
+            <div class="settings-section__header">
+              <svg class="settings-section__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="12" x2="2" y2="12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><line x1="6" y1="16" x2="6.01" y2="16"/><line x1="10" y1="16" x2="10.01" y2="16"/></svg>
+              <h2 id="data-title" class="settings-section__title">Data & Storage</h2>
+            </div>
+            <div class="settings-group" style="margin-top: var(--space-4);">
+              <label class="settings-group__label">Storage Management</label>
+              <span class="settings-group__desc">Clear cached images, maps, and offline data to free up space.</span>
+              <button type="button" class="btn-secondary" id="btn-clear-cache" style="margin-top: var(--space-2);">Clear Local Cache</button>
+            </div>
+            <div class="settings-group" style="margin-top: var(--space-4); padding-top: var(--space-4); border-top: 1px solid var(--color-border);">
+              <label class="settings-group__label" style="color: #ff4d4f;">Danger Zone</label>
+              <button type="button" class="btn-danger" id="btn-delete-account" style="margin-top: var(--space-2);">Delete Account</button>
+            </div>
+          </section>
+
+          <div class="settings-actions">
+            <button type="button" class="btn-secondary" id="btn-settings-cancel">Cancel</button>
+            <button type="submit" class="btn-primary" id="btn-settings-save">Save Changes</button>
           </div>
-          <div class="badges-grid">
-            <div class="badge-item">
-              <div class="badge-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-              </div>
-              <p class="badge-name">First Steps</p>
-              <p class="badge-date">Oct 14, 2025</p>
-            </div>
-            <div class="badge-item">
-              <div class="badge-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-              </div>
-              <p class="badge-name">Night Owl</p>
-              <p class="badge-date">Nov 02, 2025</p>
-            </div>
-            <div class="badge-item">
-              <div class="badge-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M16 12l-4-4-4 4"></path><path d="M12 16V8"></path></svg>
-              </div>
-              <p class="badge-name">Speedrunner</p>
-              <p class="badge-date">Jan 12, 2026</p>
-            </div>
-            <div class="badge-item">
-              <div class="badge-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-              </div>
-              <p class="badge-name">Social Butterfly</p>
-              <p class="badge-date">Feb 28, 2026</p>
-            </div>
-            <div class="badge-item">
-              <div class="badge-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
-              </div>
-              <p class="badge-name">Top Earner</p>
-              <p class="badge-date">May 01, 2026</p>
-            </div>
-            <div class="badge-item">
-              <div class="badge-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-              </div>
-              <p class="badge-name">Dedicated</p>
-              <p class="badge-date">Jul 18, 2026</p>
-            </div>
-          </div>
-        </div>
+        </form>
 
       </div>
     </div>
   </main>
-
 </div>
-<script src="scripts/api.js"></script>
-<script src="scripts/home.js"></script>
 
+<!-- Toast Notification -->
+<div id="toast" class="toast" aria-live="polite"></div>
+
+<script src="scripts/api.js"></script>
+<script src="scripts/components/GameCard.js?v=2"></script>
+<script src="scripts/home.js"></script>
+<script>
+  let currentUser = null;
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    // 1. Fetch current user to pre-fill email
+    try {
+      currentUser = await api.getCurrentUser();
+      if (currentUser) {
+        const emailInput = document.getElementById('setting-email');
+        const passInput = document.getElementById('setting-password');
+        const warningBox = document.getElementById('google-auth-warning');
+        
+        if (emailInput) emailInput.value = currentUser.email || '';
+        
+        // If Google user, disable email and password edits and show warning
+        if (currentUser.auth_provider === 'google') {
+          if (emailInput) {
+            emailInput.disabled = true;
+            emailInput.style.opacity = '0.6';
+            emailInput.style.cursor = 'not-allowed';
+          }
+          if (passInput) {
+            passInput.disabled = true;
+            passInput.style.opacity = '0.6';
+            passInput.style.cursor = 'not-allowed';
+          }
+          if (warningBox) {
+            warningBox.style.display = 'block';
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Could not fetch user for settings", e);
+    }
+
+    // 2. Load Local Preferences
+    const gpsMode = localStorage.getItem('warg_gps_mode') || 'high';
+    const units = localStorage.getItem('warg_units') || 'metric';
+    const mapStyle = localStorage.getItem('warg_map_style') || 'dark';
+    const theme = localStorage.getItem('warg_theme') || 'dark';
+    const contrast = localStorage.getItem('warg_contrast') === 'high';
+
+    const gpsSelect = document.getElementById('setting-gps');
+    const gpsWarning = document.getElementById('gps-warning');
+    if (gpsSelect) {
+      gpsSelect.value = gpsMode;
+      if (gpsWarning && gpsSelect.value === 'saver') {
+        gpsWarning.style.display = 'block';
+      }
+      gpsSelect.addEventListener('change', (e) => {
+        if (gpsWarning) {
+          gpsWarning.style.display = e.target.value === 'saver' ? 'block' : 'none';
+        }
+      });
+    }
+    const unitsSelect = document.getElementById('setting-units');
+    if (unitsSelect) unitsSelect.value = units;
+    const mapStyleSelect = document.getElementById('setting-mapstyle');
+    if (mapStyleSelect) mapStyleSelect.value = mapStyle;
+    const themeSelect = document.getElementById('setting-theme');
+    if (themeSelect) themeSelect.value = theme;
+    const contrastCheck = document.getElementById('setting-contrast');
+    if (contrastCheck) contrastCheck.checked = contrast;
+
+    // 3. Clear Cache
+    const btnClearCache = document.getElementById('btn-clear-cache');
+    btnClearCache?.addEventListener('click', () => {
+      const origText = btnClearCache.textContent;
+      btnClearCache.textContent = 'Clearing...';
+      btnClearCache.disabled = true;
+      setTimeout(() => {
+        // Clear all WARG specific local storage keys
+        for (let i = localStorage.length - 1; i >= 0; i--) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith('warg_')) {
+            localStorage.removeItem(key);
+          }
+        }
+        btnClearCache.textContent = origText;
+        btnClearCache.disabled = false;
+        showToast('Local cache cleared successfully');
+        
+        // Reload page after short delay so default settings take effect immediately
+        setTimeout(() => window.location.reload(), 1000);
+      }, 800);
+    });
+
+    // 4. Delete Account
+    const btnDeleteAccount = document.getElementById('btn-delete-account');
+    btnDeleteAccount?.addEventListener('click', async () => {
+      if (confirm('Are you sure you want to delete your account? This action cannot be undone and all your progress will be lost.')) {
+        const origText = btnDeleteAccount.textContent;
+        btnDeleteAccount.textContent = 'Deleting...';
+        btnDeleteAccount.disabled = true;
+        try {
+          await api.deleteAccount();
+          window.location.href = 'login.html';
+        } catch (err) {
+          console.error(err);
+          showToast('Failed to delete account');
+          btnDeleteAccount.textContent = origText;
+          btnDeleteAccount.disabled = false;
+        }
+      }
+    });
+
+    // 5. Save Settings Handler
+    const settingsForm = document.getElementById('settings-form');
+    settingsForm?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const saveBtn = document.getElementById('btn-settings-save');
+      const origText = saveBtn.textContent;
+      saveBtn.textContent = 'Saving...';
+      saveBtn.disabled = true;
+
+      try {
+        if (currentUser && currentUser.auth_provider !== 'google') {
+          const newEmail = document.getElementById('setting-email').value;
+          const newPass = document.getElementById('setting-password').value;
+          
+          const updates = {};
+          if (newEmail && newEmail !== currentUser.email) updates.email = newEmail;
+          if (newPass) updates.password = newPass;
+
+          if (Object.keys(updates).length > 0) {
+            await api.updateAccount(updates);
+            // Clear password field after successful update
+            document.getElementById('setting-password').value = '';
+            currentUser.email = newEmail; // Update local state
+          }
+        }
+
+        // Save local preferences
+        const newGps = document.getElementById('setting-gps')?.value;
+        const newUnits = document.getElementById('setting-units')?.value;
+        const newMapStyle = document.getElementById('setting-mapstyle')?.value;
+        const newTheme = document.getElementById('setting-theme')?.value;
+        const newContrast = document.getElementById('setting-contrast')?.checked ? 'high' : 'normal';
+        
+        if (newGps) localStorage.setItem('warg_gps_mode', newGps);
+        if (newUnits) localStorage.setItem('warg_units', newUnits);
+        if (newMapStyle) localStorage.setItem('warg_map_style', newMapStyle);
+        if (newTheme) {
+          localStorage.setItem('warg_theme', newTheme);
+          if (newTheme === 'light') {
+            document.documentElement.setAttribute('data-theme', 'light');
+          } else {
+            document.documentElement.removeAttribute('data-theme');
+          }
+        }
+        localStorage.setItem('warg_contrast', newContrast);
+        if (newContrast === 'high') {
+          document.documentElement.setAttribute('data-contrast', 'high');
+        } else {
+          document.documentElement.removeAttribute('data-contrast');
+        }
+        
+        showToast('Settings saved successfully');
+      } catch (err) {
+        console.error('Failed to save settings:', err);
+        showToast(err.message || 'Failed to save settings');
+      } finally {
+        saveBtn.textContent = origText;
+        saveBtn.disabled = false;
+      }
+    });
+
+    // 6. Cancel
+    document.getElementById('btn-settings-cancel')?.addEventListener('click', () => {
+      window.location.href = 'user-profile.html';
+    });
+  });
+</script>
 
 <!-- Feedback Modal -->
 <div class="feedback-modal-overlay" id="feedback-modal" aria-hidden="true">
@@ -447,6 +639,3 @@
 
 </body>
 </html>
-
-
-

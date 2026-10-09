@@ -8,6 +8,8 @@
 
 require('dotenv').config({ path: './src/.env' });
 const sequelize = require('./src/config/database');
+const fs = require('fs');
+const path = require('path');
 
 const q = (sql, replacements = []) =>
   sequelize.query(sql, { replacements, type: sequelize.QueryTypes.RAW });
@@ -233,37 +235,37 @@ async function seed() {
     // ==============================================================
     console.log('🎮 Seeding minigames...');
     await q(`
-      INSERT INTO minigames (game_id, waypoint_id, game_type, config_json, points_value)
+      INSERT INTO minigames (game_id, waypoint_id, game_type, config_json, points_value, created_at, updated_at)
       VALUES
         -- Heritage Trail
         (1, 1, 'text_answer',
          '{"answer": "1922", "hint": "Look above the main entrance.", "case_sensitive": false}',
-         20),
+         20, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
         (2, 2, 'text_answer',
          '{"answer": "Jan Smuts", "hint": "A South African statesman.", "case_sensitive": false}',
-         20),
+         20, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
         (3, 3, 'text_answer',
          '{"answer": "Scientia et Labor", "hint": "Latin — Science and Labour.", "case_sensitive": false}',
-         30),
+         30, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
         (4, 4, 'text_answer',
          '{"answer": "1921", "hint": "The year the arch was completed.", "case_sensitive": false}',
-         30),
+         30, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
 
         -- Chemistry Cipher
         (5, 5, 'qr_barcode',
          '{"barcode_value": "AU-79-WARG", "hint": "Scan the element marker."}',
-         25),
+         25, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
         (6, 6, 'text_answer',
          '{"answer": "E=mc2", "hint": "The most famous equation in physics.", "case_sensitive": false}',
-         25),
+         25, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
         (7, 7, 'text_answer',
          '{"answer": "42", "hint": "The answer to everything, naturally.", "case_sensitive": false}',
-         50),
+         50, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
 
         -- Quad Domination (GPS proximity — arrive and hold)
-        (8,  8,  'gps_proximity', '{"hold_seconds": 60, "points_per_tick": 5}', 50),
-        (9,  9,  'gps_proximity', '{"hold_seconds": 60, "points_per_tick": 3}', 30),
-        (10, 10, 'gps_proximity', '{"hold_seconds": 60, "points_per_tick": 3}', 30)
+        (8,  8,  'gps_proximity', '{"hold_seconds": 60, "points_per_tick": 5}', 50, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+        (9,  9,  'gps_proximity', '{"hold_seconds": 60, "points_per_tick": 3}', 30, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+        (10, 10, 'gps_proximity', '{"hold_seconds": 60, "points_per_tick": 3}', 30, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     `);
     console.log('   10 minigames created.\n');
 
@@ -396,24 +398,30 @@ async function seed() {
     // §13  BADGES & USER BADGES
     // ==============================================================
     console.log('🏅 Seeding badges...');
-    await q(`
-      INSERT INTO badges (badge_id, name, description, award_criteria) VALUES
-        (1, 'First Steps',
-         'Complete your very first ARG.',
-         '{"type": "games_completed", "threshold": 1}'),
-        (2, 'Trail Blazer',
-         'Complete 5 ARGs.',
-         '{"type": "games_completed", "threshold": 5}'),
-        (3, 'Campus Scholar',
-         'Complete the Wits Heritage Trail.',
-         '{"type": "specific_arg", "arg_id": 1}'),
-        (4, 'Science Sleuth',
-         'Complete the Chemistry Cipher.',
-         '{"type": "specific_arg", "arg_id": 2}'),
-        (5, 'Road Warrior',
-         'Walk more than 5000m across all ARGs.',
-         '{"type": "distance_walked_m", "threshold": 5000}')
-    `);
+    const badgesSeedPath = path.join(__dirname, '../client/assets/badge_assets/badges_seed.sql');
+    if (fs.existsSync(badgesSeedPath)) {
+      const badgesSql = fs.readFileSync(badgesSeedPath, 'utf8');
+      await q(badgesSql);
+    } else {
+      await q(`
+        INSERT INTO badges (badge_id, name, description, award_criteria) VALUES
+          (1, 'First Steps',
+           'Complete your very first ARG.',
+           '{"type": "games_completed", "threshold": 1}'),
+          (2, 'Trail Blazer',
+           'Complete 5 ARGs.',
+           '{"type": "games_completed", "threshold": 5}'),
+          (3, 'Campus Scholar',
+           'Complete the Wits Heritage Trail.',
+           '{"type": "specific_arg", "arg_id": 1}'),
+          (4, 'Science Sleuth',
+           'Complete the Chemistry Cipher.',
+           '{"type": "specific_arg", "arg_id": 2}'),
+          (5, 'Road Warrior',
+           'Walk more than 5000m across all ARGs.',
+           '{"type": "distance_walked_m", "threshold": 5000}')
+      `);
+    }
 
     await q(`
       INSERT INTO user_badges (user_id, badge_id) VALUES
