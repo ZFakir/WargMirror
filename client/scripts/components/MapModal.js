@@ -381,7 +381,7 @@ export class MapModal {
 
     const mapStyle = localStorage.getItem('warg_map_style') || 'dark';
     
-    let tileUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+    let tileUrl = 'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png';
     let attribution = '&copy; OpenStreetMap contributors';
 
     if (mapStyle === 'satellite') {
@@ -396,6 +396,7 @@ export class MapModal {
     }
 
     L.tileLayer(tileUrl, {
+      crossOrigin: true,
       attribution: attribution,
       subdomains: 'abc',
       maxZoom: cfg.maxZoom,

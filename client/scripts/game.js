@@ -197,7 +197,7 @@ document.addEventListener('DOMContentLoaded', () => {
         nodes.filter(n => n.status === 'unlocked' || n.status === 'in_progress').forEach(node => {
           if (node.minigames) {
             node.minigames.forEach(mg => {
-              if (mg.game_id) {
+              if (mg.game_id && mg.config_json && mg.config_json.reference_image_url) {
                 prefetchPromises.push(
                   // Use the API helper which SW will intercept and cache
                   api.getMinigameReference(mg.game_id).catch(err => console.warn('Prefetch failed for game:', mg.game_id, err))
