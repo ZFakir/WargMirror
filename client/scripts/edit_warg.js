@@ -71,9 +71,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (argData.cover_image) {
           const heroImg = document.getElementById('hero-banner-img');
+          const heroPlaceholder = document.getElementById('hero-placeholder-content');
           if (heroImg) {
             heroImg.src = `${API_BASE}/api/args/${currentArgId}/cover-image`;
             heroImg.style.display = 'block';
+            if (heroPlaceholder) {
+              heroPlaceholder.style.display = 'none';
+            }
           }
         }
 
@@ -759,11 +763,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // ── Hero Banner Image Upload ──
-    const btnChangeHeroImage = document.getElementById('btn-change-hero-image');
+    const heroBannerContainer = document.getElementById('hero-banner-container');
     const heroBannerImg = document.getElementById('hero-banner-img');
+    const heroPlaceholderContent = document.getElementById('hero-placeholder-content');
 
-    if (btnChangeHeroImage && heroBannerImg) {
-      btnChangeHeroImage.addEventListener('click', () => {
+    if (heroBannerContainer && heroBannerImg) {
+      heroBannerContainer.addEventListener('click', () => {
         const input = document.createElement('input');
         input.type = 'file';
         input.accept = 'image/*';
@@ -781,9 +786,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
           }
 
-          const origContent = btnChangeHeroImage.innerHTML;
-          btnChangeHeroImage.innerHTML = '<span style="font-size:10px; font-weight:bold;">Up...</span>';
-          btnChangeHeroImage.disabled = true;
+          if (heroPlaceholderContent) heroPlaceholderContent.innerHTML = '<span style="font-size:12px; font-weight:bold;">Uploading...</span>';
 
           try {
             const formData = new FormData();
@@ -798,16 +801,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             heroBannerImg.src = `${API_BASE}/api/args/${currentArgId}/cover-image?ts=${Date.now()}`;
             heroBannerImg.style.display = 'block';
-            const heroContainer = document.getElementById('hero-banner-container');
-            if (heroContainer) heroContainer.style.background = 'transparent';
+            if (heroPlaceholderContent) heroPlaceholderContent.style.display = 'none';
           } catch (err) {
             console.error(err);
             openAlertModal('Failed to upload cover image.');
-          } finally {
-            btnChangeHeroImage.innerHTML = origContent;
-            btnChangeHeroImage.disabled = false;
+            if (heroPlaceholderContent) heroPlaceholderContent.innerHTML = '<span>Upload Failed. Click to try again.</span>';
           }
         };
+
         input.click();
       });
     }
