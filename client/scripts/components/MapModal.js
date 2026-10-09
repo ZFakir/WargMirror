@@ -553,7 +553,8 @@ export class MapModal {
 
   updateNodeVisuals(node) {
     if (!this.map) return;
-    const hasPD = node.games && node.games.some(g => g.type === 'point_domination');
+    const games = node.games || node.minigames || node.Minigames || [];
+    const hasPD = games.some(g => g.type === 'point_domination' || g.game_type === 'point_domination');
     const el = document.getElementById(`em-${node.id}`);
     
     if (el) {
