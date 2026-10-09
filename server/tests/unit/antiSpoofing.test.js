@@ -113,4 +113,20 @@ describe('Anti-Spoofing Middleware Unit Tests', () => {
       flags: expect.arrayContaining([expect.objectContaining({ reason: 'speed_violation' })])
     }));
   });
+
+  it('never flags or suspends the user when the trust score drops low', async () => {
+    // One pedometer violation (-20) would cross the old auto-ban threshold (< 50)
+    mockUser.trust_score = 55;
+    LocationEvent.findOne.mockResolvedValue({
+      location: { coordinates: [28.03, -26.191] },
+      recorded_at: new Date(Date.now() - 100000)
+    });
+
+    await antiSpoofing(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(403);   // the suspicious interaction is denied...
+    expect(mockUser.trust_score).toBe(36);          // ...and the score still drops (55 + 1 - 20)...
+    expect(mockUser.is_flagged).toBeUndefined();    // ...but nothing may lock the player out
+    expect(mockUser.is_suspended).toBeUndefined();
+  });
 });

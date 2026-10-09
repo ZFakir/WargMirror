@@ -36,9 +36,11 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
         let user = await User.findOne({ where: { google_uid: profile.id } });
 
         if (user) {
-          // Existing user — check if banned, then return them
-          if (user.is_flagged) {
-            return done(null, false, { message: 'Your account has been banned.' });
+          // Existing user — check if suspended (banned), then return them.
+          // is_flagged is a trust signal from anti-spoofing and must never lock
+          // players out of their accounts.
+          if (user.is_suspended) {
+            return done(null, false, { message: 'Your account has been suspended.' });
           }
           return done(null, user);
         }
@@ -73,8 +75,9 @@ passport.use(new LocalStrategy(
         return done(null, false, { message: 'Incorrect email or password.' });
       }
       
-      if (user.is_flagged) {
-        return done(null, false, { message: 'Your account has been banned.' });
+      // Suspension (admin ban) blocks login; is_flagged is only a trust signal.
+      if (user.is_suspended) {
+        return done(null, false, { message: 'Your account has been suspended.' });
       }
       
       // If user registered with google, they might not have a password

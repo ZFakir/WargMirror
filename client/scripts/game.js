@@ -292,6 +292,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const isPressed = activeBtn && activeBtn.classList.contains('is-active');
 
+    // Pre-click state, restored if the server rejects the vote (guests).
+    const prevLikes = currentLikes;
+    const prevDislikes = currentDislikes;
+    const prevLikeActive = btnLike ? btnLike.classList.contains('is-active') : false;
+    const prevDislikeActive = btnDislike ? btnDislike.classList.contains('is-active') : false;
+    let prevStoredVote = null;
+    try { prevStoredVote = (JSON.parse(localStorage.getItem('warg_votes') || '{}'))[argId] || null; } catch { /* ignore */ }
+
     if (activeBtn) activeBtn.classList.toggle('is-active', !isPressed);
 
     if (action === 'like') {
@@ -326,7 +334,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const res = await fetch(`${API_BASE}/api/args/${argId}/vote`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ vote: action, user_id: 1 }),
+        body: JSON.stringify({ vote: action }),
         credentials: 'include'
       });
 
@@ -343,6 +351,26 @@ document.addEventListener('DOMContentLoaded', () => {
             if (btnDislike) btnDislike.classList.toggle('is-active', data.action === 'voted');
             if (btnLike) btnLike.classList.remove('is-active');
           }
+        }
+      } else if (res.status === 401) {
+        // Guests cannot vote — undo the optimistic update and offer login.
+        if (btnLike) btnLike.classList.toggle('is-active', prevLikeActive);
+        if (btnDislike) btnDislike.classList.toggle('is-active', prevDislikeActive);
+        if (btnLike) btnLike.querySelector('span').textContent = `(${prevLikes})`;
+        if (btnDislike) btnDislike.querySelector('span').textContent = `(${prevDislikes})`;
+        try {
+          const localVotes = JSON.parse(localStorage.getItem('warg_votes') || '{}');
+          if (prevStoredVote) localVotes[argId] = prevStoredVote;
+          else delete localVotes[argId];
+          localStorage.setItem('warg_votes', JSON.stringify(localVotes));
+        } catch { /* ignore */ }
+        if (window.confirmModal) {
+          window.confirmModal.open({
+            title: 'Login required',
+            desc: 'Log in to like or dislike games.',
+            confirmText: 'Log in',
+            callback: () => { window.location.href = 'login.html'; }
+          });
         }
       }
     } catch (err) {
@@ -427,7 +455,6 @@ document.addEventListener('DOMContentLoaded', () => {
                   <p>Score: ${Math.round(result.confidence_score * 100)}%</p>
                   <p>+${result.points_awarded} Points</p>
                   <p>${result.message || ''}</p>
-                  <button id="camera-overlay-close-btn" class="btn-primary" style="margin-top: 15px;">Close</button>
                 `;
               } else {
                 overlay.innerHTML = `
@@ -435,29 +462,34 @@ document.addEventListener('DOMContentLoaded', () => {
                   <p>Score: ${Math.round(result.confidence_score * 100)}%</p>
                   <p>${result.message || ''}</p>
                   <button id="btn-retry-ar" class="btn btn--outline" style="margin-top: 1rem; border-color: white; color: white;">Try Again</button>
-                  <button id="camera-overlay-close-btn" class="btn-primary" style="margin-top: 1rem; display: block; margin-left: auto; margin-right: auto;">Close</button>
                 `;
               }
             }
             container.appendChild(overlay);
 
-            if (!result.offline && !result.passed) {
-              const retryBtn = overlay.querySelector('#btn-retry-ar');
-              if (retryBtn) {
-                retryBtn.addEventListener('click', () => {
+            if (result.offline) {
+              const closeBtn = document.getElementById('camera-overlay-close-btn-offline');
+              if (closeBtn) {
+                closeBtn.addEventListener('click', () => {
                   overlay.remove();
-                  feedbackDiv.textContent = 'Aligning...';
+                  playModal.close();
                 });
               }
-            }
-            
-            const closeBtn = document.getElementById('camera-overlay-close-btn');
-            if (closeBtn) {
-              closeBtn.addEventListener('click', () => {
-                overlay.remove();
-                if (typeof playModal !== 'undefined') playModal.close();
-                if (result.passed && typeof mapModal !== 'undefined' && typeof mapModal.focusNode === 'function') mapModal.focusNode(argId);
-              });
+            } else {
+              if (!result.passed) {
+                const retryBtn = overlay.querySelector('#btn-retry-ar');
+                if (retryBtn) {
+                  retryBtn.addEventListener('click', () => {
+                    overlay.remove();
+                    feedbackDiv.textContent = 'Aligning...';
+                  });
+                }
+              } else {
+                setTimeout(() => {
+                  if (typeof playModal !== 'undefined') playModal.close();
+                  if (typeof mapModal !== 'undefined' && typeof mapModal.focusNode === 'function') mapModal.focusNode(argId);
+                }, 2000);
+              }
             }
 
           } catch (err) {
@@ -527,6 +559,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
           if (!arriveRes.ok) throw new Error('Arrive check failed');
           const arriveData = await arriveRes.json();
+
+          let geofenceOverride = false;
+          if (!arriveData.within_radius) {
+            // TEMP: Dev Override kept for ongoing testing — remove/gate before release.
+            const unit = localStorage.getItem('warg_units') || 'metric';
+            const dist = unit === 'imperial' ? (arriveData.distance * 3.28084).toFixed(1) + 'ft' : Math.round(arriveData.distance) + 'm';
+            const rad = unit === 'imperial' ? (arriveData.radius * 3.28084).toFixed(1) + 'ft' : arriveData.radius + 'm';
+            const override = confirm(`You are outside of the geofence (Distance: ${dist}, Radius: ${rad}).\n\nProceed anyway (Dev Override)?`);
+            if (!override) {
+              playModal.showFeedback('fail');
+              setTimeout(() => { playModal.close(); }, 2000);
+              return;
+            }
+            // Sent with the minigame submission so the server's proximity
+            // re-check keeps honouring the override (remove together with it).
+            geofenceOverride = true;
+          }
 
           const proceedWithGame = () => {
             // Restore actual description
@@ -598,7 +647,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     body: JSON.stringify({
                       game_id: minigame.game_id,
                       game_type: minigame.game_type,
-                      submission
+                      submission,
+                      geofence_override: geofenceOverride
                     })
                   });
                   if (!submitRes.ok) throw new Error('Submission failed');
@@ -647,20 +697,16 @@ document.addEventListener('DOMContentLoaded', () => {
             renderMinigame(0);
           };
 
-          if (!arriveData.within_radius) {
-            playModal.showFeedback('fail');
+          const wpData = gameState.waypoints.find(w => w.waypoint_id.toString() === node.id);
+          const minigames = wpData.Minigames && wpData.Minigames.length > 0 ? wpData.Minigames : [{ game_type: 'gps_proximity' }];
+          
+          if (minigames.length === 1 && minigames[0].game_type === 'gps_proximity') {
+            proceedWithGame();
           } else {
-            const wpData = gameState.waypoints.find(w => w.waypoint_id.toString() === node.id);
-            const minigames = wpData.Minigames && wpData.Minigames.length > 0 ? wpData.Minigames : [{ game_type: 'gps_proximity' }];
-            
-            if (minigames.length === 1 && minigames[0].game_type === 'gps_proximity') {
+            playModal.showFeedback('pass', false);
+            setTimeout(() => {
               proceedWithGame();
-            } else {
-              playModal.showFeedback('pass', false);
-              setTimeout(() => {
-                proceedWithGame();
-              }, 1000);
-            }
+            }, 1000);
           }
 
         } catch (err) {
@@ -729,63 +775,81 @@ document.addEventListener('DOMContentLoaded', () => {
 
       function renderCommentNode(comment, isReply = false) {
         const timeString = new Date(comment.created_at).toLocaleString();
-        const avatarSeed = comment.User ? comment.User.username : 'default';
         const username = comment.User ? comment.User.username : 'Unknown User';
-
-        let bodyHtml = comment.body;
-        if (comment.is_spoiler) bodyHtml = `<span class="spoiler-text" title="Click to reveal spoiler">${comment.body}</span>`;
+        const avatarSeed = comment.User ? comment.User.username : 'default';
 
         const div = document.createElement('div');
         div.className = `comment-item ${isReply ? 'is-reply' : ''}`;
-        div.innerHTML = `
-          <div class="comment-item__avatar">
-            <img src="https://api.dicebear.com/9.x/identicon/svg?seed=${avatarSeed}&backgroundColor=1a1816" alt="${username}" />
-          </div>
-          <div class="comment-item__content">
-            <div class="comment-item__header">
-              <strong>${username}</strong>
-              <span class="comment-item__time">${timeString}</span>
-            </div>
-            <p>${bodyHtml}</p>
-            <button class="btn-reply" style="background: none; border: none; color: var(--color-brand); font-size: 12px; cursor: pointer; padding: 0; margin-top: 4px;">Reply</button>
-            ${isAdmin ? `<button class="btn-delete" style="background: none; border: none; color: var(--color-danger); font-size: 12px; cursor: pointer; padding: 0; margin-top: 4px; margin-left: 12px;">Delete</button>` : ''}
-          </div>
-        `;
 
+        const avatarWrap = document.createElement('div');
+        avatarWrap.className = 'comment-item__avatar';
+        const avatarImg = document.createElement('img');
+        avatarImg.src = `https://api.dicebear.com/9.x/identicon/svg?seed=${encodeURIComponent(avatarSeed)}&backgroundColor=1a1816`;
+        avatarImg.alt = username;
+        avatarWrap.appendChild(avatarImg);
+
+        const content = document.createElement('div');
+        content.className = 'comment-item__content';
+
+        const header = document.createElement('div');
+        header.className = 'comment-item__header';
+        const nameEl = document.createElement('strong');
+        nameEl.textContent = username;
+        const timeEl = document.createElement('span');
+        timeEl.className = 'comment-item__time';
+        timeEl.textContent = timeString;
+        header.append(nameEl, timeEl);
+
+        // Comment bodies are user content — render as text, never as HTML.
+        const bodyEl = document.createElement('p');
         if (comment.is_spoiler) {
-          const spoilerSpan = div.querySelector('.spoiler-text');
-          spoilerSpan.addEventListener('click', () => spoilerSpan.classList.add('is-revealed'), { once: true });
+          const spoiler = document.createElement('span');
+          spoiler.className = 'spoiler-text';
+          spoiler.title = 'Click to reveal spoiler';
+          spoiler.textContent = comment.body;
+          spoiler.addEventListener('click', () => spoiler.classList.add('is-revealed'), { once: true });
+          bodyEl.appendChild(spoiler);
+        } else {
+          bodyEl.textContent = comment.body;
         }
+
+        const replyBtn = document.createElement('button');
+        replyBtn.className = 'btn-reply';
+        replyBtn.style.cssText = 'background: none; border: none; color: var(--color-brand); font-size: 12px; cursor: pointer; padding: 0; margin-top: 4px;';
+        replyBtn.textContent = 'Reply';
+
+        content.append(header, bodyEl, replyBtn);
 
         if (isAdmin) {
-          const btnDelete = div.querySelector('.btn-delete');
-          if (btnDelete) {
-            btnDelete.addEventListener('click', async () => {
-              if (window.confirmModal) {
-                window.confirmModal.open({
-                  title: 'Delete Comment',
-                  desc: 'Are you sure you want to delete this comment?',
-                  confirmText: 'Delete',
-                  callback: async () => {
-                    try {
-                      const res = await fetch(`${API_BASE}/api/admin/comments/${comment.comment_id}`, { method: 'DELETE', credentials: 'include' });
-                      if (res.ok) {
-                        loadComments(); // refresh the list
-                      } else {
-                        if (typeof showToast !== 'undefined') showToast('Failed to delete comment.');
-                      }
-                    } catch (e) {
-                      console.error(e);
-                      if (typeof showToast !== 'undefined') showToast('Error deleting comment.');
+          const btnDelete = document.createElement('button');
+          btnDelete.className = 'btn-delete';
+          btnDelete.style.cssText = 'background: none; border: none; color: var(--color-danger); font-size: 12px; cursor: pointer; padding: 0; margin-top: 4px; margin-left: 12px;';
+          btnDelete.textContent = 'Delete';
+          btnDelete.addEventListener('click', async () => {
+            if (window.confirmModal) {
+              window.confirmModal.open({
+                title: 'Delete Comment',
+                desc: 'Are you sure you want to delete this comment?',
+                confirmText: 'Delete',
+                callback: async () => {
+                  try {
+                    const res = await fetch(`${API_BASE}/api/admin/comments/${comment.comment_id}`, { method: 'DELETE', credentials: 'include' });
+                    if (res.ok) {
+                      loadComments(); // refresh the list
+                    } else {
+                      if (typeof showToast !== 'undefined') showToast('Failed to delete comment.');
                     }
+                  } catch (e) {
+                    console.error(e);
+                    if (typeof showToast !== 'undefined') showToast('Error deleting comment.');
                   }
-                });
-              }
-            });
-          }
+                }
+              });
+            }
+          });
+          content.appendChild(btnDelete);
         }
 
-        const replyBtn = div.querySelector('.btn-reply');
         replyBtn.addEventListener('click', () => {
           const currentReply = document.querySelector('.reply-input-wrapper');
           if (currentReply) currentReply.remove();
@@ -797,7 +861,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <input type="text" class="input-field reply-input" placeholder="Write a reply..." />
             <button class="btn btn--primary btn--sm btn-post-reply">Post</button>
           `;
-          div.querySelector('.comment-item__content').appendChild(replyWrapper);
+          content.appendChild(replyWrapper);
 
           const btnPostReply = replyWrapper.querySelector('.btn-post-reply');
           const replyInput = replyWrapper.querySelector('.reply-input');
@@ -808,6 +872,7 @@ document.addEventListener('DOMContentLoaded', () => {
           });
         });
 
+        div.append(avatarWrap, content);
         return div;
       }
 

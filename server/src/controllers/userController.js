@@ -1,10 +1,13 @@
 const { User, Arg, FriendRequest, GameSession, Badge } = require('../models');
 const { Op } = require('sequelize');
 
+// Profile fields that must never be exposed to other clients.
+const PRIVATE_USER_ATTRIBUTES = ['google_uid', 'session_token', 'password_hash', 'email'];
+
 exports.getUserProfile = async (req, res) => {
   try {
     const user = await User.findByPk(req.params.id, {
-      attributes: { exclude: ['google_uid', 'session_token'] },
+      attributes: { exclude: PRIVATE_USER_ATTRIBUTES },
       include: [{ model: Badge, attributes: ['badge_id', 'name', 'description', 'icon_svg'], through: { attributes: ['awarded_at'] } }]
     });
     if (!user) return res.status(404).json({ error: 'User not found' });
@@ -96,7 +99,11 @@ exports.searchUsers = async (req, res) => {
 
 exports.sendFriendRequest = async (req, res) => {
   try {
-    const senderId = req.params.id;
+    // The sender is always the authenticated user — never trust the path id.
+    if (parseInt(req.params.id, 10) !== req.user.user_id) {
+      return res.status(403).json({ error: 'Cannot send friend requests on behalf of another user' });
+    }
+    const senderId = req.user.user_id;
     const { receiverId } = req.body;
 
     if (senderId.toString() === receiverId.toString()) {
@@ -135,7 +142,11 @@ exports.sendFriendRequest = async (req, res) => {
 
 exports.getFriendRequests = async (req, res) => {
   try {
-    const userId = req.params.id;
+    // Friend requests are private to the authenticated user.
+    if (parseInt(req.params.id, 10) !== req.user.user_id) {
+      return res.status(403).json({ error: 'Cannot view another user\'s friend requests' });
+    }
+    const userId = req.user.user_id;
     const requests = await FriendRequest.findAll({
       where: {
         receiver_id: userId,
@@ -188,6 +199,11 @@ exports.respondToFriendRequest = async (req, res) => {
       return res.status(404).json({ error: 'Friend request not found' });
     }
 
+    // Only the recipient may accept or decline a request.
+    if (request.receiver_id !== req.user.user_id) {
+      return res.status(403).json({ error: 'Only the recipient can respond to a friend request' });
+    }
+
     request.status = status;
     await request.save();
 
@@ -200,7 +216,11 @@ exports.respondToFriendRequest = async (req, res) => {
 
 exports.removeFriend = async (req, res) => {
   try {
-    const userId = req.params.id;
+    // The acting user is always the authenticated user — never trust the path id.
+    if (parseInt(req.params.id, 10) !== req.user.user_id) {
+      return res.status(403).json({ error: 'Cannot remove friends on behalf of another user' });
+    }
+    const userId = req.user.user_id;
     const friendId = req.params.friendId;
 
     const result = await FriendRequest.destroy({

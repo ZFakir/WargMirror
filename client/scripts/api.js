@@ -143,6 +143,19 @@ var api = (function () {
   }
 
   /**
+   * Returns the currently authenticated user, or redirects guests to the
+   * login page. For pages that have no meaningful guest view (editor,
+   * analytics, admin).
+   */
+  async function requireAuthPage() {
+    const user = await getCurrentUser();
+    if (!user) {
+      window.location.href = 'login.html';
+    }
+    return user;
+  }
+
+  /**
    * Returns all published ARGs normalised for GameCard.
    * Public endpoint — works for guests.
    */
@@ -229,8 +242,8 @@ var api = (function () {
   }
 
   /* ── Game Actions ───────────────────────────────────────── */
-  async function voteArg(argId, voteType, userId = 1) { // Defaulting user_id to 1 until auth is hooked up
-    return _post('/api/args/' + argId + '/vote', { vote: voteType, user_id: userId });
+  async function voteArg(argId, voteType) {
+    return _post('/api/args/' + argId + '/vote', { vote: voteType });
   }
 
   async function flagArg(argId, reason, description, reporterId = 1) { // Defaulting user_id to 1 until auth is hooked up
@@ -379,6 +392,7 @@ var api = (function () {
   /* ── Public API ─────────────────────────────────────────── */
   return {
     getCurrentUser,
+    requireAuthPage,
     getArgs,
     getAllBadges,
     getArgById,

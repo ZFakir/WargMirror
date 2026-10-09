@@ -54,9 +54,12 @@ const antiSpoofing = async (req, res, next) => {
       }
     }
 
-    // Fetch the last known location event for this user
+    // Fetch the last known TRUSTED location event for this user.
+    // Suspicious events are deliberately excluded from the baseline: a spoofed
+    // position must never become the new reference point, otherwise a blocked
+    // request could simply be retried and pass the speed check against itself.
     const lastEvent = await LocationEvent.findOne({
-      where: { user_id: userId },
+      where: { user_id: userId, is_suspicious: false },
       order: [['recorded_at', 'DESC']]
     });
 
@@ -100,10 +103,11 @@ const antiSpoofing = async (req, res, next) => {
       let newScore = parseFloat(user.trust_score) + deltaScore;
       newScore = Math.max(0, Math.min(100, newScore));
       
+      // The trust score is informational — a signal for admin review. It must
+      // never lock a player out: rejecting this one suspicious interaction is
+      // the middleware's only automatic action. Account bans are an admin
+      // decision (is_suspended), never an automatic one.
       user.trust_score = newScore;
-      if (newScore < 50) {
-        user.is_flagged = true;
-      }
       
       // Accumulate steps as meters if the interaction was legitimate
       if (!isSuspicious && parsedSteps > 0) {

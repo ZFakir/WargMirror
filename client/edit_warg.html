@@ -192,6 +192,15 @@
             <div id="builder-header-fields" style="display: none;">
               <h1 class="builder-header__title" id="arg-title" contenteditable="true" spellcheck="false" data-placeholder="Untitled WARG"></h1>
               <p class="builder-header__desc" id="arg-desc" contenteditable="true" spellcheck="false" data-placeholder="Add a description for your WARG…"></p>
+              <div style="display:flex;align-items:center;gap:8px;margin-top:8px;">
+                <label for="arg-mode" style="font-size:var(--font-size-caption);color:var(--color-text-muted);">Mode</label>
+                <select id="arg-mode" class="editor-input" style="width:auto;padding:4px 8px;border-radius:var(--radius-sm);">
+                  <option value="solo">Solo</option>
+                  <option value="coop">Co-op</option>
+                  <option value="pvp">PvP</option>
+                  <option value="live">Live Event</option>
+                </select>
+              </div>
             </div>
           </div>
         </section>
@@ -201,6 +210,9 @@
 
           <div class="builder-main-area">
             <section class="builder-map-section">
+              <p class="builder-map-hint" style="margin:0 0 8px 0;font-size:var(--font-size-caption);color:var(--color-text-muted);">
+                Tip: to connect waypoints, drag from the centre of one marker to the centre of another marker.
+              </p>
               <div class="builder-map-wrapper" id="game-map-wrapper">
                 <div id="game-map" class="game-map" aria-label="Interactive game map" role="application">
                   <!-- Nodes and edges will be injected here via JS -->

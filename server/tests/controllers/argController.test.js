@@ -30,10 +30,10 @@ describe('argController', () => {
 
   describe('getAllArgs', () => {
     it('should return published args', async () => {
-      Arg.findAll.mockResolvedValue([{ title: 'Test Arg' }]);
+      Arg.findAll.mockResolvedValue([{ toJSON: () => ({ title: 'Test Arg' }) }]);
       await getAllArgs(req, res);
       expect(Arg.findAll).toHaveBeenCalledWith(expect.objectContaining({ where: { status: 'published' } }));
-      expect(res.json).toHaveBeenCalledWith([{ title: 'Test Arg' }]);
+      expect(res.json).toHaveBeenCalledWith([{ title: 'Test Arg', user_vote: null }]);
     });
 
     it('should handle errors', async () => {
@@ -47,10 +47,10 @@ describe('argController', () => {
   describe('getArgById', () => {
     it('should return arg if found', async () => {
       req.params.id = 1;
-      Arg.findByPk.mockResolvedValue({ title: 'Test Arg' });
+      Arg.findByPk.mockResolvedValue({ toJSON: () => ({ title: 'Test Arg' }) });
       await getArgById(req, res);
       expect(Arg.findByPk).toHaveBeenCalledWith(1, expect.any(Object));
-      expect(res.json).toHaveBeenCalledWith({ title: 'Test Arg' });
+      expect(res.json).toHaveBeenCalledWith({ title: 'Test Arg', user_vote: null });
     });
 
     it('should return 404 if not found', async () => {
@@ -71,7 +71,7 @@ describe('argController', () => {
     it('should create an arg successfully', async () => {
       const mockTransaction = { commit: jest.fn(), rollback: jest.fn() };
       sequelize.transaction.mockResolvedValue(mockTransaction);
-      Arg.create.mockResolvedValue({ arg_id: 1, title: 'New Arg' });
+      Arg.create.mockResolvedValue({ arg_id: 1, title: 'New Arg', toJSON: () => ({ arg_id: 1, title: 'New Arg' }) });
       
       req.body = { title: 'New Arg', waypoints: [], edges: [] };
       await createArg(req, res);
@@ -80,7 +80,7 @@ describe('argController', () => {
       expect(Arg.create).toHaveBeenCalled();
       expect(mockTransaction.commit).toHaveBeenCalled();
       expect(res.status).toHaveBeenCalledWith(201);
-      expect(res.json).toHaveBeenCalledWith({ arg_id: 1, title: 'New Arg' });
+      expect(res.json).toHaveBeenCalledWith({ arg_id: 1, title: 'New Arg', idMap: {}, minigameMap: {}, wpObjMap: {} });
     });
 
     it('should rollback on error', async () => {
@@ -98,7 +98,7 @@ describe('argController', () => {
     it('should update an arg successfully', async () => {
       const mockTransaction = { commit: jest.fn(), rollback: jest.fn() };
       sequelize.transaction.mockResolvedValue(mockTransaction);
-      const mockArg = { arg_id: 1, creator_id: 1, update: jest.fn() };
+      const mockArg = { arg_id: 1, creator_id: 1, update: jest.fn(), toJSON: () => ({ arg_id: 1, creator_id: 1 }) };
       Arg.findByPk.mockResolvedValue(mockArg);
       Waypoint.findAll.mockResolvedValue([]);
       
@@ -108,7 +108,7 @@ describe('argController', () => {
       
       expect(mockArg.update).toHaveBeenCalled();
       expect(mockTransaction.commit).toHaveBeenCalled();
-      expect(res.json).toHaveBeenCalledWith(mockArg);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ arg_id: 1, idMap: {}, minigameMap: {}, wpObjMap: {} }));
     });
 
     it('should return 404 if arg not found', async () => {
@@ -135,21 +135,38 @@ describe('argController', () => {
   });
 
   describe('voteArg', () => {
-    it('should add a new vote', async () => {
+    it('should add a new vote as the session user', async () => {
       req.params.id = 1;
-      req.body = { vote: 'like', user_id: 1 };
+      req.body = { vote: 'like' };
       ArgVote.findOne.mockResolvedValue(null);
       ArgVote.count.mockResolvedValue(1);
-      
+
       await voteArg(req, res);
-      
+
       expect(ArgVote.create).toHaveBeenCalledWith({ arg_id: 1, user_id: 1, vote: 'like' });
       expect(Arg.update).toHaveBeenCalledWith({ like_count: 1, dislike_count: 1 }, { where: { arg_id: 1 } });
       expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true, action: 'voted' }));
     });
 
-    it('should return 400 if missing body params', async () => {
+    it('should ignore a spoofed body user_id and vote as the session user', async () => {
+      req.user = { user_id: 7 };
+      req.params.id = 1;
+      req.body = { vote: 'dislike', user_id: 999 };
+      ArgVote.findOne.mockResolvedValue(null);
+      ArgVote.count.mockResolvedValue(1);
+
+      await voteArg(req, res);
+
+      expect(ArgVote.create).toHaveBeenCalledWith({ arg_id: 1, user_id: 7, vote: 'dislike' });
+    });
+
+    it('should return 400 if the vote is missing or invalid', async () => {
+      req.params.id = 1;
       req.body = {};
+      await voteArg(req, res);
+      expect(res.status).toHaveBeenCalledWith(400);
+
+      req.body = { vote: 'up' };
       await voteArg(req, res);
       expect(res.status).toHaveBeenCalledWith(400);
     });

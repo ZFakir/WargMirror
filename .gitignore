@@ -19,10 +19,21 @@ playwright-report/
 test-results/
 blob-report/
 .nyc_output/
+coverage.txt
+ui-coverage.txt
 
 # Python
 __pycache__/
 *.pyc
+
+# Docusaurus build caches
+.docusaurus/
+
+# AI model weights (download before building — see ai-engine/DEPLOYMENT.md)
+*.pt
+
+# Local agent scratch output
+guidance_output.txt
 
 # Server Data and Uploads
 server/uploads/

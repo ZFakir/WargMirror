@@ -3,7 +3,7 @@ const { test, expect } = require('./fixtures.js');
 test.describe('edit_warg page logic', () => {
   test('should load and initialize properly', async ({ page }) => {
     // Mock user session so pages don't redirect
-    await page.route('**/api/users/profile', route => {
+    await page.route('**/auth/me', route => {
       route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -18,9 +18,10 @@ test.describe('edit_warg page logic', () => {
     await expect(body).toBeVisible();
   });
 
+
   test('should allow opening and closing the barcode game modal', async ({ page }) => {
     // Mock user session so pages don't redirect
-    await page.route('**/api/users/profile', route => {
+    await page.route('**/auth/me', route => {
       route.fulfill({
         status: 200,
         contentType: 'application/json',
