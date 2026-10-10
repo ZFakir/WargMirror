@@ -690,3 +690,51 @@ Run this after every relevant merge and before tagging. Record results, commit S
 | Docs deployment | Public docs URL | Current build reachable, including AI attribution |
 
 **Definition of done:** all remaining `[ ]` items deliberately completed, deferred honestly, or marked out of scope; every claim in the submission has a recorded verification result; Polish-F is merged through review; and `main` is tagged only after final checks pass.
+
+---
+
+## 8. Implementation plan files
+
+Every unchecked register item has a dedicated plan in `implementation-plans/` (branch `feet/Missing-items`). Work each item on its own branch `feet/IP-<id>-<slug>` per the README there. Plans follow a 7-section template: scoring rationale · verified current state · subtasks · required tests · acceptance criteria · verify-without-breaking · safety notes.
+
+### Merge gate
+
+- [IP-00 — Polish-F merge gate](implementation-plans/IP-00-polish-f-merge-gate.md) — **hard prerequisite for all items below**
+
+### P1 — Highest priority
+
+- [IP-P1-1b — Password reset completion](implementation-plans/IP-P1-1b-password-reset-completion.md)
+- [IP-P1-2b — AI attribution declaration](implementation-plans/IP-P1-2b-ai-attribution-declaration.md)
+- [IP-P1-3 — Docs site deployment](implementation-plans/IP-P1-3-docs-site-deployment.md)
+- [IP-P1-4 — ARG list payload + cover delivery](implementation-plans/IP-P1-4-arg-list-payload.md)
+- [IP-P1-8 — Release tag](implementation-plans/IP-P1-8-release-tag.md) — run last, after IP-P3-13
+
+### P2 — Quality gaps (highest score return after merge)
+
+- [IP-P2-1 — Render cold-start mitigation](implementation-plans/IP-P2-1-render-cold-start.md)
+- [IP-P2-3 — Request validation](implementation-plans/IP-P2-3-request-validation.md)
+- [IP-P2-4 — Centralized error handling](implementation-plans/IP-P2-4-centralized-error-handling.md) — ideally before P2-3
+- [IP-P2-5 — Pagination](implementation-plans/IP-P2-5-pagination.md)
+- [IP-P2-6 — Query performance (N+1 + indexes)](implementation-plans/IP-P2-6-query-performance.md) — DDL via IP-P2-8
+- [IP-P2-7 — Security headers + rate limiting](implementation-plans/IP-P2-7-rate-limits-headers.md)
+- [IP-P2-8 — Migration framework (umzug)](implementation-plans/IP-P2-8-schema-migrations.md) — before P2-6/P2-9
+- [IP-P2-9 — Media storage externalization](implementation-plans/IP-P2-9-media-storage.md) — structural fix behind P1-4
+- [IP-P2-10 — Transactional writes + live counters](implementation-plans/IP-P2-10-transactional-counters.md)
+- [IP-P2-12 — Production data curation](implementation-plans/IP-P2-12-production-data-curation.md)
+- [IP-P2-13 — Client performance (CLS/LCP)](implementation-plans/IP-P2-13-cls-performance.md)
+- [IP-P2-15 — Coverage gates + real client tests](implementation-plans/IP-P2-15-coverage-gates.md)
+- [IP-P2-16 — Pre-commit hooks decision](implementation-plans/IP-P2-16-precommit-decision.md)
+
+### P3 — Accessibility, UX, advanced
+
+- [IP-P3-1 — Skip navigation + modal focus management](implementation-plans/IP-P3-1-skip-nav-focus-management.md)
+- [IP-P3-2 — Lighthouse accessibility cleanup](implementation-plans/IP-P3-2-lighthouse-accessibility.md)
+- [IP-P3-3 — Replace native alert/confirm](implementation-plans/IP-P3-3-replace-native-dialogs.md)
+- [IP-P3-5 — Split large client scripts](implementation-plans/IP-P3-5-split-client-scripts.md) — after gameplay freeze
+- [IP-P3-6 — Dead UI/assets + media UX](implementation-plans/IP-P3-6-dead-ui-media-ux.md)
+- [IP-P3-7 — Responsive validation](implementation-plans/IP-P3-7-responsive-validation.md)
+- [IP-P3-8 — Points-economy decision](implementation-plans/IP-P3-8-points-economy-decision.md)
+- [IP-P3-9 — Realtime/co-op scope decision](implementation-plans/IP-P3-9-realtime-coop-decision.md)
+- [IP-P3-10/11 — Notifications + recommendations (post-submission options)](implementation-plans/IP-P3-10-11-notifications-recommendations.md)
+- [IP-P3-13 — Final documentation completeness](implementation-plans/IP-P3-13-final-documentation.md) — last, before IP-P1-8
+
