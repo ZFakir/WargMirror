@@ -66,6 +66,9 @@ def extract_and_compare(image_bytes: bytes, target_mask_bytes: bytes) -> float:
     ref_mask_bool = target_mask_bin > 0
 
     # Extract shape using SAM with 5-point crosshair
+    if predictor is None:
+        raise RuntimeError("SAM predictor not initialized. Model weights are likely missing.")
+        
     predictor.set_image(image_rgb)
     h, w = image_rgb.shape[:2]
     cx, cy = w // 2, h // 2
