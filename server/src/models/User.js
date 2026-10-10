@@ -16,7 +16,9 @@ const User = sequelize.define('User', {
   trust_score: { type: DataTypes.DECIMAL(5, 2), allowNull: false, defaultValue: 100.00 },
   is_flagged: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
   is_suspended: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
-  suspended_until: { type: DataTypes.DATE, allowNull: true }
+  suspended_until: { type: DataTypes.DATE, allowNull: true },
+  password_reset_token: { type: DataTypes.STRING(64), allowNull: true },
+  password_reset_expires: { type: DataTypes.DATE, allowNull: true }
 }, {
   tableName: 'users',
   timestamps: true,

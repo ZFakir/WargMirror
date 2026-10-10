@@ -285,17 +285,27 @@ describe('argController', () => {
   });
 
   describe('flagArg', () => {
-    it('should create a flag', async () => {
+    it('should create a flag attributed to the authenticated user', async () => {
       req.params.id = 1;
-      req.body = { reporter_id: 1, reason: 'spam' };
+      req.body = { reason: 'spam' };
       Flag.create.mockResolvedValue({ flag_id: 1 });
       
       await flagArg(req, res);
-      expect(Flag.create).toHaveBeenCalled();
+      expect(Flag.create).toHaveBeenCalledWith(expect.objectContaining({ reporter_id: 1, reason: 'spam' }));
       expect(res.status).toHaveBeenCalledWith(201);
     });
 
-    it('should return 400 if missing params', async () => {
+    it('should ignore a reporter_id supplied in the request body', async () => {
+      req.params.id = 1;
+      req.body = { reporter_id: 999, reason: 'spam' };
+      Flag.create.mockResolvedValue({ flag_id: 1 });
+
+      await flagArg(req, res);
+
+      expect(Flag.create).toHaveBeenCalledWith(expect.objectContaining({ reporter_id: 1 }));
+    });
+
+    it('should return 400 if the reason is missing', async () => {
       req.body = {};
       await flagArg(req, res);
       expect(res.status).toHaveBeenCalledWith(400);

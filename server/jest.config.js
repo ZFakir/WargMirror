@@ -1,5 +1,8 @@
 module.exports = {
   verbose: true,
+  // Coverage must reflect the whole source tree, not just files loaded by
+  // a particular suite — otherwise the reported numbers are silently inflated.
+  collectCoverageFrom: ['src/**/*.js'],
   // Unit and integration suites behave very differently (mocked vs real DB),
   // so they're split into projects that can be run independently:
   //   npm run test:unit

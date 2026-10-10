@@ -164,7 +164,7 @@ exports.createArg = async (req, res) => {
   } catch (error) {
     await transaction.rollback();
     console.error(error);
-    res.status(500).json({ error: 'Failed to create ARG', detail: error.message });
+    res.status(500).json({ error: 'Failed to create ARG' });
   }
 };
 
@@ -384,11 +384,13 @@ exports.voteArg = async (req, res) => {
 
 exports.flagArg = async (req, res) => {
   try {
-    const { reporter_id, reason, description } = req.body;
+    // The reporter is always the authenticated session user — never the body.
+    const reporter_id = req.user.user_id;
+    const { reason, description } = req.body;
     const arg_id = req.params.id;
 
-    if (!reporter_id || !reason) {
-      return res.status(400).json({ error: 'Missing reporter_id or reason' });
+    if (!reason) {
+      return res.status(400).json({ error: 'Missing reason' });
     }
 
     const flag = await Flag.create({

@@ -49,6 +49,10 @@ jobs:
         working-directory: ./server
         run: npm run test:unit
 
+      - name: Run Backend Mocked Tests
+        working-directory: ./server
+        run: npm run test:mocked
+
       - name: Run Backend Integration Tests
         working-directory: ./server
         run: npm run test:integration

@@ -85,7 +85,7 @@ exports.startGameSession = async (req, res) => {
 // Get the full game state for a player
 exports.getGameState = async (req, res) => {
   try {
-    const user_id = req.user ? req.user.user_id : (req.query.user_id || 1);
+    const user_id = req.user.user_id;
     const arg_id = req.params.argId;
 
     const session = await GameSession.findOne({ where: { user_id, arg_id } });
@@ -256,10 +256,10 @@ exports.submitMinigame = async (req, res) => {
 
     if (game.game_type === 'gps_proximity') {
       // Defense-in-depth: confirm the player's last trusted location is inside the
-      // waypoint's geofence, rather than auto-passing. The client's TEMP Dev Override
-      // (geofence_override) intentionally bypasses this while testing — remove it
-      // together with the override dialog in game.js before release.
-      if (geofence_override === true) {
+      // waypoint's geofence, rather than auto-passing. The geofence_override flag is
+      // honoured ONLY outside production (local development / automated tests) and
+      // can never bypass the check on a deployed server.
+      if (process.env.NODE_ENV !== 'production' && geofence_override === true) {
         outcome = 'pass';
       } else {
         const lastTrustedEvent = await LocationEvent.findOne({
@@ -483,10 +483,20 @@ exports.dominationPing = async (req, res) => {
     const waypoint_id = req.params.waypointId;
     const { lat, lng, accuracy_m, game_id } = req.body;
 
-    if (!lat || !lng || !game_id) {
+    if (lat === undefined || lng === undefined || !game_id) {
       await transaction.rollback();
       return res.status(400).json({ error: 'Missing parameters' });
     }
+
+    // Coordinates are used to build WKT for SQL — only accept finite numbers
+    // within valid geographic ranges so the value can never break out of the literal.
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) ||
+        Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+      await transaction.rollback();
+      return res.status(400).json({ error: 'Invalid coordinates' });
+    }
+
+    const pointWkt = `POINT(${lat} ${lng})`;
 
     const waypoint = await Waypoint.findByPk(waypoint_id, { transaction });
     const minigame = await Minigame.findByPk(game_id, { transaction });
@@ -499,16 +509,17 @@ exports.dominationPing = async (req, res) => {
     // Log location event (optional)
     await LocationEvent.create({
       user_id,
-      location: sequelize.fn('ST_GeomFromText', `POINT(${lat} ${lng})`, 4326),
+      location: sequelize.fn('ST_GeomFromText', pointWkt, 4326),
       accuracy_m: accuracy_m || null
     }, { transaction });
 
-    // Distance check
+    // Distance check — pointWkt is built only from validated numbers and bound
+    // as a replacement, so the raw coordinate strings never reach SQL text.
     const [result] = await sequelize.query(`
-      SELECT ST_Distance_Sphere(location, ST_GeomFromText('POINT(${lat} ${lng})', 4326)) AS distance
+      SELECT ST_Distance_Sphere(location, ST_GeomFromText(:point_wkt, 4326)) AS distance
       FROM waypoints WHERE waypoint_id = :waypoint_id
     `, {
-      replacements: { waypoint_id },
+      replacements: { waypoint_id, point_wkt: pointWkt },
       type: sequelize.QueryTypes.SELECT,
       transaction
     });

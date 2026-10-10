@@ -1,18 +1,5 @@
 const { GameSession, Arg } = require('../models');
 
-exports.startGameSession = async (req, res) => {
-  try {
-    // The acting user comes from the session, never from the request body.
-    const user_id = req.user.user_id;
-    const { arg_id } = req.body;
-    const session = await GameSession.create({ user_id, arg_id, status: 'active' });
-    res.status(201).json(session);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Failed to start game session' });
-  }
-};
-
 exports.getActiveSessions = async (req, res) => {
   try {
     // Sessions are private to the authenticated user.

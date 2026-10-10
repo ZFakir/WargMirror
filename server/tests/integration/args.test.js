@@ -184,24 +184,39 @@ describe('ARG API (/api/args)', () => {
   });
 
   describe('POST /api/args/:id/flag', () => {
-    it('creates a flag against an ARG', async () => {
+    it('creates a flag attributed to the authenticated reporter', async () => {
       const { user: creator } = await createUser();
-      const { user: reporter } = await createUser();
+      const { user: reporter, password } = await createUser();
       const arg = await createArg(creator);
+      const agent = await loginUser(reporter, password);
 
-      const res = await request(app)
+      const res = await agent
         .post(`/api/args/${arg.arg_id}/flag`)
-        .send({ reporter_id: reporter.user_id, reason: 'inappropriate_content', description: 'Not campus-appropriate' });
+        .send({ reporter_id: 999, reason: 'inappropriate_content', description: 'Not campus-appropriate' });
 
       expect(res.status).toBe(201);
       expect(res.body.reason).toBe('inappropriate_content');
+      // A spoofed reporter_id in the body must be ignored.
+      expect(res.body.reporter_id).toBe(reporter.user_id);
     });
 
-    it('requires reporter_id and reason', async () => {
+    it('rejects anonymous flags with 401', async () => {
       const { user } = await createUser();
       const arg = await createArg(user);
 
-      const res = await request(app).post(`/api/args/${arg.arg_id}/flag`).send({});
+      const res = await request(app)
+        .post(`/api/args/${arg.arg_id}/flag`)
+        .send({ reason: 'spam' });
+
+      expect(res.status).toBe(401);
+    });
+
+    it('rejects a flag without a reason', async () => {
+      const { user, password } = await createUser();
+      const arg = await createArg(user);
+      const agent = await loginUser(user, password);
+
+      const res = await agent.post(`/api/args/${arg.arg_id}/flag`).send({});
       expect(res.status).toBe(400);
     });
   });

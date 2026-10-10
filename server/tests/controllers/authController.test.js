@@ -1,4 +1,4 @@
-const { signup, checkUserExists, updateAccount, deleteAccount } = require('../../src/controllers/authController');
+const { signup, checkUserExists, updateAccount, deleteAccount, forgotPassword, resetPassword } = require('../../src/controllers/authController');
 const { User } = require('../../src/models');
 const bcrypt = require('bcryptjs');
 
@@ -8,7 +8,8 @@ jest.mock('../../src/models', () => ({
 
 jest.mock('bcryptjs', () => ({
   genSalt: jest.fn().mockResolvedValue('salt'),
-  hash: jest.fn().mockResolvedValue('hashed_password')
+  hash: jest.fn().mockResolvedValue('hashed_password'),
+  compare: jest.fn()
 }));
 
 describe('authController', () => {
@@ -115,16 +116,32 @@ describe('authController', () => {
   describe('updateAccount', () => {
     it('should update account successfully', async () => {
       req.isAuthenticated = jest.fn().mockReturnValue(true);
-      req.user = { user_id: 1, email: 'old@example.com', auth_provider: 'local' };
-      req.body = { email: 'new@example.com', password: 'newpassword' };
+      req.user = { user_id: 1, email: 'old@example.com', auth_provider: 'local', password_hash: 'old_hash' };
+      req.body = { email: 'new@example.com', password: 'newpassword', current_password: 'oldpassword' };
       
+      bcrypt.compare.mockResolvedValue(true);
       User.findOne.mockResolvedValue(null);
       User.update.mockResolvedValue([1]);
       
       await updateAccount(req, res);
       
+      expect(bcrypt.compare).toHaveBeenCalledWith('oldpassword', 'old_hash');
       expect(User.update).toHaveBeenCalled();
       expect(res.json).toHaveBeenCalledWith({ message: 'Account updated successfully' });
+    });
+
+    it('should return 401 if current password is wrong', async () => {
+      req.isAuthenticated = jest.fn().mockReturnValue(true);
+      req.user = { user_id: 1, email: 'old@example.com', auth_provider: 'local', password_hash: 'old_hash' };
+      req.body = { password: 'newpassword', current_password: 'wrongpassword' };
+
+      bcrypt.compare.mockResolvedValue(false);
+
+      await updateAccount(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(401);
+      expect(res.json).toHaveBeenCalledWith({ error: 'Current password is incorrect.' });
+      expect(User.update).not.toHaveBeenCalled();
     });
 
     it('should return 401 if not authenticated', async () => {
@@ -158,6 +175,108 @@ describe('authController', () => {
       
       User.findOne.mockRejectedValue(new Error('DB'));
       await updateAccount(req, res);
+      expect(res.status).toHaveBeenCalledWith(500);
+    });
+  });
+
+  describe('forgotPassword', () => {
+    it('should return 400 if email is missing', async () => {
+      req.body = {};
+      await forgotPassword(req, res);
+      expect(res.status).toHaveBeenCalledWith(400);
+    });
+
+    it('should generate a token and generic response for a local account', async () => {
+      req.body = { email: 'user@example.com' };
+      User.findOne.mockResolvedValue({ user_id: 1, email: 'user@example.com', auth_provider: 'local' });
+      User.update.mockResolvedValue([1]);
+
+      await forgotPassword(req, res);
+
+      expect(User.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          password_reset_token: expect.any(String),
+          password_reset_expires: expect.any(Date)
+        }),
+        { where: { user_id: 1 } }
+      );
+      expect(res.json).toHaveBeenCalledWith({ message: 'If that email is registered, a reset link has been created.' });
+    });
+
+    it('should return the same generic response for an unknown email (no enumeration)', async () => {
+      req.body = { email: 'nobody@example.com' };
+      User.findOne.mockResolvedValue(null);
+
+      await forgotPassword(req, res);
+
+      expect(User.update).not.toHaveBeenCalled();
+      expect(res.json).toHaveBeenCalledWith({ message: 'If that email is registered, a reset link has been created.' });
+    });
+
+    it('should not issue a token for Google accounts', async () => {
+      req.body = { email: 'google@example.com' };
+      User.findOne.mockResolvedValue({ user_id: 2, email: 'google@example.com', auth_provider: 'google' });
+
+      await forgotPassword(req, res);
+
+      expect(User.update).not.toHaveBeenCalled();
+      expect(res.json).toHaveBeenCalledWith({ message: 'If that email is registered, a reset link has been created.' });
+    });
+
+    it('should handle errors', async () => {
+      req.body = { email: 'user@example.com' };
+      User.findOne.mockRejectedValue(new Error('DB'));
+      await forgotPassword(req, res);
+      expect(res.status).toHaveBeenCalledWith(500);
+    });
+  });
+
+  describe('resetPassword', () => {
+    it('should return 400 if token or password is missing', async () => {
+      req.body = { token: 'abc' };
+      await resetPassword(req, res);
+      expect(res.status).toHaveBeenCalledWith(400);
+    });
+
+    it('should return 400 if password is too short', async () => {
+      req.body = { token: 'abc', password: '123' };
+      await resetPassword(req, res);
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({ error: 'Password must be at least 6 characters.' });
+    });
+
+    it('should return 400 for an invalid or expired token', async () => {
+      req.body = { token: 'expired-token', password: 'newpassword' };
+      User.findOne.mockResolvedValue(null);
+
+      await resetPassword(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({ error: 'Invalid or expired reset token.' });
+    });
+
+    it('should reset the password and clear the token on success', async () => {
+      req.body = { token: 'valid-token', password: 'newpassword' };
+      User.findOne.mockResolvedValue({ user_id: 1 });
+      User.update.mockResolvedValue([1]);
+
+      await resetPassword(req, res);
+
+      expect(User.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          password_hash: 'hashed_password',
+          password_reset_token: null,
+          password_reset_expires: null
+        }),
+        { where: { user_id: 1 } }
+      );
+      expect(res.json).toHaveBeenCalledWith({ message: 'Password reset successful. You can now log in.' });
+    });
+
+    it('should handle errors', async () => {
+      req.body = { token: 'valid-token', password: 'newpassword' };
+      User.findOne.mockRejectedValue(new Error('DB'));
+      await resetPassword(req, res);
       expect(res.status).toHaveBeenCalledWith(500);
     });
   });

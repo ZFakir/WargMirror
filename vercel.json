@@ -6,7 +6,7 @@
       "destination": "/client/home.html"
     },
     {
-      "source": "/(styles|scripts|assets|test-results|tests|node_modules)/(.*)",
+      "source": "/(styles|scripts|assets)/(.*)",
       "destination": "/client/$1/$2"
     },
     {
