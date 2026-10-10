@@ -1,9 +1,9 @@
-const { signup, checkUserExists } = require('../../src/controllers/authController');
+const { signup, checkUserExists, updateAccount, deleteAccount } = require('../../src/controllers/authController');
 const { User } = require('../../src/models');
 const bcrypt = require('bcryptjs');
 
 jest.mock('../../src/models', () => ({
-  User: { findOne: jest.fn(), create: jest.fn() }
+  User: { findOne: jest.fn(), create: jest.fn(), update: jest.fn(), destroy: jest.fn() }
 }));
 
 jest.mock('bcryptjs', () => ({
@@ -108,6 +108,95 @@ describe('authController', () => {
       req.query = { email: 'test@example.com' };
       User.findOne.mockRejectedValue(new Error('DB Error'));
       await checkUserExists(req, res);
+      expect(res.status).toHaveBeenCalledWith(500);
+    });
+  });
+
+  describe('updateAccount', () => {
+    it('should update account successfully', async () => {
+      req.isAuthenticated = jest.fn().mockReturnValue(true);
+      req.user = { user_id: 1, email: 'old@example.com', auth_provider: 'local' };
+      req.body = { email: 'new@example.com', password: 'newpassword' };
+      
+      User.findOne.mockResolvedValue(null);
+      User.update.mockResolvedValue([1]);
+      
+      await updateAccount(req, res);
+      
+      expect(User.update).toHaveBeenCalled();
+      expect(res.json).toHaveBeenCalledWith({ message: 'Account updated successfully' });
+    });
+
+    it('should return 401 if not authenticated', async () => {
+      req.isAuthenticated = jest.fn().mockReturnValue(false);
+      await updateAccount(req, res);
+      expect(res.status).toHaveBeenCalledWith(401);
+    });
+
+    it('should return 400 if google account', async () => {
+      req.isAuthenticated = jest.fn().mockReturnValue(true);
+      req.user = { auth_provider: 'google' };
+      await updateAccount(req, res);
+      expect(res.status).toHaveBeenCalledWith(400);
+    });
+
+    it('should return 400 if email already in use', async () => {
+      req.isAuthenticated = jest.fn().mockReturnValue(true);
+      req.user = { user_id: 1, email: 'old@example.com', auth_provider: 'local' };
+      req.body = { email: 'new@example.com' };
+      
+      User.findOne.mockResolvedValue({ user_id: 2 });
+      
+      await updateAccount(req, res);
+      expect(res.status).toHaveBeenCalledWith(400);
+    });
+
+    it('should handle errors', async () => {
+      req.isAuthenticated = jest.fn().mockReturnValue(true);
+      req.user = { user_id: 1, auth_provider: 'local' };
+      req.body = { email: 'new@example.com' };
+      
+      User.findOne.mockRejectedValue(new Error('DB'));
+      await updateAccount(req, res);
+      expect(res.status).toHaveBeenCalledWith(500);
+    });
+  });
+
+  describe('deleteAccount', () => {
+    it('should delete account and logout', async () => {
+      req.isAuthenticated = jest.fn().mockReturnValue(true);
+      req.user = { user_id: 1 };
+      req.logout = jest.fn((cb) => cb(null));
+      User.destroy.mockResolvedValue(1);
+      
+      await deleteAccount(req, res);
+      
+      expect(User.destroy).toHaveBeenCalledWith({ where: { user_id: 1 } });
+      expect(req.logout).toHaveBeenCalled();
+      expect(res.json).toHaveBeenCalledWith({ message: 'Account deleted successfully' });
+    });
+
+    it('should return 401 if not authenticated', async () => {
+      req.isAuthenticated = jest.fn().mockReturnValue(false);
+      await deleteAccount(req, res);
+      expect(res.status).toHaveBeenCalledWith(401);
+    });
+
+    it('should handle logout errors gracefully', async () => {
+      req.isAuthenticated = jest.fn().mockReturnValue(true);
+      req.user = { user_id: 1 };
+      req.logout = jest.fn((cb) => cb(new Error('Logout Error')));
+      
+      await deleteAccount(req, res);
+      expect(res.json).toHaveBeenCalledWith({ message: 'Account deleted successfully' });
+    });
+
+    it('should handle general errors', async () => {
+      req.isAuthenticated = jest.fn().mockReturnValue(true);
+      req.user = { user_id: 1 };
+      User.destroy.mockRejectedValue(new Error('DB'));
+      
+      await deleteAccount(req, res);
       expect(res.status).toHaveBeenCalledWith(500);
     });
   });

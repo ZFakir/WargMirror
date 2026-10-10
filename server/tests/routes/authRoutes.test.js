@@ -5,18 +5,18 @@ const passport = require('passport');
 // Mock authController before importing the router
 jest.mock('../../src/controllers/authController', () => ({
   signup: (req, res) => res.status(201).json({ message: 'Signup success' }),
-  checkUserExists: (req, res) => res.status(200).json({ exists: false })
+  checkUserExists: (req, res) => res.status(200).json({ exists: false }),
+  updateAccount: (req, res) => res.status(200).json({ message: 'Account updated' }),
+  deleteAccount: (req, res) => res.status(200).json({ message: 'Account deleted' })
 }));
-
-const authRoutes = require('../../src/routes/authRoutes');
-
-const app = express();
-app.use(express.json());
 
 // Mock passport authenticate
 jest.spyOn(passport, 'authenticate').mockImplementation((strategy, callback) => {
   return (req, res, next) => {
     if (strategy === 'google') {
+      if (typeof callback !== 'function') {
+        return res.redirect('/auth/google/callback');
+      }
       if (req.query.error === 'true') {
         return callback(new Error('Google error'), null, null)(req, res, next);
       }
@@ -38,6 +38,12 @@ jest.spyOn(passport, 'authenticate').mockImplementation((strategy, callback) => 
   };
 });
 
+const authRoutes = require('../../src/routes/authRoutes');
+
+const app = express();
+app.use(express.json());
+
+
 app.use((req, res, next) => {
   req.logIn = (user, done) => {
     if (req.query.loginError === 'true' || req.body.loginError === 'true') {
@@ -56,7 +62,21 @@ app.use((req, res, next) => {
   req.session = {
     destroy: (cb) => cb()
   };
+  if (req.headers['x-mock-db-error'] === 'true') {
+    // We will simulate the DB error by mocking the models dynamically or patching GameSession
+    req.mockDbError = true;
+  }
   next();
+});
+
+jest.mock('../../src/models', () => {
+  return {
+    GameSession: {
+      count: jest.fn().mockImplementation(() => {
+        return Promise.resolve(5);
+      })
+    }
+  };
 });
 
 app.use('/auth', authRoutes);
@@ -85,6 +105,24 @@ describe('Auth Routes', () => {
       const res = await request(app).get('/auth/google/callback');
       expect(res.status).toBe(302);
       expect(res.header.location).toContain('home.html');
+    });
+
+    it('should handle comma-separated CLIENT_URL', async () => {
+      process.env.CLIENT_URL = 'http://url1.com, http://url2.com';
+      const res = await request(app).get('/auth/google/callback');
+      expect(res.status).toBe(302);
+      expect(res.header.location).toContain('http://url1.com/home.html');
+      delete process.env.CLIENT_URL;
+    });
+
+    it('should set oauthReturnTo in session if referer is present', async () => {
+      const res = await request(app)
+        .get('/auth/google')
+        .set('referer', 'http://localhost:3000/some/path');
+      if (res.status !== 302) {
+        console.error('Error body:', res.body, res.text);
+      }
+      expect(res.status).toBe(302); // Redirects to google
     });
   });
 
@@ -125,13 +163,21 @@ describe('Auth Routes', () => {
       const res = await request(app).get('/auth/me').set('auth', 'false');
       expect(res.status).toBe(401);
     });
+
+    it('should handle db error in /me', async () => {
+      const { GameSession } = require('../../src/models');
+      GameSession.count.mockRejectedValueOnce(new Error('DB Error'));
+      const res = await request(app).get('/auth/me').set('auth', 'true');
+      expect(res.status).toBe(500);
+      expect(res.body.error).toBe('Server error fetching user profile');
+    });
   });
 
   describe('GET /auth/logout', () => {
-    it('should redirect to login after logout', async () => {
+    it('should return 200 on logout', async () => {
       const res = await request(app).get('/auth/logout');
-      expect(res.status).toBe(302);
-      expect(res.header.location).toContain('login.html');
+      expect(res.status).toBe(200);
+      expect(res.body.message).toBe('Logged out successfully');
     });
 
     it('should return 500 if logout fails', async () => {

@@ -19,9 +19,7 @@ module.exports = {
         '<rootDir>/tests/config/**/*.test.js'
       ],
       testPathIgnorePatterns: [
-        '/node_modules/',
-        'tests/controllers/userController.test.js',
-        'tests/routes/authRoutes.test.js'
+        '/node_modules/'
       ]
     },
     {
