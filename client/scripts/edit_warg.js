@@ -18,10 +18,21 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // ── Create vs Edit mode ──
-  const isCreateMode = window.location.pathname.includes('create_warg');
   const urlParams = new URLSearchParams(window.location.search);
   let currentArgId = urlParams.get('id');
+  const isCreateMode = !currentArgId;
   let currentStatus = 'unpublished';
+
+  let isDirty = false;
+  window.addEventListener('beforeunload', (e) => {
+    if (isDirty) {
+      e.preventDefault();
+      e.returnValue = '';
+    }
+  });
+
+  document.addEventListener('input', () => { isDirty = true; });
+  document.addEventListener('change', () => { isDirty = true; });
 
   let nodes = [];
   let edges = [];
@@ -34,6 +45,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   const modeEl = document.getElementById('arg-mode');
 
   const mapBackendGameTypeToFrontend = (mg) => {
+    if (isCreateMode) {
+      document.title = "WARG - Create ARG";
+    }
     if (mg.game_type === 'gps_proximity' && mg.config_json && mg.config_json.subtype === 'geofence') {
       return { type: 'geofence', label: 'Geofence Check' };
     }
@@ -72,9 +86,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (argData.cover_image) {
           const heroImg = document.getElementById('hero-banner-img');
+          const heroPlaceholder = document.getElementById('hero-placeholder-content');
           if (heroImg) {
             heroImg.src = `${API_BASE}/api/args/${currentArgId}/cover-image`;
             heroImg.style.display = 'block';
+            if (heroPlaceholder) {
+              heroPlaceholder.style.display = 'none';
+            }
           }
         }
 
@@ -150,27 +168,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (err) {
       console.error('Failed to fetch ARG data:', err);
     }
-  } else if (!isCreateMode) {
-    // Demo data for visual testing if no ID provided in edit mode
+  } else {
+    // Create Mode (no ID provided)
     const skeleton = document.getElementById('builder-header-skeleton');
     const fields = document.getElementById('builder-header-fields');
     if (skeleton) skeleton.style.display = 'none';
     if (fields) fields.style.display = 'block';
 
-    if (titleEl) titleEl.textContent = 'Operation: Midnight Sun';
-    if (descEl) descEl.textContent = 'A fast-paced urban scavenger hunt across the downtown district, challenging players to uncover hidden corporate secrets.';
+    if (titleEl) titleEl.textContent = 'Untitled WARG';
+    if (descEl) descEl.textContent = 'A new WARG ready to be built...';
 
-    nodes = [
-      { id: 'wp1', lat: -26.19233, lng: 28.02987, title: 'The Great Hall', description: 'Find the plaque near the entrance.', games: [{ gamemode: 'GPS Location', type: 'gps' }] },
-      { id: 'wp2', lat: -26.19075, lng: 28.03215, title: 'Library Archway', description: 'Scan the historic archway to reveal the hidden message.', games: [{ gamemode: 'AR Object Scan', type: 'ar' }] },
-      { id: 'wp3', lat: -26.19320, lng: 28.02790, title: 'Coffee Shop Secret', description: 'Scan the special barcode on the cup.', games: [{ gamemode: 'Barcode Game', type: 'barcode' }] }
-    ];
-    edges = [
-      { id: 'e1', from: 'wp1', to: 'wp2', triggers: [] },
-      { id: 'e2', from: 'wp2', to: 'wp3', triggers: [] }
-    ];
-    nextId = 4;
-    nextEdgeId = 3;
+    nodes = [];
+    edges = [];
+    nextId = 1;
+    nextEdgeId = 1;
   }
 
   let selectedId = null;
@@ -234,6 +245,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       selectItem('node', newNode.id);
       isPlacementMode = false;
       _setPlacementCursor(false);
+      isDirty = true;
     },
     onNodeSelected(id) {
       selectItem('node', id);
@@ -250,6 +262,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const node = nodes.find(n => n.id === id);
       if (node) { node.lat = lat; node.lng = lng; }
       mapModal.updateEditorEdges(edges, nodes);
+      isDirty = true;
     },
     onMapDeselect() {
       clearSelection();
@@ -335,8 +348,23 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // ── Placement cursor helper ──
   function _setPlacementCursor(on) {
-    const mapEl = document.getElementById('game-map');
-    if (mapEl) mapEl.style.cursor = on ? 'crosshair' : '';
+    if (on) {
+      document.body.classList.add('global-crosshair-active');
+      if (!document.getElementById('global-crosshair-style')) {
+        const style = document.createElement('style');
+        style.id = 'global-crosshair-style';
+        style.textContent = `
+          .global-crosshair-active,
+          .global-crosshair-active * {
+            cursor: crosshair !important;
+          }
+        `;
+        document.head.appendChild(style);
+      }
+    } else {
+      document.body.classList.remove('global-crosshair-active');
+    }
+
     if (!on && mapModal) {
       mapModal.hideGhostNode();
     }
@@ -401,9 +429,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <div class="sub-card" style="position: relative; flex-direction: column; align-items: stretch;" tabindex="0">
                   <div style="display: flex; justify-content: space-between; align-items: center;">
                     <span class="sub-card__text">${game.gamemode}</span>
-                    <button class="icon-btn sub-card__action btn-game-options" data-index="${index}" aria-label="More options">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
-                    </button>
                   </div>
                   ${!isPDGame ? `
                   <label style="display: inline-block; font-size: 11px; margin-top: 4px; cursor: pointer; color: var(--color-text-muted);">
@@ -422,18 +447,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                       </button>
                     </div>
                   ` : `
-                    <button class="btn-primary btn-set-reference" data-index="${index}" style="width: 100%; margin-top: 8px; display: flex; justify-content: center; align-items: center; gap: 8px;">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                        <polyline points="17 8 12 3 7 8"></polyline>
-                        <line x1="12" y1="3" x2="12" y2="15"></line>
-                      </svg>
+                    <button class="btn-secondary btn-set-reference" data-index="${index}" style="width: 100%; margin-top: 8px;">
                       Set Reference Photo
                     </button>
                   `) : ''}
-                  <div class="sub-card__dropdown game-options-dropdown" id="game-dropdown-${index}">
-                    <button class="dropdown-item btn-edit-game" data-index="${index}">Edit Game</button>
-                    <button class="dropdown-item dropdown-item--danger btn-delete-game" data-index="${index}">Delete Game</button>
+                  <div style="display: flex; gap: 8px; margin-top: 12px;">
+                    <button class="btn-secondary btn-edit-game" data-index="${index}" style="flex: 1; padding: 6px; font-size: 12px;">Edit</button>
+                    <button class="btn-danger btn-delete-game" data-index="${index}" style="flex: 1; padding: 6px; font-size: 12px;">Delete</button>
                   </div>
                 </div>
               `;
@@ -526,14 +546,6 @@ document.addEventListener('DOMContentLoaded', async () => {
               });
             });
 
-            // Close dropdown when clicking outside
-            document.addEventListener('click', (e) => {
-              gamesList.querySelectorAll('.game-options-dropdown.show').forEach(d => {
-                if (!d.contains(e.target) && !e.target.closest('.btn-game-options')) {
-                  d.classList.remove('show');
-                }
-              });
-            });
             // Unlimited attempts checkbox logic
             gamesList.querySelectorAll('.unlimited-attempts-checkbox').forEach(cb => {
               cb.addEventListener('change', (e) => {
@@ -545,32 +557,13 @@ document.addEventListener('DOMContentLoaded', async () => {
               });
             });
 
-            // Wire up dropdown logic
-            const optionBtns = gamesList.querySelectorAll('.btn-game-options');
-            optionBtns.forEach(btn => {
-              btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const index = btn.getAttribute('data-index');
-                const dropdown = document.getElementById(`game-dropdown-${index}`);
-                
-                // close others
-                gamesList.querySelectorAll('.game-options-dropdown.show').forEach(d => {
-                  if (d !== dropdown) {
-                    d.classList.remove('show');
-                  }
-                });
-                if (dropdown) dropdown.classList.toggle('show');
-              });
-            });
+
 
               const editBtns = gamesList.querySelectorAll('.btn-edit-game');
               editBtns.forEach(btn => {
                 btn.addEventListener('click', (e) => {
                   e.stopPropagation();
                   const index = btn.getAttribute('data-index');
-                  const dropdown = document.getElementById(`game-dropdown-${index}`);
-                  dropdown.classList.remove('show');
-
                   const game = node.games[index];
                   if (game.gamemode === 'QnA / MCQ') {
                     openQnaModal(game.minigame_config, index);
@@ -591,12 +584,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 btn.addEventListener('click', (e) => {
                   e.stopPropagation();
                   const index = btn.getAttribute('data-index');
-                  const dropdown = document.getElementById(`game-dropdown-${index}`);
-                  dropdown.classList.remove('show');
 
                   openConfirmModal('Delete Game', 'Are you sure you want to remove this game from the waypoint?', () => {
                     node.games.splice(index, 1);
                     updatePanel();
+                    isDirty = true;
                   });
                 });
               });
@@ -767,10 +759,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (!currentArgId && data.arg_id) {
           currentArgId = data.arg_id;
-          window.history.pushState({}, '', `edit_warg?id=${currentArgId}`);
+          window.history.pushState({}, '', `edit_warg.html?id=${currentArgId}`);
         }
 
         currentStatus = effectiveStatus;
+        isDirty = false;
 
         // Update nodes with their DB IDs
         if (data.idMap || data.minigameMap || data.wpObjMap) {
@@ -849,11 +842,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // ── Hero Banner Image Upload ──
-    const btnChangeHeroImage = document.getElementById('btn-change-hero-image');
+    const heroBannerContainer = document.getElementById('hero-banner-container');
     const heroBannerImg = document.getElementById('hero-banner-img');
+    const heroPlaceholderContent = document.getElementById('hero-placeholder-content');
 
-    if (btnChangeHeroImage && heroBannerImg) {
-      btnChangeHeroImage.addEventListener('click', () => {
+    if (heroBannerContainer && heroBannerImg) {
+      heroBannerContainer.addEventListener('click', () => {
         const input = document.createElement('input');
         input.type = 'file';
         input.accept = 'image/*';
@@ -871,9 +865,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
           }
 
-          const origContent = btnChangeHeroImage.innerHTML;
-          btnChangeHeroImage.innerHTML = '<span style="font-size:10px; font-weight:bold;">Up...</span>';
-          btnChangeHeroImage.disabled = true;
+          if (heroPlaceholderContent) heroPlaceholderContent.innerHTML = '<span style="font-size:12px; font-weight:bold;">Uploading...</span>';
 
           try {
             const formData = new FormData();
@@ -888,16 +880,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             heroBannerImg.src = `${API_BASE}/api/args/${currentArgId}/cover-image?ts=${Date.now()}`;
             heroBannerImg.style.display = 'block';
-            const heroContainer = document.getElementById('hero-banner-container');
-            if (heroContainer) heroContainer.style.background = 'transparent';
+            if (heroPlaceholderContent) heroPlaceholderContent.style.display = 'none';
           } catch (err) {
             console.error(err);
             openAlertModal('Failed to upload cover image.');
-          } finally {
-            btnChangeHeroImage.innerHTML = origContent;
-            btnChangeHeroImage.disabled = false;
+            if (heroPlaceholderContent) heroPlaceholderContent.innerHTML = '<span>Upload Failed. Click to try again.</span>';
           }
         };
+
         input.click();
       });
     }
@@ -1115,11 +1105,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const gameTypeBtns = document.querySelectorAll('.game-type-btn');
 
     function openGameSelectorModal() {
-      const node = nodes.find(n => n.id === selectedId);
-      if (node && node.games && node.games.length >= 1) {
-        openAlertModal('A waypoint can only have a maximum of one minigame. Please delete the existing game to add a new one.');
-        return;
-      }
       if (gameSelectorModalOverlay) gameSelectorModalOverlay.setAttribute('aria-hidden', 'false');
     }
 
@@ -1157,6 +1142,7 @@ document.addEventListener('DOMContentLoaded', async () => {
               minigame_config: {}
             });
             updatePanel();
+            isDirty = true;
           }
         }
       });

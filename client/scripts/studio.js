@@ -18,6 +18,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   // ── Check auth ──
   const currentUser = await api.getCurrentUser();
 
+  // Make the hero banner entirely clickable
+  const studioHero = document.querySelector('.studio-hero');
+  if (studioHero) {
+    studioHero.addEventListener('click', (e) => {
+      // Don't double-navigate if they clicked the CTA button
+      if (!e.target.closest('a')) {
+        window.location.href = 'edit_warg.html';
+      }
+    });
+  }
+
   if (!currentUser) {
     // Guest: show a login prompt in both rows
     const loginMsg =
@@ -69,7 +80,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const heroCard = document.querySelector('.studio-hero');
   if (heroCard) {
     heroCard.addEventListener('click', () => {
-      window.location.href = 'create_warg.html';
+      window.location.href = 'edit_warg.html';
     });
   }
 

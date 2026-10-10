@@ -407,6 +407,74 @@ exports.abandonSession = async (req, res) => {
   }
 };
 
+// Reset Session (Replay ARG)
+exports.resetSession = async (req, res) => {
+  const transaction = await sequelize.transaction();
+  try {
+    const user_id = req.user.user_id;
+    const arg_id = req.params.argId;
+
+    const session = await GameSession.findOne({
+      where: { user_id, arg_id },
+      transaction
+    });
+
+    if (!session) {
+      await transaction.rollback();
+      return res.status(404).json({ error: 'Session not found' });
+    }
+
+    // 1. Fetch waypoints and minigames to know what to delete
+    const waypoints = await Waypoint.findAll({
+      where: { arg_id },
+      attributes: ['waypoint_id'],
+      transaction
+    });
+    
+    const waypointIds = waypoints.map(w => w.waypoint_id);
+
+    if (waypointIds.length > 0) {
+      const minigames = await Minigame.findAll({
+        where: { waypoint_id: waypointIds },
+        attributes: ['game_id'],
+        transaction
+      });
+      const minigameIds = minigames.map(m => m.game_id);
+
+      // 2. Delete Minigame Attempts
+      if (minigameIds.length > 0) {
+        await MinigameAttempt.destroy({
+          where: { user_id, game_id: minigameIds },
+          transaction
+        });
+      }
+
+      // 3. Delete Waypoint Progress
+      await WaypointProgress.destroy({
+        where: { user_id, waypoint_id: waypointIds },
+        transaction
+      });
+    }
+
+    // 4. Reset Game Session
+    await session.update({
+      status: 'active',
+      started_at: new Date(),
+      completed_at: null,
+      total_points_earned: 0,
+      distance_m: 0,
+      last_active_at: new Date()
+    }, { transaction });
+
+    await transaction.commit();
+    res.json({ success: true });
+  } catch (error) {
+    await transaction.rollback();
+    console.error('Reset Session Error:', error);
+    res.status(500).json({ error: 'Failed to reset session' });
+  }
+};
+
 // Point Domination: Handle location ping
 exports.dominationPing = async (req, res) => {
   const transaction = await sequelize.transaction();

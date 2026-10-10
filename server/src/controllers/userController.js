@@ -30,7 +30,8 @@ exports.getUserProfile = async (req, res) => {
 exports.getUserLibrary = async (req, res) => {
   try {
     const args = await Arg.findAll({
-      where: { creator_id: req.params.id }
+      where: { creator_id: req.params.id },
+      include: [{ model: User, as: 'Creator', attributes: ['username', 'avatar'] }]
     });
     res.json(args);
   } catch (error) {

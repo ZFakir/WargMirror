@@ -1,5 +1,8 @@
 const { test, expect } = require('./fixtures.js');
 
+// Must match CACHE_NAME in sw.js — the service worker only reads/writes this cache
+const CACHE_NAME = 'warg-cache-v7';
+
 test.describe('Tiered Caching Strategies & Cache Busting', () => {
 
   test.beforeEach(async ({ page }) => {
@@ -14,15 +17,15 @@ test.describe('Tiered Caching Strategies & Cache Busting', () => {
   });
 
   test('api.clearGameCache should remove specific game routes from cache', async ({ page }) => {
-    await page.evaluate(async () => {
-      const cache = await caches.open('warg-cache-v4');
+    await page.evaluate(async (cacheName) => {
+      const cache = await caches.open(cacheName);
       // Use the exact API_BASE that api.js will use
       const base = 'http://localhost:3000';
       await cache.put(new Request(base + '/api/args'), new Response(JSON.stringify([{ id: 1 }])));
       await cache.put(new Request(base + '/api/args/5'), new Response(JSON.stringify({ id: 5 })));
       await cache.put(new Request(base + '/api/minigames'), new Response(JSON.stringify([{ id: 1 }])));
       await cache.put(new Request(base + '/api/other'), new Response(JSON.stringify({ keep: true })));
-    });
+    }, CACHE_NAME);
 
     // Call the function
     await page.evaluate(async () => {
@@ -30,8 +33,8 @@ test.describe('Tiered Caching Strategies & Cache Busting', () => {
     });
 
     // Verify caches were deleted correctly
-    const cacheStatus = await page.evaluate(async () => {
-      const cache = await caches.open('warg-cache-v4');
+    const cacheStatus = await page.evaluate(async (cacheName) => {
+      const cache = await caches.open(cacheName);
       const base = 'http://localhost:3000';
       const argsMatch = await cache.match(base + '/api/args');
       const arg5Match = await cache.match(base + '/api/args/5');
@@ -44,7 +47,7 @@ test.describe('Tiered Caching Strategies & Cache Busting', () => {
         minigamesDeleted: !minigamesMatch,
         otherKept: !!otherMatch
       };
-    });
+    }, CACHE_NAME);
 
     expect(cacheStatus.argsDeleted).toBe(true);
     expect(cacheStatus.arg5Deleted).toBe(true);
@@ -54,11 +57,11 @@ test.describe('Tiered Caching Strategies & Cache Busting', () => {
 
   test('Stale-While-Revalidate should serve cache first', async ({ page }) => {
     // 1. Seed the cache with 'Old Title'
-    await page.evaluate(async () => {
-      const cache = await caches.open('warg-cache-v4');
+    await page.evaluate(async (cacheName) => {
+      const cache = await caches.open(cacheName);
       const base = 'http://localhost:3000';
       await cache.put(new Request(base + '/api/args'), new Response(JSON.stringify([{ id: 1, title: 'Old Title' }])));
-    });
+    }, CACHE_NAME);
     
     // 2. Fetch the data - because of SWR, it should INSTANTLY return 'Old Title' from cache
     const firstRes = await page.evaluate(async () => {
@@ -72,11 +75,11 @@ test.describe('Tiered Caching Strategies & Cache Busting', () => {
 
   test('Network-First should fallback to cache if network fails', async ({ page, context }) => {
     // Seed the cache with 'old'
-    await page.evaluate(async () => {
-      const cache = await caches.open('warg-cache-v4');
+    await page.evaluate(async (cacheName) => {
+      const cache = await caches.open(cacheName);
       const base = 'http://localhost:3000';
       await cache.put(new Request(base + '/api/sessions'), new Response(JSON.stringify([{ session_id: 1, state: 'old' }])));
-    });
+    }, CACHE_NAME);
 
     // Abort the network request to simulate a network failure.
     // This is more reliable than context.setOffline(true) in WebKit.

@@ -198,7 +198,7 @@ document.addEventListener('DOMContentLoaded', () => {
           if (node.minigames) {
             node.minigames.forEach(mg => {
               const typesWithRef = ['shape_match', 'colour_match', 'texture_match', 'sift_match'];
-              if (mg.game_id && typesWithRef.includes(mg.game_type)) {
+              if (mg.game_id && typesWithRef.includes(mg.game_type) && mg.config_json && mg.config_json.reference_image_url) {
                 prefetchPromises.push(
                   // Use the API helper which SW will intercept and cache
                   api.getMinigameReference(mg.game_id).catch(err => console.warn('Prefetch failed for game:', mg.game_id, err))
@@ -252,7 +252,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (gameState && gameState.session && gameState.session.status === 'completed') {
         setTimeout(() => {
-          mapModal.showCompletedOverlay();
+          mapModal.showCompletedOverlay(() => {
+            window.confirmModal.open({
+              title: 'Replay ARG',
+              desc: 'Are you sure you want to replay this ARG? Your session progress and points will be reset.',
+              confirmText: 'Replay',
+              callback: async () => {
+                try {
+                  await api.resetGameSession(argId);
+                  window.location.reload();
+                } catch (e) {
+                  alert('Failed to reset ARG. Please try again.');
+                  console.error(e);
+                }
+              }
+            });
+          });
         }, 500);
       }
 
@@ -680,7 +695,22 @@ document.addEventListener('DOMContentLoaded', () => {
                       mapModal.updateNodeStatus(node.id, nodeStatus);
                       if (result.session_completed) {
                         setTimeout(() => {
-                          mapModal.showCompletedOverlay();
+                          mapModal.showCompletedOverlay(() => {
+                            window.confirmModal.open({
+                              title: 'Replay ARG',
+                              desc: 'Are you sure you want to replay this ARG? Your session progress and points will be reset.',
+                              confirmText: 'Replay',
+                              callback: async () => {
+                                try {
+                                  await api.resetGameSession(argId);
+                                  window.location.reload();
+                                } catch (e) {
+                                  alert('Failed to reset ARG. Please try again.');
+                                  console.error(e);
+                                }
+                              }
+                            });
+                          });
                         }, 1000); // Wait a second for popup to close / feedback to finish
                       }
                       setTimeout(() => {

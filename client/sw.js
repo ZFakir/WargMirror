@@ -1,7 +1,7 @@
 /* global importScripts */
 importScripts('scripts/db.js');
 
-const CACHE_NAME = 'warg-cache-v4';
+const CACHE_NAME = 'warg-cache-v7';
 const STATIC_ASSETS = [
   './',
   'index.html',
@@ -99,7 +99,12 @@ async function cacheFirstStrategy(request) {
     cachedResponse = await cache.match(request, { ignoreVary: true, ignoreSearch: true });
   }
 
-  if (cachedResponse) return cachedResponse;
+  if (cachedResponse) {
+    if (request.url.includes('tile.openstreetmap') || request.url.includes('arcgisonline')) {
+      console.log('🗺️ [SW] Map Tile CACHE HIT:', request.url);
+    }
+    return cachedResponse;
+  }
 
   try {
     const networkResponse = await fetch(request);
@@ -138,6 +143,7 @@ self.addEventListener('fetch', event => {
   if (
     url.hostname === location.hostname || // Local HTML/CSS/JS (if it didn't match API routes above)
     url.hostname.includes('tile.openstreetmap.org') || // Map tiles
+    url.hostname.includes('server.arcgisonline.com') || // Satellite map tiles
     url.hostname.includes('dicebear.com') // Avatars
   ) {
     event.respondWith(cacheFirstStrategy(event.request));

@@ -80,7 +80,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     ).join('');
 
     try {
-      const response = await fetch(`${window.API_BASE_URL || ''}/api/admin/flags`, { credentials: 'include' });
+      const response = await fetch(`${window.API_BASE_URL || ''}/api/admin/flags`, { 
+        credentials: 'include',
+        cache: 'no-store' 
+      });
       if (!response.ok) throw new Error('Failed to fetch flags');
       const flags = await response.json();
 
@@ -147,7 +150,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           ));
           const valid = cards.filter(Boolean);
           if (valid.length > 0) {
-            GameCard.renderRow(valid, flaggedGamesRow, { hideProgress: true });
+            GameCard.renderRow('flagged-games-row', valid, { hideProgress: true });
           } else {
             flaggedGamesRow.innerHTML = '<p style="color:var(--color-text-muted);padding:var(--space-3) 0;">Flagged games could not be loaded.</p>';
           }

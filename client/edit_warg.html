@@ -170,18 +170,17 @@
 
         <!-- Editor Header -->
         <section class="builder-header">
-          <div class="builder-header__image" id="hero-banner-container">
-            <!-- Placeholder banner image -->
-            <img src="https://picsum.photos/seed/midnight/1200/300" alt="Operation: Midnight Sun Banner" id="hero-banner-img" />
-            <button class="btn-change-image" id="btn-change-hero-image" aria-label="Change banner image"
-              title="Change Image">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                stroke-linecap="round" stroke-linejoin="round">
+          <div class="builder-header__image" id="hero-banner-container" title="Click to change banner image">
+            <img id="hero-banner-img" alt="WARG Banner" style="display: none;" />
+            <div class="builder-header__image-placeholder" id="hero-placeholder-content">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 8px;">
                 <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
                 <line x1="12" y1="10" x2="12" y2="16" />
                 <line x1="9" y1="13" x2="15" y2="13" />
               </svg>
-            </button>
+              <span>Add Banner Image</span>
+            </div>
           </div>
           <div class="builder-header__content">
             <div id="builder-header-skeleton">
@@ -196,9 +195,7 @@
                 <label for="arg-mode" style="font-size:var(--font-size-caption);color:var(--color-text-muted);">Mode</label>
                 <select id="arg-mode" class="editor-input" style="width:auto;padding:4px 8px;border-radius:var(--radius-sm);">
                   <option value="solo">Solo</option>
-                  <option value="coop">Co-op</option>
                   <option value="pvp">PvP</option>
-                  <option value="live">Live Event</option>
                 </select>
               </div>
             </div>
@@ -292,7 +289,7 @@
               </div>
 
               <div class="waypoint-editor__actions">
-                <button class="btn btn--outline btn--danger" id="btn-remove-waypoint">Delete Node</button>
+                <button class="btn-danger" id="btn-remove-waypoint">Delete Node</button>
               </div>
             </div>
 
@@ -308,7 +305,7 @@
               </div>
 
               <div class="waypoint-editor__actions">
-                <button class="btn btn--outline btn--danger" id="btn-remove-edge">Delete Edge</button>
+                <button class="btn-danger" id="btn-remove-edge">Delete Edge</button>
               </div>
             </div>
 
@@ -336,7 +333,7 @@
         <p id="alert-modal-desc"></p>
       </div>
       <div class="modal__footer">
-        <button class="btn btn--primary" id="btn-accept-alert">OK</button>
+        <button class="btn-primary" id="btn-accept-alert">OK</button>
       </div>
     </div>
   </div>
@@ -357,8 +354,8 @@
         <p id="confirm-modal-desc"></p>
       </div>
       <div class="modal__footer" style="display: flex; gap: 12px; justify-content: flex-end;">
-        <button class="btn btn--outline" id="btn-cancel-confirm">Cancel</button>
-        <button class="btn btn--primary btn--danger" id="btn-accept-confirm">Confirm</button>
+        <button class="btn-secondary" id="btn-cancel-confirm">Cancel</button>
+        <button class="btn-danger" id="btn-accept-confirm">Confirm</button>
       </div>
     </div>
   </div>
@@ -378,19 +375,19 @@
         </button>
       </div>
       <div class="modal__body" style="display: flex; flex-direction: column; gap: 8px; max-height: 60vh; overflow-y: auto; padding-right: 8px;">
-        <button class="btn btn--outline game-type-btn" data-game-type="gps">GPS Location</button>
-        <button class="btn btn--outline game-type-btn" data-game-type="ar">AR Object Scan</button>
-        <button class="btn btn--outline game-type-btn" data-game-type="barcode">Barcode Game</button>
-        <button class="btn btn--outline game-type-btn" data-game-type="shape_match">Shape Match</button>
-        <button class="btn btn--outline game-type-btn" data-game-type="colour_match">Colour Match</button>
-        <button class="btn btn--outline game-type-btn" data-game-type="texture_match">Texture Match</button>
-        <button class="btn btn--outline game-type-btn" data-game-type="sift_match">Then & Now (SIFT)</button>
-        <button class="btn btn--outline game-type-btn" data-game-type="symmetry_finder">Symmetry Finder</button>
-        <button class="btn btn--outline game-type-btn" data-game-type="photo_submit">Photo Submit</button>
-        <button class="btn btn--outline game-type-btn" data-game-type="plaque_scan">Plaque Scanner</button>
-        <button class="btn btn--outline game-type-btn" data-game-type="qna">QnA / MCQ</button>
-        <button class="btn btn--outline game-type-btn" data-game-type="point_domination">Point Domination</button>
-        <button class="btn btn--outline game-type-btn" data-game-type="geofence">Geofence Check</button>
+        <button class="btn-secondary game-type-btn" data-game-type="gps">GPS Location</button>
+        <button class="btn-secondary game-type-btn" data-game-type="ar">AR Object Scan</button>
+        <button class="btn-secondary game-type-btn" data-game-type="barcode">Barcode Game</button>
+        <button class="btn-secondary game-type-btn" data-game-type="shape_match">Shape Match</button>
+        <button class="btn-secondary game-type-btn" data-game-type="colour_match">Colour Match</button>
+        <button class="btn-secondary game-type-btn" data-game-type="texture_match">Texture Match</button>
+        <button class="btn-secondary game-type-btn" data-game-type="sift_match">Then & Now (SIFT)</button>
+        <button class="btn-secondary game-type-btn" data-game-type="symmetry_finder">Symmetry Finder</button>
+        <button class="btn-secondary game-type-btn" data-game-type="photo_submit">Photo Submit</button>
+        <button class="btn-secondary game-type-btn" data-game-type="plaque_scan">Plaque Scanner</button>
+        <button class="btn-secondary game-type-btn" data-game-type="qna">QnA / MCQ</button>
+        <button class="btn-secondary game-type-btn" data-game-type="point_domination">Point Domination</button>
+        <button class="btn-secondary game-type-btn" data-game-type="geofence">Geofence Check</button>
       </div>
     </div>
   </div>
@@ -415,7 +412,7 @@
         <div style="margin-bottom: 16px;">
           <label style="display: block; font-size: 14px; font-weight: 500; margin-bottom: 8px; color: var(--text-2);">Answers</label>
           <div id="qna-options-list" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px;"></div>
-          <button class="btn btn--outline" id="btn-add-qna-option" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
+          <button class="btn-secondary" id="btn-add-qna-option" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
               <line x1="12" y1="5" x2="12" y2="19"></line>
               <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -425,8 +422,8 @@
         </div>
       </div>
       <div class="modal__footer" style="display: flex; gap: 12px; justify-content: flex-end;">
-        <button class="btn btn--outline" id="btn-cancel-qna">Cancel</button>
-        <button class="btn btn--primary" id="btn-save-qna">Save Game</button>
+        <button class="btn-secondary" id="btn-cancel-qna">Cancel</button>
+        <button class="btn-primary" id="btn-save-qna">Save Game</button>
       </div>
     </div>
   </div>
@@ -448,7 +445,7 @@
           <div style="margin-top: 1rem; text-align: center;">
             <p style="margin-bottom: 0.5rem; color: var(--text-muted); font-size: 14px;">Or scan a barcode with your camera:</p>
             <div id="barcode-scanner-container" style="width: 100%; max-width: 400px; margin: 0 auto; overflow: hidden; border-radius: 8px;"></div>
-            <button class="btn btn--outline" id="btn-start-barcode-scan" style="margin-top: 0.5rem;">
+            <button class="btn-secondary" id="btn-start-barcode-scan" style="margin-top: 0.5rem;">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px; margin-right: 6px; vertical-align: middle;"><path d="M4 7V4h3M20 7V4h-3M4 17v3h3M20 17v3h-3M9 9h6v6H9z"></path></svg>
               <span style="vertical-align: middle;">Start Scanner</span>
             </button>
@@ -456,8 +453,8 @@
         </div>
       </div>
       <div class="modal__footer" style="display: flex; gap: 12px; justify-content: flex-end;">
-        <button class="btn btn--outline" id="btn-cancel-barcode">Cancel</button>
-        <button class="btn btn--primary" id="btn-save-barcode">Save Game</button>
+        <button class="btn-secondary" id="btn-cancel-barcode">Cancel</button>
+        <button class="btn-primary" id="btn-save-barcode">Save Game</button>
       </div>
       </div>
     </div>
@@ -501,8 +498,8 @@
         <p style="color: var(--text-2); font-size: 14px;">This game will require the player to physically visit the waypoint's location. The geofence checker will automatically verify their proximity.</p>
       </div>
       <div class="modal__footer" style="display: flex; gap: 12px; justify-content: flex-end;">
-        <button class="btn btn--outline" id="btn-cancel-geofence">Cancel</button>
-        <button class="btn btn--primary" id="btn-save-geofence">Save Game</button>
+        <button class="btn-secondary" id="btn-cancel-geofence">Cancel</button>
+        <button class="btn-primary" id="btn-save-geofence">Save Game</button>
       </div>
     </div>
   </div>
@@ -677,7 +674,7 @@
       </div>
 
       <div class="feedback-modal__actions" style="margin-top: 2rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
-        <button type="button" class="btn-secondary" id="btn-remove-friend" style="width: 100%; color: #ff4d4f; border-color: #ff4d4f;">Remove Friend</button>
+        <button type="button" class="btn-danger" id="btn-remove-friend" style="width: 100%;">Remove Friend</button>
       </div>
     </div>
   </div>

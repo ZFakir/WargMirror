@@ -254,6 +254,13 @@ var api = (function () {
     return _delete('/api/sessions/' + userId + '/arg/' + argId);
   }
 
+  /**
+   * Resets a completed Game Session
+   */
+  async function resetGameSession(argId) {
+    return _post('/api/game/' + argId + '/reset', {});
+  }
+
   async function getMinigameReference(gameId) {
     const url = API_BASE + '/api/minigames/' + gameId + '/reference/image';
     const req = new Request(url, { credentials: 'include' });
@@ -417,12 +424,14 @@ var api = (function () {
     logout,
     updateAccount,
     deleteAccount,
+    resetGameSession
   };
 
 })();
 
-// --- Global Admin Dashboard Link Injector ---
-document.addEventListener('DOMContentLoaded', async () => {
+// --- Global UI Logic Injector ---
+async function initGlobalUI() {
+  // --- Admin Dashboard Link Injector ---
   try {
     const user = await api.getCurrentUser();
     if (user && user.role === 'admin') {
@@ -500,4 +509,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       window.location.href = 'login.html';
     });
   }
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initGlobalUI);
+} else {
+  initGlobalUI();
+}

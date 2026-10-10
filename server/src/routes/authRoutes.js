@@ -8,7 +8,9 @@ router.get('/google', (req, res, next) => {
   // Store the requesting origin in the session so we know where to redirect back to
   if (req.headers.referer) {
     const refererUrl = new URL(req.headers.referer);
-    req.session.oauthReturnTo = refererUrl.origin;
+    let basePath = refererUrl.origin + refererUrl.pathname;
+    // Strip trailing filename (e.g. /login.html) to get the directory path
+    req.session.oauthReturnTo = basePath.substring(0, basePath.lastIndexOf('/'));
   }
   next();
 }, passport.authenticate('google', {
