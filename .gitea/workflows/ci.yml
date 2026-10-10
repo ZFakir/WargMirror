@@ -52,6 +52,10 @@ jobs:
       - name: Run Backend Mocked Tests
         working-directory: ./server
         run: npm run test:mocked
+        env:
+          # server/.env and .env.test are gitignored, but src/config/database.js
+          # parses DATABASE_URL at module load — CI must supply a dummy test URL.
+          DATABASE_URL: mysql://warg_test:warg_test_pw@127.0.0.1:3306/warg_test
 
       - name: Run Backend Integration Tests
         working-directory: ./server
