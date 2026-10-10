@@ -42,7 +42,7 @@ describe('minigameController', () => {
         config_json: {}, 
         changed: jest.fn(), 
         save: jest.fn(),
-        Waypoint: { Arg: { author_id: 2 } }
+        Waypoint: { Arg: { creator_id: 2 } }
       };
       Minigame.findByPk.mockResolvedValue(mockGame);
 
