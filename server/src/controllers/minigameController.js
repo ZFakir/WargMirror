@@ -5,14 +5,6 @@ const fs = require('fs');
 
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://127.0.0.1:8000';
 
-// Fail fast in production rather than silently authenticating with a known constant.
-let AI_KEY = process.env.AI_KEY;
-if (!AI_KEY) {
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error('AI_KEY must be set in production; refusing to use the shared dev fallback key.');
-  }
-  AI_KEY = 'dev-secret-key';
-}
 
 exports.uploadReference = async (req, res) => {
   try {
