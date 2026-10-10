@@ -429,8 +429,9 @@ var api = (function () {
 
 })();
 
-// --- Global Admin Dashboard Link Injector ---
-document.addEventListener('DOMContentLoaded', async () => {
+// --- Global UI Logic Injector ---
+async function initGlobalUI() {
+  // --- Admin Dashboard Link Injector ---
   try {
     const user = await api.getCurrentUser();
     if (user && user.role === 'admin') {
@@ -508,4 +509,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       window.location.href = 'login.html';
     });
   }
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initGlobalUI);
+} else {
+  initGlobalUI();
+}
