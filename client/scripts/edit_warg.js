@@ -411,12 +411,26 @@ document.addEventListener('DOMContentLoaded', async () => {
                     Unlimited attempts
                   </label>
                   ` : ''}
-                  ${isCVGame ? `
-                    <button class="btn btn--outline btn-set-reference" data-index="${index}" style="width: 100%; margin-top: 8px;">
+                  ${isCVGame ? (game.reference_url ? `
+                    <div style="position: relative; margin-top: 8px;">
+                      <img src="${game.reference_url}" style="width: 100%; max-height: 120px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border);" />
+                      <button class="icon-btn btn-remove-reference" data-index="${index}" style="position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.6); color: white; border-radius: 50%; padding: 4px; display: flex; transition: background 0.2s;" aria-label="Remove reference photo" title="Remove Photo">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                          <line x1="18" y1="6" x2="6" y2="18"></line>
+                          <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                      </button>
+                    </div>
+                  ` : `
+                    <button class="btn-primary btn-set-reference" data-index="${index}" style="width: 100%; margin-top: 8px; display: flex; justify-content: center; align-items: center; gap: 8px;">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                      </svg>
                       Set Reference Photo
                     </button>
-                    ${game.reference_url ? `<img src="${game.reference_url}" style="width: 100%; max-height: 120px; object-fit: cover; border-radius: 4px; margin-top: 8px; border: 1px solid var(--border);" />` : ''}
-                  ` : ''}
+                  `) : ''}
                   <div class="sub-card__dropdown game-options-dropdown" id="game-dropdown-${index}">
                     <button class="dropdown-item btn-edit-game" data-index="${index}">Edit Game</button>
                     <button class="dropdown-item dropdown-item--danger btn-delete-game" data-index="${index}">Delete Game</button>
@@ -479,6 +493,36 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 // Triggers immediately inside the click event handler
                 input.click();
+              });
+            });
+
+            // Wire up "Remove Reference Photo"
+            gamesList.querySelectorAll('.btn-remove-reference').forEach(btn => {
+              btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const index = btn.getAttribute('data-index');
+                const game = node.games[index];
+                
+                const origHTML = btn.innerHTML;
+                btn.innerHTML = '...';
+                btn.disabled = true;
+
+                try {
+                  if (game.minigame_id) {
+                    const res = await fetch(`${API_BASE}/api/minigames/${game.minigame_id}/reference`, {
+                      method: 'DELETE',
+                      credentials: 'include'
+                    });
+                    if (!res.ok) throw new Error('Delete failed');
+                  }
+                  game.reference_url = null;
+                  updatePanel();
+                } catch (err) {
+                  console.error(err);
+                  openAlertModal('Failed to remove reference photo.');
+                  btn.innerHTML = origHTML;
+                  btn.disabled = false;
+                }
               });
             });
 

@@ -9,7 +9,6 @@ import { FlagModal } from './components/FlagModal.js';
 import mapModal from './components/MapModal.js';
 import { getMinigameHandler } from './components/minigame-handlers.js';
 import { startSensors, stopSensors, logPosition, getSensorDataAndReset } from './sensors.js';
-import { CameraCapture } from './components/CameraCapture.js';
 
 function setupConnectionBanner() {
   const banner = document.createElement('div');
@@ -404,7 +403,11 @@ document.addEventListener('DOMContentLoaded', () => {
       const container = document.getElementById('camera-container');
 
       try {
-        const refData = await api.getMinigameReference(cvMinigame.game_id);
+        let refData = null;
+        if (cvMinigame.game_type !== 'symmetry_finder') {
+          refData = await api.getMinigameReference(cvMinigame.game_id);
+        }
+        const { CameraCapture } = await import('./components/CameraCapture.js');
 
         const camera = new CameraCapture(container, cvMinigame.game_type, refData);
 

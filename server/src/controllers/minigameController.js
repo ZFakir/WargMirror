@@ -5,14 +5,6 @@ const fs = require('fs');
 
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://127.0.0.1:8000';
 
-// Fail fast in production rather than silently authenticating with a known constant.
-let AI_KEY = process.env.AI_KEY;
-if (!AI_KEY) {
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error('AI_KEY must be set in production; refusing to use the shared dev fallback key.');
-  }
-  AI_KEY = 'dev-secret-key';
-}
 
 exports.uploadReference = async (req, res) => {
   try {
@@ -27,13 +19,13 @@ exports.uploadReference = async (req, res) => {
     });
     if (!minigame) return res.status(404).json({ error: 'Minigame not found' });
     
-    if (!minigame.Waypoint || !minigame.Waypoint.Arg || minigame.Waypoint.Arg.author_id !== req.user.user_id) {
+    if (!minigame.Waypoint || !minigame.Waypoint.Arg || minigame.Waypoint.Arg.creator_id !== req.user.user_id) {
       return res.status(403).json({ error: 'Unauthorized to modify this ARG' });
     }
 
     // Update config JSON with the URL
     const config = minigame.config_json || {};
-    config.reference_image_url = `/api/minigames/${gameId}/reference/image`;
+    config.reference_image_url = `/api/minigames/${gameId}/reference/image?ts=${Date.now()}`;
     
     // Convert buffer to base64 and store it
     config.reference_image_base64 = req.file.buffer.toString('base64');
@@ -46,6 +38,28 @@ exports.uploadReference = async (req, res) => {
     res.json({ message: 'Reference uploaded successfully', url: config.reference_image_url });
   } catch (err) {
     console.error('Error in uploadReference:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+exports.deleteReference = async (req, res) => {
+  try {
+    const { gameId } = req.params;
+    const minigame = await Minigame.findByPk(gameId);
+    if (!minigame) return res.status(404).json({ error: 'Minigame not found' });
+
+    const config = minigame.config_json || {};
+    delete config.reference_image_url;
+    delete config.reference_image_base64;
+    delete config.reference_image_mimetype;
+
+    minigame.config_json = config;
+    minigame.changed('config_json', true);
+    await minigame.save();
+
+    res.json({ message: 'Reference deleted successfully' });
+  } catch (err) {
+    console.error('Error in deleteReference:', err);
     res.status(500).json({ error: 'Server error' });
   }
 };
@@ -131,8 +145,10 @@ exports.submitAttempt = async (req, res) => {
 
     const response = await fetch(`${AI_SERVICE_URL}${aiEndpoint}`, {
       method: 'POST',
-      headers: { 'X-API-Key': AI_KEY },
-      body: formData
+      body: formData,
+      headers: {
+        'X-API-Key': process.env.AI_API_KEY || 'dev-secret-key'
+      }
     });
 
     if (!response.ok) {
