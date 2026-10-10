@@ -354,7 +354,7 @@
           </svg>
         </button>
       </div>
-      <div class="modal__body" style="display: flex; flex-direction: column; gap: 8px;">
+      <div class="modal__body" style="display: flex; flex-direction: column; gap: 8px; max-height: 60vh; overflow-y: auto; padding-right: 8px;">
         <button class="btn btn--outline game-type-btn" data-game-type="gps">GPS Location</button>
         <button class="btn btn--outline game-type-btn" data-game-type="ar">AR Object Scan</button>
         <button class="btn btn--outline game-type-btn" data-game-type="barcode">Barcode Game</button>
@@ -363,8 +363,10 @@
         <button class="btn btn--outline game-type-btn" data-game-type="texture_match">Texture Match</button>
         <button class="btn btn--outline game-type-btn" data-game-type="sift_match">Then & Now (SIFT)</button>
         <button class="btn btn--outline game-type-btn" data-game-type="symmetry_finder">Symmetry Finder</button>
+        <button class="btn btn--outline game-type-btn" data-game-type="photo_submit">Photo Submit</button>
         <button class="btn btn--outline game-type-btn" data-game-type="plaque_scan">Plaque Scanner</button>
         <button class="btn btn--outline game-type-btn" data-game-type="qna">QnA / MCQ</button>
+        <button class="btn btn--outline game-type-btn" data-game-type="point_domination">Point Domination</button>
         <button class="btn btn--outline game-type-btn" data-game-type="geofence">Geofence Check</button>
       </div>
     </div>
@@ -438,6 +440,28 @@
     </div>
   </div>
 
+  <!-- Point Domination Modal -->
+  <div class="modal-overlay" id="pd-modal-overlay" aria-hidden="true">
+    <div class="modal">
+      <div class="modal__header">
+        <h3 class="modal__title">Configure Point Domination</h3>
+        <button class="icon-btn" id="btn-close-pd-modal" aria-label="Close modal">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <div class="modal__body">
+        <div style="margin-bottom: 16px;">
+          <label style="display: block; font-size: 14px; font-weight: 500; margin-bottom: 8px; color: var(--text-2);">Reset Interval (Hours)</label>
+          <input type="number" id="pd-reset-interval" style="width: 100%; padding: 10px; border-radius: 6px; background: var(--surface); color: var(--text-1); border: 1px solid var(--border);" placeholder="0 for never" min="0" />
+        </div>
+      </div>
+      <div class="modal__footer" style="display: flex; gap: 12px; justify-content: flex-end;">
+        <button class="btn btn--outline" id="btn-cancel-pd">Cancel</button>
+        <button class="btn btn--primary" id="btn-save-pd">Save Game</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Geofence Game Modal -->
   <div class="modal-overlay" id="geofence-modal-overlay" aria-hidden="true">
     <div class="modal" role="dialog" aria-modal="true">
@@ -460,8 +484,7 @@
     </div>
   </div>
 
-  
-<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
   <script src="scripts/config.js"></script>
   <script src="scripts/api.js"></script>
   <script src="scripts/home.js"></script>

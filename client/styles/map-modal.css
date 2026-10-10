@@ -528,6 +528,18 @@
   animation: ping 2.2s cubic-bezier(0, 0, 0.2, 1) infinite;
 }
 
+/* Point Domination override */
+.map-modal .node-marker.pd-node .node-marker__core {
+  background: #7f1d1d; /* Darker red */
+  color: #fca5a5; /* Light red/pink text */
+  border-color: #991b1b;
+  box-shadow: 0 0 16px rgba(153, 27, 27, 0.4);
+}
+
+.map-modal .node-marker.pd-node.current .ping {
+  border-color: #b91c1c; /* Slightly brighter for the radar ping */
+}
+
 .map-modal .node-marker.current .ping.delay {
   animation-delay: 1.1s;
 }
@@ -552,6 +564,13 @@
   font-size: 16px;
   cursor: crosshair;
   box-shadow: 0 4px 12px var(--color-accent-glow);
+}
+
+.map-modal .node-marker.editor-node.pd-node .node-marker__core {
+  background: #ff4444;
+  color: #fff;
+  border-color: #fff;
+  box-shadow: 0 0 16px rgba(255, 68, 68, 0.4);
 }
 
 .map-modal .node-marker.editor-node.start-node .node-marker__core {
