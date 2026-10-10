@@ -48,7 +48,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       'symmetry_finder': { type: 'symmetry_finder', label: 'Symmetry Finder' },
       'photo_submit': { type: 'photo_submit', label: 'Photo Submit' },
       'text_answer': { type: 'text_answer', label: 'QnA / MCQ' },
-      'plaque_scan': { type: 'plaque_scan', label: 'Plaque Scanner' }
+      'plaque_scan': { type: 'plaque_scan', label: 'Plaque Scanner' },
+      'point_domination': { type: 'point_domination', label: 'Point Domination' }
     };
     return map[mg.game_type] || { type: 'gps', label: 'GPS Location' };
   };
@@ -115,6 +116,7 @@ document.addEventListener('DOMContentLoaded', async () => {
               lng: wp.location.coordinates[0],
               title: wp.title,
               description: wp.description,
+              validation_radius_m: wp.validation_radius_m || 30,
               games: nodeGames
             });
           });
@@ -186,6 +188,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const waypointEditor = document.getElementById('waypoint-editor');
   const editorTitle = document.getElementById('editor-title');
   const editorDesc = document.getElementById('editor-desc');
+  const editorRadius = document.getElementById('editor-radius');
   const btnRemoveWaypoint = document.getElementById('btn-remove-waypoint');
 
   // Edge Editor Elements
@@ -222,6 +225,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         lat, lng,
         title: 'New Waypoint',
         description: '',
+        validation_radius_m: 30,
         games: []
       };
       nodes.push(newNode);
@@ -251,6 +255,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       clearSelection();
     },
     onNodeCoreDown(id) {
+      const node = nodes.find(n => n.id === id);
+      const isPD = node && node.games && node.games.some(g => g.type === 'point_domination');
+      if (isPD) {
+        openAlertModal('Point Domination nodes cannot have outgoing edges because there are no pass/fail conditions.');
+        return;
+      }
       dragState = { type: 'edge_draw', from: id };
       _setPlacementCursor(true);
     },
@@ -280,6 +290,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     onMapMouseUp() {
       if (dragState && dragState.type === 'edge_draw') {
         _endEdgeDraw();
+      }
+    },
+    onRadiusChanged(id, newRadius) {
+      const node = nodes.find(n => n.id === id);
+      if (node) {
+        node.validation_radius_m = Math.round(newRadius);
+        if (selectedId === id && typeof editorRadius !== 'undefined' && editorRadius) {
+          editorRadius.value = node.validation_radius_m;
+        }
       }
     }
   });
@@ -358,6 +377,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (node) {
         if (editorTitle) editorTitle.value = node.title;
         if (editorDesc) editorDesc.value = node.description;
+        const hasPD = node.games && node.games.some(g => g.type === 'point_domination');
+        if (typeof editorRadius !== 'undefined' && editorRadius) {
+          editorRadius.value = node.validation_radius_m || 30;
+          editorRadius.parentElement.style.display = hasPD ? 'flex' : 'none';
+        }
+        if (mapModal) {
+          mapModal.updateNodeVisuals(node);
+        }
 
         const gamesList = document.getElementById('editor-games-list');
         if (gamesList) {
@@ -367,7 +394,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             node.games.forEach((game, index) => {
               const config = game.minigame_config || {};
               const unlimitedChecked = config.allow_multiple_attempts ? 'checked' : '';
-              const needsReference = ['shape_match', 'colour_match', 'texture_match', 'sift_match', 'plaque_scan'].includes(game.type);
+              const isCVGame = ['shape_match', 'colour_match', 'texture_match', 'sift_match', 'symmetry_finder', 'plaque_scan'].includes(game.type);
+              const isPDGame = game.type === 'point_domination' || game.gamemode === 'Point Domination';
 
               html += `
                 <div class="sub-card" style="position: relative; flex-direction: column; align-items: stretch;" tabindex="0">
@@ -377,11 +405,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
                     </button>
                   </div>
+                  ${!isPDGame ? `
                   <label style="display: inline-block; font-size: 11px; margin-top: 4px; cursor: pointer; color: var(--color-text-muted);">
                     <input type="checkbox" class="unlimited-attempts-checkbox" data-index="${index}" ${unlimitedChecked}>
                     Unlimited attempts
                   </label>
-                  ${needsReference ? (game.reference_url ? `
+                  ` : ''}
+                  ${isCVGame ? (game.reference_url ? `
                     <div style="position: relative; margin-top: 8px;">
                       <img src="${game.reference_url}" style="width: 100%; max-height: 120px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border);" />
                       <button class="icon-btn btn-remove-reference" data-index="${index}" style="position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.6); color: white; border-radius: 50%; padding: 4px; display: flex; transition: background 0.2s;" aria-label="Remove reference photo" title="Remove Photo">
@@ -546,6 +576,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     openQnaModal(game.minigame_config, index);
                   } else if (game.gamemode === 'Barcode Game') {
                     openBarcodeModal(game.minigame_config, index);
+                  } else if (game.type === 'point_domination') {
+                    openPdModal(game.minigame_config, index);
                   } else if (game.gamemode === 'Geofence Check') {
                     openGeofenceModal(game.minigame_config, index);
                   } else {
@@ -680,6 +712,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (selectedType === 'node' && selectedId) {
           const node = nodes.find(n => n.id === selectedId);
           if (node) node.description = editorDesc.value;
+        }
+      });
+    }
+
+    if (editorRadius) {
+      editorRadius.addEventListener('input', () => {
+        if (selectedType === 'node' && selectedId) {
+          const node = nodes.find(n => n.id === selectedId);
+          if (node) {
+            let r = parseInt(editorRadius.value, 10);
+            if (isNaN(r) || r < 1) r = 30;
+            node.validation_radius_m = r;
+            mapModal.updateNodeRadius(selectedId, r);
+          }
         }
       });
     }
@@ -1097,6 +1143,8 @@ document.addEventListener('DOMContentLoaded', async () => {
           openQnaModal(null, null); // Always new game when adding from selector
         } else if (gameType === 'barcode') {
           openBarcodeModal(null, null);
+        } else if (gameType === 'point_domination') {
+          openPdModal(null, null);
         } else if (gameType === 'geofence') {
           openGeofenceModal(null, null);
         } else {
@@ -1295,6 +1343,80 @@ document.addEventListener('DOMContentLoaded', async () => {
         }, () => {
           // parse errors are normal, just ignore
         });
+      });
+    }
+    // ── Point Domination Modal Logic ──
+    const pdModalOverlay = document.getElementById('pd-modal-overlay');
+    const btnClosePdModal = document.getElementById('btn-close-pd-modal');
+    const btnCancelPd = document.getElementById('btn-cancel-pd');
+    const btnSavePd = document.getElementById('btn-save-pd');
+    const pdResetInterval = document.getElementById('pd-reset-interval');
+
+    function openPdModal(existingConfig = null, editIndex = null) {
+      currentEditGameIndex = editIndex;
+      if (existingConfig && existingConfig.reset_interval_hours) {
+        pdResetInterval.value = existingConfig.reset_interval_hours;
+      } else {
+        pdResetInterval.value = '';
+      }
+      if (pdModalOverlay) pdModalOverlay.setAttribute('aria-hidden', 'false');
+    }
+
+    // Attach to window so it can be called from above if hoisted scope is an issue
+    window.openPdModal = openPdModal;
+
+    function closePdModal() {
+      if (pdModalOverlay) pdModalOverlay.setAttribute('aria-hidden', 'true');
+      currentEditGameIndex = null;
+    }
+
+    if (btnClosePdModal) btnClosePdModal.addEventListener('click', closePdModal);
+    if (btnCancelPd) btnCancelPd.addEventListener('click', closePdModal);
+
+    if (btnSavePd) {
+      btnSavePd.addEventListener('click', () => {
+        const node = nodes.find(n => n.id === selectedId);
+        if (!node) return;
+
+        let interval = parseFloat(pdResetInterval.value);
+        if (isNaN(interval) || interval < 0) {
+          interval = 0;
+        }
+
+        const configJson = {
+          reset_interval_hours: interval
+        };
+
+        const newGame = {
+          gamemode: 'Point Domination',
+          type: 'point_domination',
+          minigame_config: configJson
+        };
+
+        if (currentEditGameIndex !== null && currentEditGameIndex !== undefined) {
+          const oldGame = node.games[currentEditGameIndex];
+          if (oldGame) {
+            newGame.minigame_id = oldGame.minigame_id;
+            newGame.reference_url = oldGame.reference_url;
+          }
+        }
+
+        if (!node.games) node.games = [];
+
+        if (currentEditGameIndex !== null && currentEditGameIndex !== undefined) {
+          node.games[currentEditGameIndex] = newGame;
+        } else {
+          node.games.push(newGame);
+        }
+
+        updatePanel(); 
+        closePdModal();
+      });
+    }
+
+    if (pdModalOverlay) {
+      pdModalOverlay.addEventListener('click', (e) => {
+        if (e.target === pdModalOverlay) closePdModal();
       });
     }
 

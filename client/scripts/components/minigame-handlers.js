@@ -9,27 +9,9 @@ export function getMinigameHandler(gameType) {
     case 'gps_proximity':
       return {
         render: (container, config, onSubmit) => {
-          if (config && config.subtype === 'geofence') {
-            container.innerHTML = `
-              <div style="text-align: center; padding: 1rem;">
-                <p style="margin-bottom: 1rem; color: var(--color-text-muted);">Your location has been verified by the Geofence checker.</p>
-                <button id="btn-verify-location" class="btn btn--primary">Complete Check</button>
-              </div>
-            `;
-          } else {
-            container.innerHTML = `
-              <div style="text-align: center; padding: 1rem;">
-                <p style="margin-bottom: 1rem; color: var(--color-text-muted);">Ensure you are physically at this location.</p>
-                <button id="btn-verify-location" class="btn btn--primary">Verify Location</button>
-              </div>
-            `;
-          }
-          
-          container.querySelector('#btn-verify-location').addEventListener('click', () => {
-             // In GPS proximity (and Geofence), the server /arrive endpoint already validated proximity.
-             // We just do an empty submit to pass the minigame step.
-             onSubmit({}); 
-          });
+          // Geofence has already been verified on click of "Play".
+          // We can immediately submit without requiring an extra button click.
+          onSubmit({});
         }
       };
     case 'text_answer':
@@ -192,6 +174,70 @@ export function getMinigameHandler(gameType) {
             if (base64Data) {
               onSubmit(base64Data);
             }
+          });
+        }
+      };
+    case 'point_domination':
+      return {
+        render: async (container, config) => {
+          container.innerHTML = `
+            <div style="text-align: center; padding: 1rem; background: var(--color-bg-elevated); border-radius: var(--radius-md);">
+              <h3 style="margin-bottom: 1rem; color: var(--color-brand);">Point Domination</h3>
+              <p style="font-size: 0.9rem; color: var(--color-text-muted); margin-bottom: 1.5rem;">Stay within this location to accumulate points over time. The leaderboard is visible on the map marker.</p>
+              <button id="btn-start-domination" class="btn btn--primary" style="width: 100%;">Start Dominating</button>
+            </div>
+          `;
+
+          const btnStart = container.querySelector('#btn-start-domination');
+
+          btnStart.addEventListener('click', () => {
+             const confirmed = confirm("This game will continue to track your location in the background as long as you are on this website. Are you sure you want to start?");
+             if (!confirmed) return;
+
+             btnStart.disabled = true;
+             btnStart.textContent = "Dominating... (Background)";
+             btnStart.style.backgroundColor = "var(--color-success)";
+
+             if ('geolocation' in navigator) {
+                // Throttle pings to every ~30 seconds
+                let lastPingTime = 0;
+                
+                navigator.geolocation.watchPosition(async (position) => {
+                   const now = Date.now();
+                   if (now - lastPingTime < 30000) return; // 30 sec throttle
+                   lastPingTime = now;
+
+                   let sensorData = {};
+                   // Make sure getSensorDataAndReset is exported to window if used from sensors.js
+                   // Wait, sensors.js is an ES module. It's not on window. 
+                   // To avoid dependency errors, we'll try to find it or send empty for now if not globally exposed.
+
+                   try {
+                     const API_BASE = window.API_BASE || '';
+                     await fetch(`${API_BASE}/api/game/${config.arg_id}/waypoint/${config.waypoint_id}/domination-ping`, {
+                       method: 'POST',
+                       headers: { 'Content-Type': 'application/json' },
+                       credentials: 'include',
+                       body: JSON.stringify({
+                         game_id: config.game_id,
+                         lat: position.coords.latitude,
+                         lng: position.coords.longitude,
+                         accuracy_m: position.coords.accuracy,
+                         sensor_data: sensorData
+                       })
+                     });
+                   } catch(e) {
+                     console.error("Domination ping failed", e);
+                   }
+                }, (err) => {
+                   console.error("WatchPosition error:", err);
+                }, {
+                   enableHighAccuracy: true,
+                   maximumAge: 10000
+                });
+             } else {
+                alert("Geolocation is not supported by your browser.");
+             }
           });
         }
       };
