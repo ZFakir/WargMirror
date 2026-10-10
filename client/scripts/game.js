@@ -9,7 +9,6 @@ import { FlagModal } from './components/FlagModal.js';
 import mapModal from './components/MapModal.js';
 import { getMinigameHandler } from './components/minigame-handlers.js';
 import { startSensors, stopSensors, logPosition, getSensorDataAndReset } from './sensors.js';
-import { CameraCapture } from './components/CameraCapture.js';
 
 function setupConnectionBanner() {
   const banner = document.createElement('div');
