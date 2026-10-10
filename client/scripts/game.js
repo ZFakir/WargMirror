@@ -9,7 +9,6 @@ import { FlagModal } from './components/FlagModal.js';
 import mapModal from './components/MapModal.js';
 import { getMinigameHandler } from './components/minigame-handlers.js';
 import { startSensors, stopSensors, logPosition, getSensorDataAndReset } from './sensors.js';
-import { CameraCapture } from './components/CameraCapture.js';
 
 function setupConnectionBanner() {
   const banner = document.createElement('div');
@@ -184,6 +183,7 @@ document.addEventListener('DOMContentLoaded', () => {
             desc: wp.description || '',
             type: 'solo',
             minigames: wp.Minigames || [],
+            validation_radius_m: wp.validation_radius_m,
             status: status,
             progress: progressPercent,
             progLabel: progLabel
@@ -197,7 +197,8 @@ document.addEventListener('DOMContentLoaded', () => {
         nodes.filter(n => n.status === 'unlocked' || n.status === 'in_progress').forEach(node => {
           if (node.minigames) {
             node.minigames.forEach(mg => {
-              if (mg.game_id && mg.config_json && mg.config_json.reference_image_url) {
+              const typesWithRef = ['shape_match', 'colour_match', 'texture_match', 'sift_match'];
+              if (mg.game_id && typesWithRef.includes(mg.game_type) && mg.config_json && mg.config_json.reference_image_url) {
                 prefetchPromises.push(
                   // Use the API helper which SW will intercept and cache
                   api.getMinigameReference(mg.game_id).catch(err => console.warn('Prefetch failed for game:', mg.game_id, err))
@@ -417,7 +418,11 @@ document.addEventListener('DOMContentLoaded', () => {
       const container = document.getElementById('camera-container');
 
       try {
-        const refData = await api.getMinigameReference(cvMinigame.game_id);
+        let refData = null;
+        if (cvMinigame.game_type !== 'symmetry_finder') {
+          refData = await api.getMinigameReference(cvMinigame.game_id);
+        }
+        const { CameraCapture } = await import('./components/CameraCapture.js');
 
         const camera = new CameraCapture(container, cvMinigame.game_type, refData);
 
@@ -458,11 +463,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 <h2>Saved Offline</h2>
                 <p>We'll analyze your attempt when you reconnect.</p>
                 <p>${result.message || ''}</p>
-                <button id="camera-overlay-close-btn-offline" class="btn-primary" style="margin-top: 15px;">Close</button>
+                <button id="camera-overlay-close-btn" class="btn-primary" style="margin-top: 15px;">Close</button>
               `;
             } else {
               overlay.className = `camera-result-overlay ${result.passed ? 'pass' : 'fail'}`;
-              
               if (result.passed) {
                 overlay.innerHTML = `
                   <h2>Match Found!</h2>
@@ -547,7 +551,10 @@ document.addEventListener('DOMContentLoaded', () => {
       loadingState.style.textAlign = 'center';
       loadingState.style.padding = '2rem';
       loadingState.style.color = 'var(--color-text-muted)';
-      loadingState.innerHTML = '<p>Verifying geofence...</p>';
+      loadingState.innerHTML = `
+        <div class="spinner" style="margin: 0 auto 1rem; width: 40px; height: 40px; border: 4px solid var(--color-bg-elevated); border-top: 4px solid var(--color-brand); border-radius: 50%; animation: spin 1s linear infinite;"></div>
+        <p>Verifying geofence...</p>
+      `;
       playModal.controlsContainer.appendChild(loadingState);
 
       // Try to get geolocation
@@ -579,7 +586,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const rad = unit === 'imperial' ? (arriveData.radius * 3.28084).toFixed(1) + 'ft' : arriveData.radius + 'm';
             const override = confirm(`You are outside of the geofence (Distance: ${dist}, Radius: ${rad}).\n\nProceed anyway (Dev Override)?`);
             if (!override) {
-              playModal.close();
+              playModal.showFeedback('fail');
+              setTimeout(() => { playModal.close(); }, 2000);
               return;
             }
             // Sent with the minigame submission so the server's proximity
@@ -587,106 +595,85 @@ document.addEventListener('DOMContentLoaded', () => {
             geofenceOverride = true;
           }
 
-          // Restore actual description
-          playModal.open(node.name, node.desc);
-
-          // Find minigame config
-          const wpData = gameState.waypoints.find(w => w.waypoint_id.toString() === node.id);
-          const minigames = wpData.Minigames && wpData.Minigames.length > 0 ? wpData.Minigames : [{ game_type: 'gps_proximity' }];
-
-          playModal.clearControls();
-
-          const renderMinigame = (index) => {
-            if (index >= minigames.length) {
-              mapModal.updateNodeStatus(node.id, 'completed');
-              playModal.close();
-              return;
-            }
+          const proceedWithGame = () => {
+            // Restore actual description
+            playModal.open(node.name, node.desc);
+            
+            // Find minigame config
+            const wpData = gameState.waypoints.find(w => w.waypoint_id.toString() === node.id);
+            const minigames = wpData.Minigames && wpData.Minigames.length > 0 ? wpData.Minigames : [{ game_type: 'gps_proximity' }];
 
             playModal.clearControls();
 
-            const minigame = minigames[index];
-            const handler = getMinigameHandler(minigame.game_type);
+            const renderMinigame = (index) => {
+              if (index >= minigames.length) {
+                mapModal.updateNodeStatus(node.id, 'completed');
+                playModal.close();
+                return;
+              }
 
-            const gameWrapper = document.createElement('div');
-            gameWrapper.className = 'minigame-wrapper';
-            gameWrapper.style.marginBottom = '20px';
+              playModal.clearControls();
 
-            if (minigames.length > 1) {
-              const gameTitle = document.createElement('h4');
-              gameTitle.style.marginBottom = '10px';
-              gameTitle.style.color = 'var(--color-brand)';
-              gameTitle.textContent = `Task ${index + 1} of ${minigames.length}: ${minigame.game_type.replace('_', ' ').toUpperCase()}`;
-              gameWrapper.appendChild(gameTitle);
-            }
+              const minigame = minigames[index];
+              const handler = getMinigameHandler(minigame.game_type);
 
-            playModal.controlsContainer.appendChild(gameWrapper);
+              const gameWrapper = document.createElement('div');
+              gameWrapper.className = 'minigame-wrapper';
+              gameWrapper.style.marginBottom = '20px';
 
-            handler.render(gameWrapper, minigame.config_json || {}, async (submission) => {
-              // Show loading spinner
-              const originalContent = gameWrapper.innerHTML;
-              gameWrapper.innerHTML = `
-              <div class="minigame-feedback-container" style="text-align: center; padding: 2rem;">
-                <div class="spinner-container" style="position: relative; width: 60px; height: 60px; margin: 0 auto 1rem;">
-                  <div class="spinner" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 4px solid var(--color-bg-elevated); border-top: 4px solid var(--color-brand); border-radius: 50%; animation: spin 1s linear infinite; box-sizing: border-box;"></div>
-                  <div class="feedback-icon" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0); transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); display: flex; align-items: center; justify-content: center;"></div>
-                </div>
-                <div class="feedback-text-container" style="min-height: 2.5rem; display: flex; flex-direction: column; justify-content: center; align-items: center;">
-                  <p class="feedback-text" style="margin: 0; color: var(--color-text-muted);">Verifying...</p>
-                </div>
-              </div>
-            `;
+              if (minigames.length > 1) {
+                const gameTitle = document.createElement('h4');
+                gameTitle.style.marginBottom = '10px';
+                gameTitle.style.color = 'var(--color-brand)';
+                gameTitle.textContent = `Task ${index + 1} of ${minigames.length}: ${minigame.game_type.replace('_', ' ').toUpperCase()}`;
+                gameWrapper.appendChild(gameTitle);
+              }
 
-              // On Submit
-              try {
-                const submitRes = await fetch(`${API_BASE}/api/game/${argId}/waypoint/${node.id}/submit`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  credentials: 'include',
-                  body: JSON.stringify({
-                    game_id: minigame.game_id,
-                    game_type: minigame.game_type,
-                    submission,
-                    geofence_override: geofenceOverride
-                  })
-                });
-                if (!submitRes.ok) throw new Error('Submission failed');
-                const result = await submitRes.json();
-                
-                const isLastGame = index === minigames.length - 1;
+              playModal.controlsContainer.appendChild(gameWrapper);
 
-                const spinner = gameWrapper.querySelector('.spinner');
-                const feedbackIcon = gameWrapper.querySelector('.feedback-icon');
-                const feedbackTextContainer = gameWrapper.querySelector('.feedback-text-container');
-                
-                if (spinner) {
-                  spinner.style.animation = 'none';
-                  spinner.style.borderTopColor = 'var(--color-bg-elevated)';
-                }
-                
-                if (result.outcome === 'pass') {
-                  if (spinner) spinner.style.borderColor = 'var(--color-green, #4ade80)';
-                  if (feedbackIcon) {
-                    feedbackIcon.innerHTML = '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--color-green, #4ade80)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
-                    requestAnimationFrame(() => {
-                      feedbackIcon.style.transform = 'translate(-50%, -50%) scale(1)';
-                    });
-                  }
-                  if (feedbackTextContainer) {
-                    feedbackTextContainer.innerHTML = '<p style="color: var(--color-green, #4ade80); font-weight: bold; margin: 0; font-size: 1.1rem;">Correct!</p>';
-                  }
+              const configWithMeta = Object.assign({}, minigame.config_json || {}, {
+                game_id: minigame.game_id,
+                arg_id: argId,
+                waypoint_id: node.id
+              });
+
+              handler.render(gameWrapper, configWithMeta, async (submission) => {
+                // Show loading spinner
+                const originalContent = gameWrapper.innerHTML;
+                if (minigame.game_type !== 'gps_proximity') {
+                  gameWrapper.innerHTML = `
+                  <div style="text-align: center; padding: 2rem;">
+                    <div class="spinner" style="margin: 0 auto 1rem; width: 40px; height: 40px; border: 4px solid var(--color-bg-elevated); border-top: 4px solid var(--color-brand); border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                    <p>Verifying...</p>
+                  </div>
+                  `;
                 } else {
-                  if (spinner) spinner.style.borderColor = 'var(--color-danger, #ef4444)';
-                  if (feedbackIcon) {
-                    feedbackIcon.innerHTML = '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--color-danger, #ef4444)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
-                    requestAnimationFrame(() => {
-                      feedbackIcon.style.transform = 'translate(-50%, -50%) scale(1)';
-                    });
-                  }
-                  if (feedbackTextContainer) {
-                    feedbackTextContainer.innerHTML = `<p style="color: var(--color-danger, #ef4444); font-weight: bold; margin: 0; font-size: 1.1rem;">Incorrect</p>${result.can_retry ? '<p style="color: var(--color-text-muted); margin: 0.25rem 0 0 0; font-size: 0.9rem;">Try again...</p>' : '<p style="color: var(--color-text-muted); margin: 0.25rem 0 0 0; font-size: 0.9rem;">Out of attempts</p>'}`;
-                  }
+                  gameWrapper.innerHTML = `
+                  <div style="text-align: center; padding: 2rem;">
+                    <div class="spinner" style="margin: 0 auto 1rem; width: 40px; height: 40px; border: 4px solid var(--color-bg-elevated); border-top: 4px solid var(--color-brand); border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                    <p>Completing waypoint...</p>
+                  </div>
+                  `;
                 }
+
+                // On Submit
+                try {
+                  const submitRes = await fetch(`${API_BASE}/api/game/${argId}/waypoint/${node.id}/submit`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                      game_id: minigame.game_id,
+                      game_type: minigame.game_type,
+                      submission,
+                      geofence_override: geofenceOverride
+                    })
+                  });
+                  if (!submitRes.ok) throw new Error('Submission failed');
+                  const result = await submitRes.json();
+
+                  const isLastGame = index === minigames.length - 1;
+                  playModal.showFeedback(result.outcome, isLastGame, result.can_retry);
 
                   if (result.can_retry && result.outcome === 'fail') {
                     setTimeout(() => {
@@ -732,15 +719,28 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                   }
                 } catch (err) {
-                    console.error(err);
-                    alert("Error submitting minigame.");
-                    gameWrapper.innerHTML = originalContent;
-                    renderMinigame(index);
-                  }
-                });
+                  console.error(err);
+                  alert("Error submitting minigame.");
+                  gameWrapper.innerHTML = originalContent;
+                  renderMinigame(index);
+                }
+              });
+            };
+
+            renderMinigame(0);
           };
 
-          renderMinigame(0);
+          const wpData = gameState.waypoints.find(w => w.waypoint_id.toString() === node.id);
+          const minigames = wpData.Minigames && wpData.Minigames.length > 0 ? wpData.Minigames : [{ game_type: 'gps_proximity' }];
+          
+          if (minigames.length === 1 && minigames[0].game_type === 'gps_proximity') {
+            proceedWithGame();
+          } else {
+            playModal.showFeedback('pass', false);
+            setTimeout(() => {
+              proceedWithGame();
+            }, 1000);
+          }
 
         } catch (err) {
           console.error(err);

@@ -1,4 +1,4 @@
-const { sequelize, Waypoint, WaypointEdge, Minigame, GameSession, WaypointProgress, MinigameAttempt, LocationEvent } = require('../models');
+const { sequelize, Waypoint, WaypointEdge, Minigame, GameSession, WaypointProgress, MinigameAttempt, LocationEvent, User } = require('../models');
 
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
 
@@ -472,5 +472,198 @@ exports.resetSession = async (req, res) => {
     await transaction.rollback();
     console.error('Reset Session Error:', error);
     res.status(500).json({ error: 'Failed to reset session' });
+  }
+};
+
+// Point Domination: Handle location ping
+exports.dominationPing = async (req, res) => {
+  const transaction = await sequelize.transaction();
+  try {
+    const user_id = req.user.user_id;
+    const waypoint_id = req.params.waypointId;
+    const { lat, lng, accuracy_m, game_id } = req.body;
+
+    if (!lat || !lng || !game_id) {
+      await transaction.rollback();
+      return res.status(400).json({ error: 'Missing parameters' });
+    }
+
+    const waypoint = await Waypoint.findByPk(waypoint_id, { transaction });
+    const minigame = await Minigame.findByPk(game_id, { transaction });
+
+    if (!waypoint || !minigame || minigame.game_type !== 'point_domination') {
+      await transaction.rollback();
+      return res.status(400).json({ error: 'Invalid waypoint or minigame' });
+    }
+
+    // Log location event (optional)
+    await LocationEvent.create({
+      user_id,
+      location: sequelize.fn('ST_GeomFromText', `POINT(${lat} ${lng})`, 4326),
+      accuracy_m: accuracy_m || null
+    }, { transaction });
+
+    // Distance check
+    const [result] = await sequelize.query(`
+      SELECT ST_Distance_Sphere(location, ST_GeomFromText('POINT(${lat} ${lng})', 4326)) AS distance
+      FROM waypoints WHERE waypoint_id = :waypoint_id
+    `, {
+      replacements: { waypoint_id },
+      type: sequelize.QueryTypes.SELECT,
+      transaction
+    });
+
+    const distance = result ? result.distance : Infinity;
+    const within_radius = distance <= waypoint.validation_radius_m;
+
+    let attempt = await MinigameAttempt.findOne({ where: { user_id, game_id }, transaction });
+    let submissionData = attempt && attempt.submission_json ? attempt.submission_json : {
+      cumulative_time_hours: 0,
+      top_score_time_hours: 0,
+      last_ping_at: null
+    };
+
+    // Check for Wipe based on reset_interval_hours
+    const resetIntervalHours = minigame.config_json?.reset_interval_hours || 0;
+    const now = new Date();
+    
+    if (resetIntervalHours > 0 && attempt && attempt.attempted_at) {
+      const createdTime = new Date(minigame.created_at).getTime();
+      const intervalMs = resetIntervalHours * 60 * 60 * 1000;
+      
+      const currentWipeStart = createdTime + Math.floor((now.getTime() - createdTime) / intervalMs) * intervalMs;
+      const attemptTime = new Date(attempt.attempted_at).getTime();
+      
+      if (attemptTime < currentWipeStart) {
+        // Wipe occurred
+        submissionData.cumulative_time_hours = 0;
+        submissionData.top_score_time_hours = 0;
+      }
+    }
+
+    let hoursDelta = 0;
+    if (within_radius) {
+      if (submissionData.last_ping_at) {
+        const lastPing = new Date(submissionData.last_ping_at);
+        const timeDiffMs = now.getTime() - lastPing.getTime();
+        if (timeDiffMs > 0 && timeDiffMs < 1000 * 60 * 5) { // max 5 min delta
+          hoursDelta = timeDiffMs / (1000 * 60 * 60);
+          submissionData.cumulative_time_hours += hoursDelta;
+        }
+      }
+      submissionData.last_ping_at = now.toISOString();
+    } else {
+      submissionData.last_ping_at = null; // Reset chain
+    }
+
+    // Determine Top Scorer
+    const allAttempts = await MinigameAttempt.findAll({ where: { game_id }, transaction });
+    let topScorerId = null;
+    let maxScore = -1;
+
+    for (const att of allAttempts) {
+      const pData = att.submission_json || {};
+      const score = pData.cumulative_time_hours || 0;
+      if (score > maxScore) {
+        maxScore = score;
+        topScorerId = att.user_id;
+      }
+    }
+
+    if (user_id === topScorerId || submissionData.cumulative_time_hours > maxScore) {
+      submissionData.top_score_time_hours += hoursDelta;
+    }
+
+    if (attempt) {
+      attempt.submission_json = submissionData;
+      attempt.attempted_at = now;
+      attempt.outcome = 'pass';
+      await attempt.save({ transaction });
+    } else {
+      await MinigameAttempt.create({
+        user_id,
+        game_id,
+        outcome: 'pass',
+        submission_json: submissionData,
+        score: 1.0,
+        attempted_at: now,
+        points_awarded: 0
+      }, { transaction });
+    }
+
+    await transaction.commit();
+    res.json({ success: true, within_radius, submissionData });
+  } catch (error) {
+    await transaction.rollback();
+    console.error('Ping Error:', error);
+    res.status(500).json({ error: 'Failed to process domination ping' });
+  }
+};
+
+// Point Domination: Get Leaderboard
+exports.getDominationScores = async (req, res) => {
+  try {
+    const user_id = req.user ? req.user.user_id : (req.query.user_id || null);
+    const game_id = req.query.game_id;
+
+    if (!game_id) return res.status(400).json({ error: 'game_id required' });
+
+    const minigame = await Minigame.findByPk(game_id);
+    if (!minigame) return res.status(404).json({ error: 'Game not found' });
+
+    const attempts = await MinigameAttempt.findAll({
+      where: { game_id },
+      include: [{ model: User, attributes: ['username'] }]
+    });
+
+    const resetIntervalHours = minigame.config_json?.reset_interval_hours || 0;
+    const now = new Date();
+    
+    let nextWipeInHours = null;
+    let currentWipeStartMs = 0;
+    
+    if (resetIntervalHours > 0) {
+      const createdTime = new Date(minigame.created_at).getTime();
+      const intervalMs = resetIntervalHours * 60 * 60 * 1000;
+      currentWipeStartMs = createdTime + Math.floor((now.getTime() - createdTime) / intervalMs) * intervalMs;
+      const nextWipeMs = currentWipeStartMs + intervalMs;
+      nextWipeInHours = (nextWipeMs - now.getTime()) / (1000 * 60 * 60);
+    }
+
+    const activeScores = attempts
+      .map(att => {
+        let submissionData = att.submission_json || { cumulative_time_hours: 0 };
+        if (resetIntervalHours > 0) {
+          const attemptTimeMs = new Date(att.attempted_at).getTime();
+          if (attemptTimeMs < currentWipeStartMs) {
+            submissionData.cumulative_time_hours = 0;
+          }
+        }
+        return {
+          user_id: att.user_id,
+          username: att.User ? att.User.username : 'Unknown',
+          score: submissionData.cumulative_time_hours || 0
+        };
+      })
+      .filter(s => s.score > 0)
+      .sort((a, b) => b.score - a.score);
+
+    const top3 = activeScores.slice(0, 3);
+    
+    let currentUserScore = null;
+    if (user_id) {
+      const userRank = activeScores.findIndex(s => s.user_id === parseInt(user_id, 10));
+      if (userRank !== -1) {
+        currentUserScore = {
+          rank: userRank + 1,
+          ...activeScores[userRank]
+        };
+      }
+    }
+
+    res.json({ top3, nextWipeInHours, currentUserScore });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to fetch scores' });
   }
 };

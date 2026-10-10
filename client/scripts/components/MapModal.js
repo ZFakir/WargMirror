@@ -25,6 +25,8 @@ export class MapModal {
     this._editorMode = false;
     this._editorCallbacks = {};
     this._selectedNodeId = null;
+    this.radiusCircles = {};
+    this.radiusHandle = null;
 
     // Core data
     this.NODES = [
@@ -407,24 +409,103 @@ export class MapModal {
 
     // In editor mode don't add the static NODES
     if (!this._editorMode) {
+      this.radiusCircles = this.radiusCircles || {};
+      
       this.NODES.forEach(node => {
         const marker = L.marker([node.lat, node.lng], { icon: this.iconFor(node) }).addTo(this.map);
         marker.bindPopup(this.popupHTML(node), { closeButton: true, className: '' });
         this.markerLookup[node.id] = marker;
+        
+        // Render Point Domination radius
+        const minigames = node.games || node.minigames || [];
+        const hasPD = minigames.some(g => g.type === 'point_domination' || g.game_type === 'point_domination');
+        if (hasPD) {
+          const radius = node.validation_radius_m || 30;
+          const circle = L.circle([node.lat, node.lng], {
+            radius: radius,
+            color: '#ff4444',
+            weight: 1.5,
+            dashArray: '4, 4',
+            opacity: 1,
+            fillOpacity: 0.1,
+            interactive: false
+          }).addTo(this.map);
+          this.radiusCircles[node.id] = circle;
+        }
       });
 
       // Handle clicks inside popups
       this.map.on('popupopen', (e) => {
         const btn = e.popup._contentNode.querySelector('.map-play-btn');
         if (btn) {
+          const nodeId = btn.getAttribute('data-node-id');
+          const node = this.NODES.find(n => n.id === nodeId);
+          
           btn.addEventListener('click', () => {
-            const nodeId = btn.getAttribute('data-node-id');
-            const node = this.NODES.find(n => n.id === nodeId);
             if (node) {
               document.dispatchEvent(new CustomEvent('warg:play-node', { detail: node }));
               this.map.closePopup();
             }
           });
+
+          // Point Domination: Show Leaderboard in the map popup
+          const minigames = node && (node.games || node.minigames) ? (node.games || node.minigames) : [];
+          const pdGame = minigames.find(g => g.type === 'point_domination' || g.game_type === 'point_domination');
+          if (pdGame) {
+            const lbContainer = document.createElement('div');
+            lbContainer.className = 'popup-leaderboard-container';
+            lbContainer.style.marginTop = '0.5rem';
+            lbContainer.style.marginBottom = '0.5rem';
+            lbContainer.innerHTML = `
+              <div style="text-align: center; padding: 0.5rem; background: var(--color-bg-elevated); border-radius: var(--radius-sm);">
+                <div class="spinner" style="margin: 0 auto; width: 16px; height: 16px; border: 2px solid var(--color-bg); border-top: 2px solid var(--color-brand); border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                <p style="font-size: 0.75rem; color: var(--color-text-muted); margin-top: 0.25rem;">Loading Leaderboard...</p>
+              </div>
+            `;
+            
+            btn.parentNode.insertBefore(lbContainer, btn);
+
+            const argId = new URLSearchParams(window.location.search).get('id');
+            const apiBase = window.API_BASE || '';
+            const gameId = pdGame.id || pdGame.game_id;
+            
+            if (argId && gameId) {
+              fetch(`${apiBase}/api/game/${argId}/waypoint/${node.id}/domination-scores?game_id=${gameId}`, { credentials: 'include' })
+                .then(res => res.ok ? res.json() : Promise.reject('Failed'))
+                .then(data => {
+                  let top3Html;
+                  if (data.top3 && data.top3.length > 0) {
+                    top3Html = data.top3.map(u => `
+                      <div style="display: flex; justify-content: space-between; font-size: 0.75rem; border-bottom: 1px solid var(--color-border); padding: 3px 0;">
+                        <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 60%;"><strong>${u.username}</strong></span>
+                        <span style="color: var(--color-brand); font-weight: bold;">${u.score.toFixed(2)}h</span>
+                      </div>
+                    `).join('');
+                  } else {
+                    top3Html = '<p style="font-size: 0.75rem; color: var(--color-text-muted); text-align: center; margin: 0.5rem 0;">No dominators yet.</p>';
+                  }
+                  
+                  let wipeHtml = '';
+                  if (data.nextWipeInHours !== null) {
+                    const hrs = Math.floor(data.nextWipeInHours);
+                    const mins = Math.floor((data.nextWipeInHours - hrs) * 60);
+                    wipeHtml = `<p style="font-size: 0.7rem; color: var(--color-text-muted); margin-top: 0.5rem; text-align: center;">Wipes in: ${hrs}h ${mins}m</p>`;
+                  }
+
+                  lbContainer.innerHTML = `
+                    <div style="background: var(--color-bg-elevated); padding: 0.5rem; border-radius: var(--radius-sm);">
+                      <h4 style="margin-bottom: 0.2rem; font-size: 0.75rem; text-transform: uppercase; color: var(--color-brand); text-align: center; border-bottom: 1px solid var(--color-border); padding-bottom: 0.2rem;">Live Leaderboard</h4>
+                      ${top3Html}
+                      ${wipeHtml}
+                    </div>
+                  `;
+                })
+                .catch(err => {
+                  console.error(err);
+                  lbContainer.innerHTML = '<p style="font-size: 0.75rem; color: var(--color-danger); text-align: center; margin: 0.5rem 0;">Leaderboard unavailable.</p>';
+                });
+            }
+          }
         }
       });
 
@@ -471,6 +552,35 @@ export class MapModal {
 
   /* ─── Editor Mode API ─── */
 
+  updateNodeVisuals(node) {
+    if (!this.map) return;
+    const games = node.games || node.minigames || node.Minigames || [];
+    const hasPD = games.some(g => g.type === 'point_domination' || g.game_type === 'point_domination');
+    const el = document.getElementById(`em-${node.id}`);
+    
+    if (el) {
+      if (hasPD) {
+        el.classList.add('pd-node');
+      } else {
+        el.classList.remove('pd-node');
+      }
+      
+      const handleEl = el.querySelector('.mock-waypoint__handle');
+      if (handleEl) {
+         handleEl.style.display = hasPD ? 'flex' : 'none';
+      }
+    }
+
+    if (this.radiusCircles && this.radiusCircles[node.id]) {
+       const circle = this.radiusCircles[node.id];
+       if (hasPD) {
+         circle.setStyle({ color: '#ff4444', opacity: 1, fillOpacity: 0.1 });
+       } else {
+         circle.setStyle({ color: '#00d8ff', opacity: 0, fillOpacity: 0 });
+       }
+    }
+  }
+
   /**
    * Add a draggable editor marker for a node.
    * @param {{ id, lat, lng, title }} node
@@ -478,16 +588,33 @@ export class MapModal {
   addEditorNode(node) {
     if (!this.map) return;
 
+    const games = node.games || node.minigames || node.Minigames || [];
+    const hasPD = games.some(g => g.type === 'point_domination' || g.game_type === 'point_domination');
+    const markerColorClass = hasPD ? 'pd-node' : '';
+
     const icon = L.divIcon({
       className: '',
-      html: `<div class="node-marker editor-node" id="em-${node.id}">
+      html: `<div class="node-marker editor-node ${markerColorClass}" id="em-${node.id}">
                <div class="node-marker__core">+</div>
-               <div class="mock-waypoint__handle"><span></span><span></span><span></span></div>
+               <div class="mock-waypoint__handle" style="display: ${hasPD ? 'flex' : 'none'};"><span></span><span></span><span></span></div>
              </div>`,
       iconSize: [34, 34],
       iconAnchor: [17, 17],
       popupAnchor: [0, -14]
     });
+
+    // Add radius circle
+    const radius = node.validation_radius_m || 30;
+    const circle = L.circle([node.lat, node.lng], {
+      radius: radius,
+      color: hasPD ? '#ff4444' : '#00d8ff',
+      weight: 1.5,
+      dashArray: '4, 4',
+      opacity: hasPD ? 1 : 0,
+      fillOpacity: hasPD ? 0.1 : 0,
+      interactive: false
+    }).addTo(this.map);
+    this.radiusCircles[node.id] = circle;
 
     // Markers are NOT draggable by default — only the handle enables dragging
     const marker = L.marker([node.lat, node.lng], { icon, draggable: false }).addTo(this.map);
@@ -525,6 +652,12 @@ export class MapModal {
 
     marker.on('drag', () => {
       const ll = marker.getLatLng();
+      if (this.radiusCircles[node.id]) {
+        this.radiusCircles[node.id].setLatLng(ll);
+      }
+      if (this.radiusHandle && this._selectedNodeId === node.id) {
+        this._updateRadiusHandlePosition(node.id);
+      }
       if (this._editorCallbacks.onNodeMoving) this._editorCallbacks.onNodeMoving(node.id, ll.lat, ll.lng);
     });
 
@@ -551,6 +684,14 @@ export class MapModal {
       this.map.removeLayer(marker);
       delete this.markerLookup[id];
     }
+    if (this.radiusCircles[id]) {
+      this.map.removeLayer(this.radiusCircles[id]);
+      delete this.radiusCircles[id];
+    }
+    if (this._selectedNodeId === id && this.radiusHandle) {
+      this.map.removeLayer(this.radiusHandle);
+      this.radiusHandle = null;
+    }
   }
 
   /**
@@ -563,6 +704,79 @@ export class MapModal {
       if (!el) return;
       const core = el.querySelector('.node-marker');
       if (core) core.classList.toggle('selected', nodeId === id);
+    });
+
+    if (this.radiusHandle) {
+      this.map.removeLayer(this.radiusHandle);
+      this.radiusHandle = null;
+    }
+
+    if (id && this.markerLookup[id]) {
+      this._createRadiusHandle(id);
+    }
+  }
+
+  updateNodeRadius(id, radius) {
+    if (this.radiusCircles[id]) {
+      this.radiusCircles[id].setRadius(radius);
+    }
+    if (this._selectedNodeId === id && this.radiusHandle) {
+      this._updateRadiusHandlePosition(id);
+    }
+  }
+
+  _updateRadiusHandlePosition(id) {
+    if (!this.radiusHandle || !this.markerLookup[id] || !this.radiusCircles[id]) return;
+    const center = this.markerLookup[id].getLatLng();
+    const radius = this.radiusCircles[id].getRadius();
+    // Position handle due east of center
+    const handleLatLng = this._destinationPoint(center, 90, radius);
+    this.radiusHandle.setLatLng(handleLatLng);
+  }
+
+  _destinationPoint(start, heading, distance) {
+    const R = 6371000; // Earth radius in meters
+    const d = distance / R;
+    const h = heading * Math.PI / 180;
+    const lat1 = start.lat * Math.PI / 180;
+    const lng1 = start.lng * Math.PI / 180;
+
+    const lat2 = Math.asin(Math.sin(lat1) * Math.cos(d) + Math.cos(lat1) * Math.sin(d) * Math.cos(h));
+    const lng2 = lng1 + Math.atan2(Math.sin(h) * Math.sin(d) * Math.cos(lat1), Math.cos(d) - Math.sin(lat1) * Math.sin(lat2));
+
+    return L.latLng(lat2 * 180 / Math.PI, lng2 * 180 / Math.PI);
+  }
+
+  _createRadiusHandle(id) {
+    if (!this.map) return;
+    const icon = L.divIcon({
+      className: '',
+      html: `<div style="width: 12px; height: 12px; background: #00d8ff; border: 2px solid #fff; border-radius: 50%; cursor: ew-resize; box-shadow: 0 0 5px rgba(0,0,0,0.5);"></div>`,
+      iconSize: [12, 12],
+      iconAnchor: [6, 6]
+    });
+
+    this.radiusHandle = L.marker([0, 0], {
+      icon,
+      draggable: true,
+      zIndexOffset: 2000
+    }).addTo(this.map);
+
+    this._updateRadiusHandlePosition(id);
+
+    this.radiusHandle.on('drag', () => {
+      const center = this.markerLookup[id].getLatLng();
+      const handlePos = this.radiusHandle.getLatLng();
+      const newRadius = center.distanceTo(handlePos);
+      this.radiusCircles[id].setRadius(newRadius);
+
+      if (this._editorCallbacks.onRadiusChanged) {
+        this._editorCallbacks.onRadiusChanged(id, newRadius);
+      }
+    });
+
+    this.radiusHandle.on('dragend', () => {
+      this._updateRadiusHandlePosition(id);
     });
   }
 
@@ -871,6 +1085,10 @@ export class MapModal {
   }
 
   iconFor(node) {
+    const minigames = node.games || node.minigames || node.Minigames || [];
+    const isPD = minigames.some(g => g.type === 'point_domination' || g.game_type === 'point_domination');
+    const pdClass = isPD ? ' pd-node' : '';
+
     const isCurrent = node.status === 'current' || node.status === 'unlocked';
     const isFailed = node.status === 'failed';
     const isCompleted = node.status === 'completed';
@@ -880,8 +1098,11 @@ export class MapModal {
     else if (isFailed) cls = 'failed';
     else if (isCurrent) cls = 'current';
 
+    cls += pdClass;
+
     let glyph = '•';
-    if (isCompleted) glyph = '✓';
+    if (isPD && !isCompleted) glyph = '☠️';
+    else if (isCompleted) glyph = '✓';
     else if (isFailed) glyph = '✕';
     else if (isCurrent) glyph = (this.BADGE_LABEL[node.type] ? this.BADGE_LABEL[node.type][0] : '?');
 
