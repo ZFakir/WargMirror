@@ -254,6 +254,13 @@ var api = (function () {
     return _delete('/api/sessions/' + userId + '/arg/' + argId);
   }
 
+  /**
+   * Resets a completed Game Session
+   */
+  async function resetGameSession(argId) {
+    return _post('/api/game/' + argId + '/reset', {});
+  }
+
   async function getMinigameReference(gameId) {
     const url = API_BASE + '/api/minigames/' + gameId + '/reference/image';
     const req = new Request(url, { credentials: 'include' });
@@ -417,6 +424,7 @@ var api = (function () {
     logout,
     updateAccount,
     deleteAccount,
+    resetGameSession
   };
 
 })();

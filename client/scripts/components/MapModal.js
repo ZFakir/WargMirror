@@ -968,14 +968,19 @@ export class MapModal {
     }
   }
 
-  showCompletedOverlay() {
+  showCompletedOverlay(onReplay) {
     if (!this.container) return;
     const overlay = document.createElement('div');
     overlay.className = 'map-completed-overlay';
     
     overlay.innerHTML = `
       <div class="map-shimmer-layer"></div>
-      <h1 class="completed-text">COMPLETED</h1>
+      <div class="completed-content">
+        <h1 class="completed-text">COMPLETED</h1>
+        <button id="btn-replay-arg" class="btn btn--primary" style="pointer-events: auto; z-index: 3; margin-top: 2rem; font-size: 1.5rem; padding: 1rem 2rem;">
+          Replay ARG
+        </button>
+      </div>
     `;
     
     overlay.style.position = 'absolute';
@@ -987,6 +992,7 @@ export class MapModal {
     overlay.style.alignItems = 'center';
     overlay.style.justifyContent = 'center';
     overlay.style.zIndex = '9999';
+    // Pointer events none on overlay so it doesn't block entirely, but we need the button to be clickable
     overlay.style.pointerEvents = 'none';
 
     // Add styles & keyframes if not exists
@@ -1007,15 +1013,38 @@ export class MapModal {
           opacity: 0;
           pointer-events: none;
         }
-        .completed-text {
+        .completed-content {
           position: relative;
+          z-index: 2;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          pointer-events: none;
+        }
+        .completed-text {
           color: #FFD700; 
           text-shadow: 0 0 30px rgba(255,215,0,0.8), 2px 2px 10px rgba(0,0,0,0.9); 
           font-size: 4rem; 
           text-align: center; 
           animation: popIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-          z-index: 2;
-          pointer-events: none;
+          margin: 0;
+        }
+        #btn-replay-arg {
+          background-color: var(--color-primary, #3b82f6);
+          color: white;
+          border: none;
+          border-radius: 8px;
+          cursor: pointer;
+          font-weight: bold;
+          box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+          transition: transform 0.2s, background-color 0.2s;
+          animation: fadeIn 1s forwards;
+          animation-delay: 1s;
+          opacity: 0;
+        }
+        #btn-replay-arg:hover {
+          background-color: var(--color-primary-hover, #2563eb);
+          transform: scale(1.05);
         }
         @keyframes popIn {
           0% { transform: scale(0.5); opacity: 0; filter: blur(10px); }
@@ -1036,6 +1065,14 @@ export class MapModal {
     }
 
     this.container.appendChild(overlay);
+
+    const replayBtn = overlay.querySelector('#btn-replay-arg');
+    if (replayBtn && onReplay) {
+      replayBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        onReplay();
+      });
+    }
   }
 
   isFullscreen() {

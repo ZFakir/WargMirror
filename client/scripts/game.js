@@ -251,7 +251,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (gameState && gameState.session && gameState.session.status === 'completed') {
         setTimeout(() => {
-          mapModal.showCompletedOverlay();
+          mapModal.showCompletedOverlay(() => {
+            window.confirmModal.open({
+              title: 'Replay ARG',
+              desc: 'Are you sure you want to replay this ARG? Your session progress and points will be reset.',
+              confirmText: 'Replay',
+              callback: async () => {
+                try {
+                  await api.resetGameSession(argId);
+                  window.location.reload();
+                } catch (e) {
+                  alert('Failed to reset ARG. Please try again.');
+                  console.error(e);
+                }
+              }
+            });
+          });
         }, 500);
       }
 
@@ -693,7 +708,22 @@ document.addEventListener('DOMContentLoaded', () => {
                       mapModal.updateNodeStatus(node.id, nodeStatus);
                       if (result.session_completed) {
                         setTimeout(() => {
-                          mapModal.showCompletedOverlay();
+                          mapModal.showCompletedOverlay(() => {
+                            window.confirmModal.open({
+                              title: 'Replay ARG',
+                              desc: 'Are you sure you want to replay this ARG? Your session progress and points will be reset.',
+                              confirmText: 'Replay',
+                              callback: async () => {
+                                try {
+                                  await api.resetGameSession(argId);
+                                  window.location.reload();
+                                } catch (e) {
+                                  alert('Failed to reset ARG. Please try again.');
+                                  console.error(e);
+                                }
+                              }
+                            });
+                          });
                         }, 1000); // Wait a second for popup to close / feedback to finish
                       }
                       setTimeout(() => {

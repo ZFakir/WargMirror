@@ -8,5 +8,6 @@ router.get('/:argId/state', gameController.getGameState);
 router.post('/:argId/waypoint/:waypointId/arrive', requireAuth, antiSpoofing, gameController.arriveAtWaypoint);
 router.post('/:argId/waypoint/:waypointId/submit', gameController.submitMinigame);
 router.post('/:argId/abandon', gameController.abandonSession);
+router.post('/:argId/reset', requireAuth, gameController.resetSession);
 
 module.exports = router;
