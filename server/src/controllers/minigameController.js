@@ -1,5 +1,6 @@
 const { Minigame, Waypoint, Arg, MinigameAttempt, WaypointProgress, WaypointEdge, GameSession } = require('../models');
 const { evaluateConditions } = require('./gameController');
+const badgeService = require('../services/badgeService');
 const path = require('path');
 const fs = require('fs');
 
@@ -227,6 +228,7 @@ exports.submitAttempt = async (req, res) => {
       }
 
       await transaction.commit();
+      badgeService.evaluateAndAwardBadges(user_id).catch(() => {});
     } catch (dbErr) {
       await transaction.rollback();
       console.error('Database error during progression:', dbErr);

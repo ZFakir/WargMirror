@@ -1,5 +1,6 @@
 const { User, Flag, Arg, Comment, GameSession } = require('../models');
 const { Op } = require('sequelize');
+const badgeService = require('../services/badgeService');
 
 // Fields safe to return to the admin client — never leak password_hash,
 // session_token or google_uid in a response body.
@@ -64,6 +65,10 @@ exports.resolveFlag = async (req, res) => {
     flag.resolved_by = req.user.user_id;
     flag.resolved_at = new Date();
     await flag.save();
+
+    if (flag.reporter_id) {
+      badgeService.evaluateAndAwardBadges(flag.reporter_id).catch(() => {});
+    }
 
     res.json({ message: 'Flag resolved successfully', flag });
   } catch (error) {
