@@ -5,7 +5,7 @@ Each file in this folder is a self-contained implementation plan for **one remai
 ## Rules for every plan
 
 1. **One item = one branch = one PR.** Create `feet/IP-<id>-<slug>` from the latest `main`. Never commit directly to `main`.
-2. **Order matters.** `IP-00` (the Polish-F merge gate) is a hard prerequisite — several plans reference Polish-F symbols that do not exist on `main` yet (`forgotPassword`, `/health`, CI `test:mocked`, `requireAuth` on the flag route).
+2. **The Polish-F merge gate is complete.** `feet-/Polish-F` was merged into `main` via PR #67 (`cebcfcd`), so the symbols the plans relied on (`forgotPassword`, `/health`, CI `test:mocked`, `requireAuth` on the flag route) now exist on `main`. The `IP-00` plan was removed; branch each `feet/IP-*` from the latest `main` and start building.
 3. **Check off in the register.** When a plan's acceptance criteria are met and its PR is merged, tick the item in `MISSING_ITEMS.md` in the same PR (or immediately after).
 
 ## Database safety (applies to every plan, no exceptions)
