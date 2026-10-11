@@ -75,25 +75,41 @@ describe('gameController', () => {
     });
 
     it('should parse stringified conditions', async () => {
-      MinigameAttempt.findOne.mockResolvedValue({ outcome: 'pass' });
+      MinigameAttempt.findAll.mockResolvedValue([{ game_id: 1, outcome: 'pass' }]);
       const result = await evaluateConditions(1, '[{"game_id": 1, "outcome": "pass"}]');
       expect(result).toBe(true);
     });
 
     it('should return false if attempt is not found', async () => {
-      MinigameAttempt.findOne.mockResolvedValue(null);
+      MinigameAttempt.findAll.mockResolvedValue([]);
       const result = await evaluateConditions(1, [{ game_id: 1, outcome: 'pass' }]);
       expect(result).toBe(false);
     });
 
     it('should return false if attempt outcome does not match', async () => {
-      MinigameAttempt.findOne.mockResolvedValue({ outcome: 'fail' });
+      MinigameAttempt.findAll.mockResolvedValue([{ game_id: 1, outcome: 'fail' }]);
       const result = await evaluateConditions(1, [{ game_id: 1, outcome: 'pass' }]);
       expect(result).toBe(false);
     });
 
+    it('should query all condition attempts once', async () => {
+      MinigameAttempt.findAll.mockResolvedValue([
+        { game_id: 1, outcome: 'pass' },
+        { game_id: 2, outcome: 'pass' }
+      ]);
+      const result = await evaluateConditions(1, [
+        { game_id: 1, outcome: 'pass' },
+        { game_id: 2, outcome: 'pass' }
+      ]);
+      expect(result).toBe(true);
+      expect(MinigameAttempt.findAll).toHaveBeenCalledTimes(1);
+      expect(MinigameAttempt.findAll).toHaveBeenCalledWith({
+        where: { user_id: 1, game_id: [1, 2] }
+      });
+    });
+
     it('should handle multiple grouped conditions (OR logic within same game_id)', async () => {
-      MinigameAttempt.findOne.mockResolvedValue({ outcome: 'silver' });
+      MinigameAttempt.findAll.mockResolvedValue([{ game_id: 1, outcome: 'silver' }]);
       const result = await evaluateConditions(1, [
         { game_id: 1, outcome: 'gold' },
         { game_id: 1, outcome: 'silver' }

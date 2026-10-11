@@ -3,7 +3,7 @@ const { sequelize, Waypoint, WaypointEdge, Minigame, GameSession, WaypointProgre
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
 
 // Helper to evaluate branching conditions
-exports.evaluateConditions = async (user_id, rawConditions, transaction = null) => {
+exports.evaluateConditions = async (user_id, rawConditions, transaction = null, attemptsByGame = null) => {
   let conditions = rawConditions;
   if (typeof conditions === 'string') {
     try { conditions = JSON.parse(conditions); } catch { /* ignore parse error */ }
@@ -12,24 +12,24 @@ exports.evaluateConditions = async (user_id, rawConditions, transaction = null) 
   if (!conditions || !Array.isArray(conditions) || conditions.length === 0) {
     return true; // Unconditional edge
   }
-  
-  // Group outcomes by game_id to treat multiple outcomes for the same game as OR
-  const groupedConditions = {};
+
+  // Group outcomes by game_id to treat multiple outcomes for the same game as OR.
+  const groupedConditions = new Map();
   for (const cond of conditions) {
-    if (!groupedConditions[cond.game_id]) {
-      groupedConditions[cond.game_id] = [];
-    }
-    groupedConditions[cond.game_id].push(cond.outcome);
+    const outcomes = groupedConditions.get(cond.game_id) || [];
+    outcomes.push(cond.outcome);
+    groupedConditions.set(cond.game_id, outcomes);
   }
 
-  for (const [game_id, allowedOutcomes] of Object.entries(groupedConditions)) {
-    const findOpts = {
-      where: { user_id, game_id },
-      order: [['attempted_at', 'DESC']]
-    };
+  if (!attemptsByGame) {
+    const findOpts = { where: { user_id, game_id: [...groupedConditions.keys()] } };
     if (transaction) findOpts.transaction = transaction;
-    const attempt = await MinigameAttempt.findOne(findOpts);
-    
+    const attempts = await MinigameAttempt.findAll(findOpts);
+    attemptsByGame = new Map(attempts.map((attempt) => [attempt.game_id, attempt]));
+  }
+
+  for (const [gameId, allowedOutcomes] of groupedConditions) {
+    const attempt = attemptsByGame.get(Number(gameId)) || attemptsByGame.get(gameId);
     if (!attempt || !allowedOutcomes.includes(attempt.outcome)) {
       return false; // Condition not met
     }
@@ -339,11 +339,23 @@ exports.submitMinigame = async (req, res) => {
       completed_at: new Date()
     }, { transaction });
 
-    // Evaluate successors. Branching logic handles whether pass or fail triggers specific edges.
+    // Evaluate successor conditions from one attempt lookup, rather than one
+    // lookup per edge/condition combination.
     const edges = await WaypointEdge.findAll({ where: { from_waypoint_id: waypoint_id }, transaction });
-    
+    const edgeConditions = edges.flatMap((edge) => {
+      if (typeof edge.conditions_json === 'string') {
+        try { return JSON.parse(edge.conditions_json); } catch { return []; }
+      }
+      return Array.isArray(edge.conditions_json) ? edge.conditions_json : [];
+    });
+    const conditionGameIds = [...new Set(edgeConditions.map((condition) => condition.game_id).filter(Boolean))];
+    const attempts = conditionGameIds.length > 0
+      ? await MinigameAttempt.findAll({ where: { user_id, game_id: conditionGameIds }, transaction })
+      : [];
+    const attemptsByGame = new Map(attempts.map((attempt) => [attempt.game_id, attempt]));
+
     for (const edge of edges) {
-      const canUnlock = await exports.evaluateConditions(user_id, edge.conditions_json, transaction);
+      const canUnlock = await exports.evaluateConditions(user_id, edge.conditions_json, transaction, attemptsByGame);
       if (canUnlock) {
         await WaypointProgress.upsert({
           user_id,
