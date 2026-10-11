@@ -193,4 +193,24 @@
   }
 }
 
+@layer utilities {
+  .skip-link {
+    position: fixed;
+    top: var(--space-3);
+    left: var(--space-3);
+    z-index: 10000;
+    padding: var(--space-2) var(--space-3);
+    color: var(--color-text-on-accent);
+    background: var(--color-accent);
+    border-radius: var(--radius-btn);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-200%);
+    transition: transform var(--duration-fast) var(--ease-out);
+  }
+
+  .skip-link:focus {
+    transform: translateY(0);
+  }
+}
+
 @keyframes spin { 100% { transform: rotate(360deg); } }

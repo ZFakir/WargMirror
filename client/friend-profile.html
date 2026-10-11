@@ -25,8 +25,10 @@
       }
     })();
   </script>
+  <script src="scripts/components/focusUtils.js"></script>
 </head>
 <body>
+  <a href="#main-content" class="skip-link">Skip to main content</a>
 
 <!-- Overlay backdrop for mobile drawers -->
 <div class="drawer-overlay" id="drawer-overlay" aria-hidden="true"></div>
@@ -146,7 +148,7 @@
   </header>
 
   <!-- MAIN CONTENT -->
-  <main class="main-content" id="main-content">
+  <main class="main-content" id="main-content" tabindex="-1">
     <div class="main-content__inner">
       <div class="profile-container">
         

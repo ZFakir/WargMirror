@@ -26,8 +26,10 @@
       }
     })();
   </script>
+  <script src="scripts/components/focusUtils.js"></script>
 </head>
 <body>
+  <a href="#main-content" class="skip-link">Skip to main content</a>
 
 <!-- Overlay backdrop for mobile drawers -->
 <div class="drawer-overlay" id="drawer-overlay" aria-hidden="true"></div>
@@ -190,7 +192,7 @@
   <!-- ════════════════════════════════════════════════════
        MAIN CONTENT — Creator Studio
   ════════════════════════════════════════════════════ -->
-  <main class="main-content" id="main-content" aria-label="Creator Studio">
+  <main class="main-content" id="main-content" tabindex="-1" aria-label="Creator Studio">
     <div class="main-content__inner">
 
       <!-- ── Studio Hero ── -->

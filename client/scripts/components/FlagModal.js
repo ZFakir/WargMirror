@@ -23,7 +23,7 @@ export class FlagModal {
     this.overlay.setAttribute('aria-hidden', 'false');
     this.reasonInput.value = 'inappropriate_content';
     this.descriptionInput.value = '';
-    this.reasonInput.focus();
+    window.focusUtils.openDialogFocus(this.dialog);
   }
 
   initDOM() {
@@ -84,6 +84,7 @@ export class FlagModal {
 
     document.body.appendChild(this.overlay);
 
+    this.dialog = this.overlay.querySelector('[role="dialog"]');
     this.reasonInput = this.overlay.querySelector('#flag-reason');
     this.descriptionInput = this.overlay.querySelector('#flag-description');
     this.closeBtn = this.overlay.querySelector('#btn-flag-modal-close');
@@ -160,6 +161,7 @@ export class FlagModal {
   close() {
     this.overlay.setAttribute('aria-hidden', 'true');
     document.body.style.overflow = '';
+    window.focusUtils.closeDialogFocus(this.dialog);
   }
 }
 

@@ -7,6 +7,7 @@
 export class PlayModal {
   constructor() {
     this.overlay = document.getElementById('play-modal-overlay');
+    this.dialog = this.overlay?.querySelector('[role="dialog"]');
     this.titleEl = document.getElementById('play-modal-title');
     this.descriptionEl = document.getElementById('play-modal-description');
     this.readMoreBtn = document.getElementById('btn-read-more');
@@ -55,6 +56,7 @@ export class PlayModal {
     this.resetReadMore();
 
     this.overlay.setAttribute('aria-hidden', 'false');
+    window.focusUtils.openDialogFocus(this.dialog);
     
     // Only lock background scrolling on desktop. On mobile, we want the map scrollable.
     if (!window.matchMedia('(max-width: 768px)').matches) {
@@ -78,6 +80,7 @@ export class PlayModal {
     }
     this.overlay.setAttribute('aria-hidden', 'true');
     document.body.style.overflow = '';
+    window.focusUtils.closeDialogFocus(this.dialog);
   }
 
   resetReadMore() {

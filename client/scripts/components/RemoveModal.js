@@ -55,6 +55,7 @@ export class RemoveModal {
 
     document.body.appendChild(this.overlay);
 
+    this.dialog = this.overlay.querySelector('[role="dialog"]');
     this.gameTitleEl = this.overlay.querySelector('#remove-game-title');
     this.closeBtn = this.overlay.querySelector('#btn-remove-modal-close');
     this.cancelBtn = this.overlay.querySelector('#btn-remove-cancel');
@@ -118,11 +119,13 @@ export class RemoveModal {
     this.gameTitleEl.textContent = gameTitle;
     this.overlay.setAttribute('aria-hidden', 'false');
     document.body.style.overflow = 'hidden';
+    window.focusUtils.openDialogFocus(this.dialog);
   }
 
   close() {
     this.overlay.setAttribute('aria-hidden', 'true');
     document.body.style.overflow = '';
+    window.focusUtils.closeDialogFocus(this.dialog);
   }
 }
 
