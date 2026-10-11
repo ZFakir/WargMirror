@@ -162,7 +162,7 @@ var GameCard = (function () {
 
     /* Cover: image or emoji placeholder */
     var coverMediaHTML = game.image
-      ? '<img src="' + game.image + '" alt="' + game.title + '" loading="lazy" />'
+      ? '<img src="' + game.image + '" alt="' + game.title + '" width="3" height="2" loading="lazy" decoding="async" />'
       : '<span class="gc-cover__emoji" aria-hidden="true">' + (game.emoji || '🎮') + '</span>';
 
     var localVotes = {};
