@@ -24,6 +24,11 @@
     line-height: var(--line-height-body);
     color: var(--color-text-primary);
     background-color: var(--color-bg);
+    background-image: var(--bg-topo-pattern);
+    background-repeat: repeat;
+    background-size: 800px 800px;
+    background-attachment: fixed;
+    background-position: center;
     /* Let body scroll on mobile; overridden to hidden on desktop via .app-shell */
   }
 
