@@ -7,12 +7,25 @@ const authController = require('../controllers/authController');
 router.get('/google', (req, res, next) => {
   // Store the requesting origin in the session so we know where to redirect back to
   if (req.headers.referer) {
-    const refererUrl = new URL(req.headers.referer);
-    let basePath = refererUrl.origin + refererUrl.pathname;
-    // Strip trailing filename (e.g. /login.html) to get the directory path
-    req.session.oauthReturnTo = basePath.substring(0, basePath.lastIndexOf('/'));
+    try {
+      const refererUrl = new URL(req.headers.referer);
+      if (refererUrl.protocol === 'http:' || refererUrl.protocol === 'https:') {
+        let basePath = refererUrl.origin + refererUrl.pathname;
+        // Strip trailing filename (e.g. /login.html) to get the directory path
+        req.session.oauthReturnTo = basePath.substring(0, basePath.lastIndexOf('/'));
+      }
+    } catch {
+      // Malformed referer — fall back to CLIENT_PAGES_URL / CLIENT_URL below.
+    }
   }
-  next();
+  // Persist the session BEFORE redirecting to Google. On a first-ever visit
+  // the session is new, and if the save races the redirect (slow MySQL store
+  // waking from a spool-down), the callback sees an empty session and the
+  // redirect falls back to a bare relative path.
+  req.session.save((err) => {
+    if (err) console.error('❌ Session save before Google redirect failed:', err.message);
+    next();
+  });
 }, passport.authenticate('google', {
   scope: ['profile', 'email']
 }));
@@ -34,24 +47,37 @@ router.get('/google/callback', (req, res, next) => {
     // Clean up session
     delete req.session.oauthReturnTo;
 
+    // Fallback when neither the session nor the env config yields a base URL:
+    // the backend also serves the client under /client, so a relative path
+    // still lands the user on a real page (instead of /home.html on the
+    // backend origin, which only works by accident).
+    const homeTarget = clientUrl ? clientUrl + '/home.html' : '/client/home.html';
+    const loginTarget = clientUrl ? clientUrl + '/login.html' : '/client/login.html';
+
     // Database or other server error
     if (err) {
       console.error('❌ Google Auth Error:', err.message);
-      return res.redirect(clientUrl + '/login.html?error=server_error');
+      return res.redirect(loginTarget + (clientUrl ? '?error=server_error' : ''));
     }
 
     // Authentication failed (user denied, or strategy returned false)
     if (!user) {
-      return res.redirect(clientUrl + '/login.html?error=auth_failed');
+      return res.redirect(loginTarget + (clientUrl ? '?error=auth_failed' : ''));
     }
 
     // Log the user in and create a session
     req.logIn(user, (loginErr) => {
       if (loginErr) {
         console.error('❌ Session Error:', loginErr.message);
-        return res.redirect(clientUrl + '/login.html?error=session_error');
+        return res.redirect(loginTarget + (clientUrl ? '?error=session_error' : ''));
       }
-      return res.redirect(clientUrl + '/home.html');
+      // Save before redirecting: res.redirect can otherwise outrun the
+      // session write on a cold/slow session store, and the browser reaches
+      // home.html without its logged-in session.
+      req.session.save((saveErr) => {
+        if (saveErr) console.error('❌ Session save after login failed:', saveErr.message);
+        res.redirect(homeTarget);
+      });
     });
   })(req, res, next);
 });

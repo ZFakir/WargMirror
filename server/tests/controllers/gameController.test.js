@@ -325,7 +325,8 @@ describe('gameController', () => {
       expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ outcome: 'pass', unlockedNodes: [3] }));
     });
     
-    it('should process gps_proximity correctly with geofence override', async () => {
+    it('should process gps_proximity correctly with an admin geofence override', async () => {
+      req.user.role = 'admin';
       req.body.geofence_override = true;
       const mockMinigame = { 
         game_type: 'gps_proximity', 

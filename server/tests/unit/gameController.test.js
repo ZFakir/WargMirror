@@ -152,7 +152,8 @@ describe('gameController - submitMinigame', () => {
       );
     });
 
-    it('lets the TEMP dev override bypass the distance check', async () => {
+    it('lets an admin use the dev override to bypass the distance check', async () => {
+      req.user.role = 'admin';
       req.body.geofence_override = true;
       LocationEvent.findOne.mockResolvedValue(null);
       Minigame.findByPk.mockResolvedValue(mockGame({ game_type: 'gps_proximity', config_json: {} }));
@@ -161,6 +162,18 @@ describe('gameController - submitMinigame', () => {
 
       expect(sequelize.query).not.toHaveBeenCalled();
       expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ outcome: 'pass' }));
+    });
+
+    it('ignores the dev override flag from non-admin users', async () => {
+      req.user.role = 'player';
+      req.body.geofence_override = true;
+      LocationEvent.findOne.mockResolvedValue(null);
+      Minigame.findByPk.mockResolvedValue(mockGame({ game_type: 'gps_proximity', config_json: {} }));
+
+      await submitMinigame(req, res);
+
+      // No trusted location event, so the normal distance check cannot pass.
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ outcome: 'fail' }));
     });
   });
 

@@ -42,6 +42,11 @@ jest.spyOn(passport, 'authenticate').mockImplementation((strategy, callback) => 
 
 const authRoutes = require('../../src/routes/authRoutes');
 
+// Pin a deterministic fallback origin: when the session holds no return
+// target the route redirects relative to CLIENT_URL, and in CI no .env
+// exists to provide one.
+process.env.CLIENT_URL = process.env.CLIENT_URL || 'http://client.test';
+
 const app = express();
 app.use(express.json());
 
@@ -62,7 +67,8 @@ app.use((req, res, next) => {
     cb();
   };
   req.session = {
-    destroy: (cb) => cb()
+    destroy: (cb) => cb(),
+    save: (cb) => cb()
   };
   if (req.headers['x-mock-db-error'] === 'true') {
     // We will simulate the DB error by mocking the models dynamically or patching GameSession
@@ -121,6 +127,26 @@ describe('Auth Routes', () => {
         const res = await request(app).get('/auth/google/callback');
         expect(res.status).toBe(302);
         expect(res.header.location).toContain('http://url1.com/home.html');
+      } finally {
+        if (originalPagesUrl === undefined) delete process.env.CLIENT_PAGES_URL;
+        else process.env.CLIENT_PAGES_URL = originalPagesUrl;
+        if (originalClientUrl === undefined) delete process.env.CLIENT_URL;
+        else process.env.CLIENT_URL = originalClientUrl;
+      }
+    });
+
+    it('falls back to the backend-served /client pages when no origin is known', async () => {
+      // Regression: with no session return target and no CLIENT_* env, the
+      // callback must still land on a real page (not a bare /home.html on the
+      // backend origin).
+      const originalPagesUrl = process.env.CLIENT_PAGES_URL;
+      const originalClientUrl = process.env.CLIENT_URL;
+      delete process.env.CLIENT_PAGES_URL;
+      delete process.env.CLIENT_URL;
+      try {
+        const res = await request(app).get('/auth/google/callback');
+        expect(res.status).toBe(302);
+        expect(res.header.location).toBe('/client/home.html');
       } finally {
         if (originalPagesUrl === undefined) delete process.env.CLIENT_PAGES_URL;
         else process.env.CLIENT_PAGES_URL = originalPagesUrl;

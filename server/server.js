@@ -47,6 +47,17 @@ io.on('connection', (socket) => {
 // Start Server & Connect to Database
 const PORT = process.env.PORT || 3000;
 
+// Aiven (and similar providers) spool down idle databases, making the first
+// real request after a quiet period pay a cold-start penalty. A cheap
+// SELECT 1 every few minutes keeps the connection pool warm.
+function startDbKeepAlive() {
+  if (process.env.NODE_ENV === 'test') return;
+  const timer = setInterval(() => {
+    sequelize.query('SELECT 1').catch((e) => console.warn('DB keep-alive ping failed:', e.message));
+  }, 10 * 60 * 1000);
+  timer.unref();
+}
+
 async function startServer() {
   try {
     // Test the database connection and sync models
@@ -66,6 +77,7 @@ async function startServer() {
       console.log(`🚀 Server is running on port ${PORT} (No Database)`);
     });
   }
+  startDbKeepAlive();
 }
 
 startServer();

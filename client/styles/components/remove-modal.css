@@ -5,7 +5,9 @@
 .remove-modal-overlay {
   position: fixed;
   inset: 0;
-  z-index: 1000;
+  /* Must top every other layer — the fullscreen map modal sits at 9999 and
+     its completed-game overlay must never cover a confirmation dialog. */
+  z-index: 10050;
   background-color: rgba(0, 0, 0, 0.85);
   backdrop-filter: blur(8px);
   display: flex;
