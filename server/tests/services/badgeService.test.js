@@ -231,8 +231,12 @@ describe('badgeService', () => {
       GameSession.findAll.mockResolvedValue([
         { user_id: 5, arg_id: 99, status: 'completed', completed_at: new Date('2026-10-01T12:00:00Z') }
       ]);
-      // No earlier completed session by anyone else
-      GameSession.findOne.mockResolvedValue(null);
+      // Earliest completed session for this ARG was by user 5
+      GameSession.findOne.mockResolvedValue({
+        user_id: 5,
+        arg_id: 99,
+        status: 'completed'
+      });
 
       UserBadge.findOrCreate.mockResolvedValue([{ user_id: 5, badge_id: 10 }, true]);
 
