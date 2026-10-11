@@ -5,6 +5,7 @@ require('dotenv').config();
 
 const passport = require('./config/passport');
 const { requireAuth, requireAdmin } = require('./middleware/authMiddleware');
+const { notFoundHandler, errorHandler } = require('./middleware/errorHandler');
 const argRoutes = require('./routes/argRoutes');
 const userRoutes = require('./routes/userRoutes');
 const sessionRoutes = require('./routes/sessionRoutes');
@@ -136,6 +137,10 @@ function createApp() {
   
   // Also serve them under /client for backwards compatibility (e.g. /client/login)
   app.use('/client', express.static(path.join(__dirname, '../../client'), staticOptions));
+
+  // Keep API failures JSON-formatted after every route and static-file handler.
+  app.use(notFoundHandler);
+  app.use(errorHandler);
 
   return app;
 }
