@@ -1,7 +1,7 @@
 const { test, expect } = require('./fixtures.js');
 
 // Must match CACHE_NAME in sw.js — the service worker only reads/writes this cache
-const CACHE_NAME = 'warg-cache-v11';
+const CACHE_NAME = 'warg-cache-v12';
 
 test.describe('Tiered Caching Strategies & Cache Busting', () => {
 

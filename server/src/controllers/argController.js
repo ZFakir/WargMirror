@@ -1,4 +1,5 @@
 const { sequelize, Arg, User, Waypoint, WaypointEdge, Minigame, MinigameAttempt, GameSession, ArgVote, Flag } = require('../models');
+const badgeService = require('../services/badgeService');
 
 exports.getAllArgs = async (req, res) => {
   try {
@@ -160,6 +161,7 @@ exports.createArg = async (req, res) => {
     }
 
     await transaction.commit();
+    badgeService.evaluateAndAwardBadges(creator_id).catch(() => {});
     res.status(201).json({ ...newArg.toJSON(), idMap, minigameMap, wpObjMap });
   } catch (error) {
     await transaction.rollback();

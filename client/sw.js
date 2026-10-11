@@ -4,7 +4,7 @@ importScripts('scripts/db.js');
 // Bump this version whenever cached assets change. Browsers only detect a
 // service-worker update when sw.js itself differs, and activate() deletes
 // older caches — without a bump, returning users keep stale JS/CSS forever.
-const CACHE_NAME = 'warg-cache-v11';
+const CACHE_NAME = 'warg-cache-v12';
 const STATIC_ASSETS = [
   './',
   'index.html',
@@ -129,8 +129,11 @@ self.addEventListener('fetch', event => {
 
   const url = new URL(event.request.url);
 
-  // 1. NETWORK-FIRST: Highly dynamic routes (Sessions, Auth, user profile)
-  const networkFirstRoutes = ['/api/sessions', '/auth/me', '/api/users/profile', '/api/users/search'];
+  // Bypass SW for all authentication and session endpoints — never cache or intercept auth state
+  if (url.pathname.startsWith('/auth/')) return;
+
+  // 1. NETWORK-FIRST: Highly dynamic routes (Sessions, user profile)
+  const networkFirstRoutes = ['/api/sessions', '/api/users/profile', '/api/users/search'];
   if (networkFirstRoutes.some(path => url.pathname.startsWith(path))) {
     event.respondWith(networkFirstStrategy(event.request));
     return;

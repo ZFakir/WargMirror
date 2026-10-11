@@ -159,6 +159,13 @@ var api = (function () {
   }
 
   /**
+   * Triggers badge evaluation and synchronization for the current user.
+   */
+  async function syncBadges() {
+    return _post('/api/badges/sync');
+  }
+
+  /**
    * Returns a single ARG (with Waypoints) normalised for GameCard.
    */
   async function getArgById(id) {
@@ -431,6 +438,7 @@ var api = (function () {
     requireAuthPage,
     getArgs,
     getAllBadges,
+    syncBadges,
     getArgById,
     getUserProfile,
     getUserLibrary,

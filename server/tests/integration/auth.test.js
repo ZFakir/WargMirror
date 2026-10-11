@@ -16,7 +16,8 @@ describe('Auth API (/auth)', () => {
 
   describe('POST /auth/signup', () => {
     it('creates a new local user and logs them in', async () => {
-      const res = await request(app)
+      const agent = request.agent(app);
+      const res = await agent
         .post('/auth/signup')
         .send({ username: 'newplayer', email: 'newplayer@example.com', password: 'Password123!' });
 
@@ -25,6 +26,11 @@ describe('Auth API (/auth)', () => {
       expect(res.body.user).toMatchObject({ username: 'newplayer', email: 'newplayer@example.com' });
       // A session cookie should have been issued since signup logs the user in.
       expect(res.headers['set-cookie']).toBeDefined();
+
+      // Verify that the saved session is immediately authenticated on /auth/me
+      const meRes = await agent.get('/auth/me');
+      expect(meRes.status).toBe(200);
+      expect(meRes.body.username).toBe('newplayer');
     });
 
     it('rejects signup with a missing field', async () => {
