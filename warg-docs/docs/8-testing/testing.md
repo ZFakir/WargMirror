@@ -16,17 +16,14 @@ Our automated testing suite strictly ensures the functionality of both the front
 ### Backend Testing (Server)
 
 The backend uses Jest and is split into `unit`, `mocked`, and `integration` test projects.
-- **Standard Run:** `npm run test` executes all three projects (CI runs them as separate steps).
-- **Coverage Run:** To generate a coverage report for the whole `src/` tree, run `npx cross-env NODE_ENV=test jest --coverage --runInBand` from `server/`. The `--runInBand` flag is critical because our integration tests share a local testing database; running them concurrently will cause database collisions and false failures (e.g., 401s during authentication tests).
+- **Standard Run:** `npm run test` executes all three projects.
+- **Coverage Gate:** `npm run test:coverage` executes all three projects serially, collects coverage for the whole `src/` tree, and enforces minimum global coverage of 85% statements and 70% branches. CI runs this command only against its isolated `warg_test` MySQL service. Do not run it against any shared or production database.
 
 ### Frontend Testing (Client)
 
-The frontend uses Playwright for end-to-end UI testing and is configured to capture native V8 JavaScript coverage to ensure edge cases and error states are genuinely tested.
-- **Standard Run:** `npm run test:ui` executes the tests and automatically outputs a code coverage table to the console.
-- **HTML Report:** Detailed line-by-line coverage is generated at `client/coverage-reports/index.html` via the `monocart-reporter`.
-
-> [!WARNING]
-> **Playwright & Dialogs:** When V8 coverage profiling is active, Chromium's CDP thread can deadlock if a native JS `alert()` blocks the page. **Always** attach dialog listeners *before* the action that triggers them (e.g., `page.once('dialog', ...)`) rather than awaiting them afterward to prevent 30-second timeouts.
+The frontend uses Playwright for end-to-end UI testing.
+- **Standard Run:** `npm run test:ui` executes the tests without V8 profiling so local correctness runs remain fast and stable.
+- **Coverage Run:** `npm run test:ui:coverage` enables the monocart V8 report at `client/coverage-reports/index.html`. CI uses this command. A numeric client coverage threshold has not yet been added; it will be set only after the remaining placeholder specifications are replaced with behavioural tests.
 
 
 ### Continuous Integration (CI)
@@ -34,8 +31,8 @@ The frontend uses Playwright for end-to-end UI testing and is configured to capt
 Our CI pipeline is configured using Gitea Actions (`.gitea/workflows/ci.yml`). Upon every push or pull request, the pipeline automatically:
 - Installs dependencies
 - Runs linting checks (ESLint) for the server and the client
-- Executes the backend Jest projects — unit, mocked and integration — against a MySQL service container
-- Runs the Playwright UI test suite for the client
+- Executes the backend Jest projects — unit, mocked and integration — against an isolated MySQL service container, with the server coverage gate enabled
+- Runs the Playwright UI test suite for the client with coverage reporting enabled
 - Reports the status to the version control system
 
 If any step fails, the pipeline will halt, and the corresponding commit will be marked with a failure status.
@@ -44,7 +41,7 @@ If any step fails, the pipeline will halt, and the corresponding commit will be 
 
 ### 3.1 Code Coverage Metrics
 
-A 60% minimum coverage is our internal development target, but it is **not** enforced by an automated gate — `server/jest.config.js` defines no `coverageThreshold`, so a build will not fail if coverage drops below it. The figures below come from the most recent full runs and can be reproduced with the commands in the sections above.
+The server coverage gate is enforced at 85% statements and 70% branches. The client report is collected in CI but has no numeric threshold yet, because the remaining placeholder specifications would make a ratchet unreliable. The figures below come from the most recent full runs and can be reproduced with the commands in the sections above.
 
 - **Server:** The Jest projects (mocked + unit + integration, run together with `npx cross-env NODE_ENV=test jest --coverage --runInBand`) pass all **333 tests across 48 suites** and cover **90.55% of statements and 78.52% of branches** across every file in `server/src/` (coverage is collected from the whole tree via `collectCoverageFrom`, not only the files a test happened to import). The HTML report is written to `server/coverage/lcov-report/index.html`.
 - **Client:** The Playwright UI suite covers the main user flows with **66 test cases across 22 spec files**; the `chromium` project passes all of them in the latest full run. The V8 coverage report produced by the run (`client/coverage-reports/index.html`) measures **32.97% of statements and 20.18% of branches** over the client-side scripts — the clearest remaining testing gap.

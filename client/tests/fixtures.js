@@ -3,15 +3,14 @@ const { addCoverageReport } = require('monocart-reporter');
 
 const test = base.extend({
   page: async ({ page, browserName }, use, testInfo) => {
-    // Start coverage only on Chromium
-    if (browserName === 'chromium') {
+    // Coverage is opt-in so ordinary UI runs remain fast and stable.
+    if (process.env.COVERAGE === '1' && browserName === 'chromium') {
       await page.coverage.startJSCoverage({ resetOnNavigation: false });
     }
     
     await use(page);
     
-    // Stop coverage only on Chromium
-    if (browserName === 'chromium') {
+    if (process.env.COVERAGE === '1' && browserName === 'chromium') {
       const coverage = await page.coverage.stopJSCoverage();
       if (coverage.length) {
         await addCoverageReport(coverage, testInfo);

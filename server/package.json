@@ -14,6 +14,7 @@
     "test:unit": "cross-env NODE_ENV=test jest --selectProjects unit",
     "test:mocked": "cross-env NODE_ENV=test jest --selectProjects mocked",
     "test:integration": "cross-env NODE_ENV=test jest --selectProjects integration --runInBand",
+    "test:coverage": "cross-env NODE_ENV=test jest --coverage --runInBand",
     "test": "npm run test:unit && npm run test:mocked && npm run test:integration"
   },
   "dependencies": {
