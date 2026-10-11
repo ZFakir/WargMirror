@@ -41,6 +41,13 @@ jobs:
         working-directory: ./server
         run: npm ci
 
+      - name: Run Baseline Database Migrations
+        working-directory: ./server
+        run: npm run db:migrate
+        env:
+          NODE_ENV: test
+          DATABASE_URL: mysql://warg_test:warg_test_pw@127.0.0.1:3306/warg_test
+
       - name: Lint Backend
         working-directory: ./server
         run: npm run lint

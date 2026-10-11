@@ -7,6 +7,9 @@
     "start": "node server.js",
     "dev": "node --watch-path=src --watch-path=server.js server.js",
     "seed": "node seed.js",
+    "db:migrate": "node scripts/migrate.js",
+    "db:migrate:status": "node scripts/migrate.js --status",
+    "db:migrate:undo": "node scripts/migrate.js --undo",
     "lint": "eslint .",
     "test:unit": "cross-env NODE_ENV=test jest --selectProjects unit",
     "test:mocked": "cross-env NODE_ENV=test jest --selectProjects mocked",
@@ -19,7 +22,9 @@
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "express-mysql-session": "^3.0.3",
+    "express-rate-limit": "^8.7.1",
     "express-session": "^1.19.0",
+    "helmet": "^8.3.0",
     "multer": "^2.2.0",
     "mysql2": "^3.10.0",
     "passport": "^0.7.0",
@@ -27,6 +32,7 @@
     "passport-local": "^1.0.0",
     "sequelize": "^6.37.3",
     "socket.io": "^4.7.5",
+    "umzug": "^3.8.3",
     "zod": "^3.25.76"
   },
   "devDependencies": {
