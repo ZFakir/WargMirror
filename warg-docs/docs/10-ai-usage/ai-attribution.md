@@ -15,6 +15,8 @@ AI tools were used extensively within this project. Code was produced largely by
 | Tool | Where used | Purpose | Reviewed by |
 |---|---|---|---|
 | Gemini 3.1 Pro | UI, Testing, Navigation, CRUD processes | Producing test cases, implementing UI wireframes, connecting front end to back end services | Zaeem Fakir |
+| Antigravity | Computer vision games, user interaction with these games | Designing and implementing AI evaluation endpoints and camera capture flow | Team member |
+| Qoder | Computer vision games, user interaction with these games | Implementing waypoint geofence enforcement and admin dev override | Team member |
 
 _Add one row per tool per contributing team member. Remove the examples once real entries are added._
 
