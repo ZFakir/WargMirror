@@ -256,10 +256,12 @@ exports.submitMinigame = async (req, res) => {
 
     if (game.game_type === 'gps_proximity') {
       // Defense-in-depth: confirm the player's last trusted location is inside the
-      // waypoint's geofence, rather than auto-passing. The geofence_override flag is
-      // honoured ONLY outside production (local development / automated tests) and
-      // can never bypass the check on a deployed server.
-      if (process.env.NODE_ENV !== 'production' && geofence_override === true) {
+      // waypoint's geofence. The geofence_override flag is honoured ONLY for
+      // authenticated admin users (a testing convenience) — never for players —
+      // and every use is logged so it stays auditable.
+      const isAdminOverride = geofence_override === true && req.user && req.user.role === 'admin';
+      if (isAdminOverride) {
+        console.warn(`[DEV OVERRIDE] Admin user ${user_id} bypassed the geofence for minigame ${game_id}`);
         outcome = 'pass';
       } else {
         const lastTrustedEvent = await LocationEvent.findOne({

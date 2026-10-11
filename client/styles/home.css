@@ -87,7 +87,9 @@
     inset: 0;
     background: rgba(12, 10, 8, 0.70);
     backdrop-filter: blur(2px);
-    z-index: 150;
+    /* Must sit above the fullscreen map modal (z-index 9999) so an open
+       drawer covers the map on mobile. */
+    z-index: 10000;
     opacity: 0;
     transition: opacity var(--duration-normal) var(--ease-out);
   }
@@ -129,6 +131,21 @@
     align-items: center;
     gap: var(--space-2);
     flex-shrink: 0;
+  }
+
+  /* The brand is wrapped in a home link at runtime (see api.js initGlobalUI). */
+  .topbar__brand-link {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    color: inherit;
+    text-decoration: none;
+    border-radius: var(--radius-sm);
+  }
+
+  .topbar__brand-link:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
   }
 
   .topbar__logo {
@@ -497,8 +514,6 @@
 @layer components {
   .main-content {
     grid-area: main;
-    overflow-y: auto;
-    overflow-x: hidden;
     overscroll-behavior: contain;
     /* Themed scrollbar */
     --scrollbar-thumb: rgba(153, 172, 255, 0.30);
@@ -521,6 +536,17 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-5);
+  }
+}
+
+/* Internal scrolling is desktop-only. On mobile (< 1024px) the app shell
+   switches to natural body scrolling (mobile media query below); keeping the
+   overflow rule here unscoped makes .main-content a clipped fixed-height box
+   on phones, so the admin/profile pages cannot scroll. */
+@media (min-width: 1024px) {
+  .main-content {
+    overflow-y: auto;
+    overflow-x: hidden;
   }
 }
 
@@ -1230,7 +1256,9 @@ body.admin-mode .gc-action--admin-delete {
     inset-inline-start: 0;
     inline-size: min(var(--sidebar-width), 80vw);
     block-size: 100dvh;
-    z-index: 200;
+    /* Above the fullscreen map modal (z-index 9999) so navigation stays
+       usable while the map is open on mobile. */
+    z-index: 10001;
     transform: translateX(-100%);
     transition: transform var(--duration-normal) var(--ease-out);
     overflow-y: auto;
@@ -1253,7 +1281,8 @@ body.admin-mode .gc-action--admin-delete {
     inset-inline-end: 0;
     inline-size: min(var(--right-panel-width), 85vw);
     block-size: 100dvh;
-    z-index: 200;
+    /* Above the fullscreen map modal (z-index 9999) — see .sidebar. */
+    z-index: 10001;
     transform: translateX(100%);
     transition: transform var(--duration-normal) var(--ease-out);
     overflow-y: auto;

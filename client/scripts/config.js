@@ -59,3 +59,16 @@ document.addEventListener('keydown', e => {
     searchInput?.focus();
   }
 });
+
+// --- Backend keep-alive ---
+// The backend (Render free tier) spins down after ~15 min idle and the
+// database sleeps too, making the first request very slow. Ping /health
+// shortly after load (to wake a sleeping backend) and then every 10 min
+// to keep it warm. Failures are silent by design — this is best-effort.
+(function pingBackendHealth() {
+  const ping = () => {
+    fetch(window.API_BASE_URL + '/health', { credentials: 'include' }).catch(() => {});
+  };
+  setTimeout(ping, 3000);
+  setInterval(ping, 10 * 60 * 1000);
+})();

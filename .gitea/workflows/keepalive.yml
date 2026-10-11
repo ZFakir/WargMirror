@@ -1,0 +1,21 @@
+name: Backend Keep-Alive
+
+on:
+  schedule:
+    # Every 10 minutes — matches the in-app /health ping cadence.
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      # Render free-tier web services spin down after ~15 min idle and the
+      # Aiven DB sleeps too. This ping keeps both warm so first page loads
+      # stay fast. Scheduled workflows only run once this file reaches the
+      # repository's default branch — until then the client-side ping in
+      # client/scripts/config.js is the active mechanism. For guaranteed
+      # uptime use an external monitor (e.g. UptimeRobot or cron-job.org).
+      - name: Ping backend /health
+        run: |
+          curl -fsS --max-time 30 https://wargmirror.onrender.com/health || true

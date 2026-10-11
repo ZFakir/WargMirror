@@ -167,6 +167,13 @@ export class MapModal {
     this.fullscreenBtn = document.getElementById('btn-map-fullscreen');
     this.listEl = document.getElementById('map-nodeList');
 
+    // On phones the embedded map box only takes a small slice of the screen —
+    // start fullscreen so the map is actually usable (the toggle still works).
+    if (window.matchMedia('(max-width: 768px)').matches) {
+      this.container.classList.add('is-fullscreen');
+      document.body.style.overflow = 'hidden';
+    }
+
     // 6. Bind events
     this.bindEvents();
 

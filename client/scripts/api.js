@@ -462,6 +462,18 @@ var api = (function () {
 
 // --- Global UI Logic Injector ---
 async function initGlobalUI() {
+  // --- Brand Logo Home Link Injector ---
+  // Wrap the topbar brand (logo + wordmark) in a link back to the home page.
+  document.querySelectorAll('.topbar__brand').forEach(brand => {
+    if (brand.querySelector('.topbar__brand-link')) return;
+    const link = document.createElement('a');
+    link.href = 'home.html';
+    link.className = 'topbar__brand-link';
+    link.setAttribute('aria-label', 'WARG — back to home');
+    while (brand.firstChild) link.appendChild(brand.firstChild);
+    brand.appendChild(link);
+  });
+
   // --- Admin Dashboard Link Injector ---
   try {
     const user = await api.getCurrentUser();
