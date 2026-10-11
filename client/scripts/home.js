@@ -138,6 +138,11 @@ window.addEventListener('resize', () => {
 const navItems = document.querySelectorAll('.nav-item');
 
 navItems.forEach(item => {
+  const label = item.querySelector('.nav-item__label');
+  if (label && !item.getAttribute('title')) {
+    item.setAttribute('title', label.textContent.trim());
+  }
+
   item.addEventListener('click', () => {
     // Close sidebar drawer after nav on mobile
     if (isMobile()) closeSidebar();
