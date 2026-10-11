@@ -244,7 +244,17 @@ describe('argController', () => {
   });
 
   describe('voteArg', () => {
-    it('should add a new vote as the session user', async () => {
+    let voteTransaction;
+    let lockedArg;
+
+    beforeEach(() => {
+      voteTransaction = { commit: jest.fn(), rollback: jest.fn(), LOCK: { UPDATE: 'UPDATE' } };
+      lockedArg = { update: jest.fn() };
+      sequelize.transaction.mockResolvedValue(voteTransaction);
+      Arg.findByPk.mockResolvedValue(lockedArg);
+    });
+
+    it('should add a new vote as the session user in a transaction', async () => {
       req.params.id = 1;
       req.body = { vote: 'like' };
       ArgVote.findOne.mockResolvedValue(null);
@@ -252,8 +262,10 @@ describe('argController', () => {
 
       await voteArg(req, res);
 
-      expect(ArgVote.create).toHaveBeenCalledWith({ arg_id: 1, user_id: 1, vote: 'like' });
-      expect(Arg.update).toHaveBeenCalledWith({ like_count: 1, dislike_count: 1 }, { where: { arg_id: 1 } });
+      expect(Arg.findByPk).toHaveBeenCalledWith(1, { transaction: voteTransaction, lock: 'UPDATE' });
+      expect(ArgVote.create).toHaveBeenCalledWith({ arg_id: 1, user_id: 1, vote: 'like' }, { transaction: voteTransaction });
+      expect(lockedArg.update).toHaveBeenCalledWith({ like_count: 1, dislike_count: 1 }, { transaction: voteTransaction });
+      expect(voteTransaction.commit).toHaveBeenCalled();
       expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true, action: 'voted' }));
     });
 
@@ -266,7 +278,7 @@ describe('argController', () => {
 
       await voteArg(req, res);
 
-      expect(ArgVote.create).toHaveBeenCalledWith({ arg_id: 1, user_id: 7, vote: 'dislike' });
+      expect(ArgVote.create).toHaveBeenCalledWith({ arg_id: 1, user_id: 7, vote: 'dislike' }, { transaction: voteTransaction });
     });
     
     it('should toggle an existing vote', async () => {
@@ -278,7 +290,7 @@ describe('argController', () => {
 
       await voteArg(req, res);
 
-      expect(mockVote.destroy).toHaveBeenCalled(); // Should unvote
+      expect(mockVote.destroy).toHaveBeenCalledWith({ transaction: voteTransaction });
       expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true, action: 'unvoted' }));
     });
 
@@ -292,7 +304,18 @@ describe('argController', () => {
       await voteArg(req, res);
 
       expect(mockVote.vote).toBe('like');
-      expect(mockVote.save).toHaveBeenCalled();
+      expect(mockVote.save).toHaveBeenCalledWith({ transaction: voteTransaction });
+    });
+
+    it('should roll back if a vote write fails', async () => {
+      req.params.id = 1;
+      req.body = { vote: 'like' };
+      ArgVote.findOne.mockRejectedValue(new Error('DB failure'));
+
+      await voteArg(req, res);
+
+      expect(voteTransaction.rollback).toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(500);
     });
 
     it('should return 400 if the vote is missing or invalid', async () => {

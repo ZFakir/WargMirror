@@ -348,42 +348,56 @@ exports.updateArg = async (req, res) => {
 };
 
 exports.voteArg = async (req, res) => {
+  const { vote } = req.body;
+  const arg_id = req.params.id;
+  // The route is behind requireAuth — the vote always belongs to the
+  // session user, never a client-supplied user_id.
+  const user_id = req.user.user_id;
+
+  if (!vote) {
+    return res.status(400).json({ error: 'Missing vote' });
+  }
+  if (vote !== 'like' && vote !== 'dislike') {
+    return res.status(400).json({ error: 'Invalid vote — must be "like" or "dislike"' });
+  }
+
+  const transaction = await sequelize.transaction();
   try {
-    const { vote } = req.body;
-    const arg_id = req.params.id;
-    // The route is behind requireAuth — the vote always belongs to the
-    // session user, never a client-supplied user_id.
-    const user_id = req.user.user_id;
-
-    if (!vote) {
-      return res.status(400).json({ error: 'Missing vote' });
-    }
-    if (vote !== 'like' && vote !== 'dislike') {
-      return res.status(400).json({ error: 'Invalid vote — must be "like" or "dislike"' });
+    // Locking the parent ARG serializes vote recounts for this ARG. Without it,
+    // two concurrent requests can each persist a stale aggregate total.
+    const arg = await Arg.findByPk(arg_id, {
+      transaction,
+      lock: transaction.LOCK.UPDATE
+    });
+    if (!arg) {
+      await transaction.rollback();
+      return res.status(404).json({ error: 'ARG not found' });
     }
 
-    const existingVote = await ArgVote.findOne({ where: { arg_id, user_id } });
+    const existingVote = await ArgVote.findOne({ where: { arg_id, user_id }, transaction });
 
     let action = 'voted';
     if (existingVote) {
       if (existingVote.vote === vote) {
-        await existingVote.destroy();
+        await existingVote.destroy({ transaction });
         action = 'unvoted';
       } else {
         existingVote.vote = vote;
-        await existingVote.save();
+        await existingVote.save({ transaction });
       }
     } else {
-      await ArgVote.create({ arg_id, user_id, vote });
+      await ArgVote.create({ arg_id, user_id, vote }, { transaction });
     }
 
-    const like_count = await ArgVote.count({ where: { arg_id, vote: 'like' } });
-    const dislike_count = await ArgVote.count({ where: { arg_id, vote: 'dislike' } });
+    const like_count = await ArgVote.count({ where: { arg_id, vote: 'like' }, transaction });
+    const dislike_count = await ArgVote.count({ where: { arg_id, vote: 'dislike' }, transaction });
 
-    await Arg.update({ like_count, dislike_count }, { where: { arg_id } });
+    await arg.update({ like_count, dislike_count }, { transaction });
+    await transaction.commit();
 
     res.json({ success: true, action, like_count, dislike_count });
   } catch (error) {
+    await transaction.rollback();
     console.error(error);
     res.status(500).json({ error: 'Failed to vote' });
   }
