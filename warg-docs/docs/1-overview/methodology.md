@@ -14,7 +14,7 @@ We do not follow a formal named methodology (e.g. strict Scrum). Instead we run 
 
 ## Meetings
 
-We check in twice a week on a fixed schedule, supplemented by ad-hoc meetings when something time-sensitive comes up (a blocker, a decision that can't wait, or unplanned stakeholder feedback from our tutor).
+We check in with our tutor weekly and with each other on an ad-hoc basis when something time-sensitive comes up (a blocker, a decision that can't wait, or unplanned stakeholder feedback from our tutor).
 
 Each fixed check-in covers:
 - **What's been done** since the last check-in
@@ -25,15 +25,15 @@ Notes from these meetings (decisions made, action items, stakeholder feedback) a
 
 ## Task Assignment
 
-Work is not assigned top-down by a single lead. Tasks are discussed and agreed on together during check-ins — the group looks at what's outstanding on the board, talks through priority and dependencies, and members take on tasks that fit their current workload and the skills needed. This keeps assignment adaptive: if someone is blocked or a task turns out bigger than expected, it gets re-discussed at the next check-in rather than being locked in by one person's initial estimate.
+Work is not assigned top-down by a single lead. Tasks are discussed and agreed on during check-ins — we look at what's outstanding on the board and members take on tasks that fit their current workload and the skills needed. This keeps assignment adaptive: if someone is blocked or a task turns out bigger than expected, it gets re-discussed at the next check-in rather than being locked in by one person's initial estimate.
 
 ## Task Tracking
 
-All tasks are tracked on a **GitHub Projects** board, organised by status (e.g. Backlog → In Progress → In Review → Done). The board is the single source of truth for what's outstanding and who's working on what, and is referenced directly in check-ins rather than relying on memory.
+All tasks are tracked on a **GitHub Projects** board, organised by status (e.g. Backlog → In Progress → In Review → Done). The board is the single source of truth for what's outstanding and who's working on what.
 
 ## Definition of Done
 
-A feature is not considered complete when the person who built it says so. Before a task moves to "Done":
+Before a task moves to "Done":
 1. The work is opened as a PR against `main` (per our Git Policy)
 2. A different team member reviews and/or tests it — checking that it does what it claims to do, not just that it compiles
 3. Any issues raised in review are addressed before merge
@@ -42,6 +42,6 @@ This mirrors the merge requirements in our Git Policy (peer review, automated ch
 
 ## Why This Process
 
-- **Twice-weekly fixed check-ins** keep the group aligned often enough to catch drift early, without the overhead of daily standups for a team our size.
+- **Ad-hoc check-ins** keep the group aligned often enough to catch drift early, without the overhead of daily standups for a team our size. A smaller team size requires less administrative overhead to effectively manage.
 - **Group-agreed assignment** avoids bottlenecking decisions on one person and keeps everyone aware of the full scope, not just their own slice.
 - **Mandatory second-person review** is our main quality gate given we don't have extensive automated test coverage yet — it substitutes human review for the confidence that automated testing would otherwise provide, and is required before anything reaches `main`.

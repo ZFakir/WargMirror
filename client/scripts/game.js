@@ -1000,7 +1000,18 @@ document.addEventListener('DOMContentLoaded', () => {
           spoiler.className = 'spoiler-text';
           spoiler.title = 'Click to reveal spoiler';
           spoiler.textContent = comment.body;
-          spoiler.addEventListener('click', () => spoiler.classList.add('is-revealed'), { once: true });
+          // Keyboard-accessible reveal, not just click.
+          spoiler.tabIndex = 0;
+          spoiler.setAttribute('role', 'button');
+          spoiler.setAttribute('aria-label', 'Spoiler — activate to reveal');
+          const revealSpoiler = () => spoiler.classList.add('is-revealed');
+          spoiler.addEventListener('click', revealSpoiler, { once: true });
+          spoiler.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              revealSpoiler();
+            }
+          });
           bodyEl.appendChild(spoiler);
         } else {
           bodyEl.textContent = comment.body;

@@ -8,13 +8,13 @@ This page records how generative AI tools were used during the development of th
 
 ## Scope
 
-_Summary placeholder: give a short overview of the extent of AI assistance across the project, and note the parts of the codebase that were written entirely by the team._
+AI tools were used extensively within this project. Code was produced largely by agentic coding tools. Documentation was partially produced and reviewed by agentic tools. Code-reviews and pull requests were evaluated both manually and using AI. Design philsophy and layouts were manually outlined and implemented using agents.
 
 ## Tools Used
 
 | Tool | Where used | Purpose | Reviewed by |
 |---|---|---|---|
-| _e.g., ChatGPT / Claude / GitHub Copilot_ | _e.g., server API scaffolding, Playwright specs_ | _e.g., boilerplate generation, refactoring suggestions, test cases_ | _team member_ |
+| Gemini 3.1 Pro | UI, Testing, Navigation, CRUD processes | Producing test cases, implementing UI wireframes, connecting front end to back end services | Zaeem Fakir |
 
 _Add one row per tool per contributing team member. Remove the examples once real entries are added._
 
