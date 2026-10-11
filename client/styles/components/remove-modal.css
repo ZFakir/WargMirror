@@ -25,7 +25,7 @@
 }
 
 .remove-modal {
-  background-color: #000000;
+  background-color: var(--color-bg-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   width: 100%;
@@ -74,7 +74,7 @@
 }
 
 .remove-modal__close-btn:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: var(--color-bg-card);
   color: var(--color-text-primary);
 }
 

@@ -70,6 +70,9 @@ app.use((req, res, next) => {
     destroy: (cb) => cb(),
     save: (cb) => cb()
   };
+  if (req.headers['x-mock-oauth-return-to']) {
+    req.session.oauthReturnTo = req.headers['x-mock-oauth-return-to'];
+  }
   if (req.headers['x-mock-db-error'] === 'true') {
     // We will simulate the DB error by mocking the models dynamically or patching GameSession
     req.mockDbError = true;
@@ -147,6 +150,46 @@ describe('Auth Routes', () => {
         const res = await request(app).get('/auth/google/callback');
         expect(res.status).toBe(302);
         expect(res.header.location).toBe('/client/home.html');
+      } finally {
+        if (originalPagesUrl === undefined) delete process.env.CLIENT_PAGES_URL;
+        else process.env.CLIENT_PAGES_URL = originalPagesUrl;
+        if (originalClientUrl === undefined) delete process.env.CLIENT_URL;
+        else process.env.CLIENT_URL = originalClientUrl;
+      }
+    });
+
+    it('ignores a session return target with an unsafe path (e.g. /auth)', async () => {
+      // Regression: a referer shaped like <origin>/auth produced
+      // <origin>/auth/home.html (404). Unsafe paths must be discarded.
+      const originalPagesUrl = process.env.CLIENT_PAGES_URL;
+      const originalClientUrl = process.env.CLIENT_URL;
+      delete process.env.CLIENT_PAGES_URL;
+      process.env.CLIENT_URL = 'http://client.test';
+      try {
+        const res = await request(app)
+          .get('/auth/google/callback')
+          .set('x-mock-oauth-return-to', 'http://client.test/auth');
+        expect(res.status).toBe(302);
+        expect(res.header.location).toBe('http://client.test/home.html');
+      } finally {
+        if (originalPagesUrl === undefined) delete process.env.CLIENT_PAGES_URL;
+        else process.env.CLIENT_PAGES_URL = originalPagesUrl;
+        if (originalClientUrl === undefined) delete process.env.CLIENT_URL;
+        else process.env.CLIENT_URL = originalClientUrl;
+      }
+    });
+
+    it('ignores a session return target whose origin is not allowlisted', async () => {
+      const originalPagesUrl = process.env.CLIENT_PAGES_URL;
+      const originalClientUrl = process.env.CLIENT_URL;
+      delete process.env.CLIENT_PAGES_URL;
+      process.env.CLIENT_URL = 'http://client.test';
+      try {
+        const res = await request(app)
+          .get('/auth/google/callback')
+          .set('x-mock-oauth-return-to', 'https://evil.example.com');
+        expect(res.status).toBe(302);
+        expect(res.header.location).toBe('http://client.test/home.html');
       } finally {
         if (originalPagesUrl === undefined) delete process.env.CLIENT_PAGES_URL;
         else process.env.CLIENT_PAGES_URL = originalPagesUrl;
