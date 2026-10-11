@@ -4,7 +4,7 @@ importScripts('scripts/db.js');
 // Bump this version whenever cached assets change. Browsers only detect a
 // service-worker update when sw.js itself differs, and activate() deletes
 // older caches — without a bump, returning users keep stale JS/CSS forever.
-const CACHE_NAME = 'warg-cache-v11';
+const CACHE_NAME = 'warg-cache-v12';
 const STATIC_ASSETS = [
   './',
   'index.html',
@@ -144,14 +144,20 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // 3. CACHE-FIRST: Static assets, Map Tiles, Avatars, local images
+  // 3. CACHE-FIRST: Remote static assets (Map Tiles, Avatars)
   if (
-    url.hostname === location.hostname || // Local HTML/CSS/JS (if it didn't match API routes above)
     url.hostname.includes('tile.openstreetmap.org') || // Map tiles
     url.hostname.includes('server.arcgisonline.com') || // Satellite map tiles
     url.hostname.includes('dicebear.com') // Avatars
   ) {
     event.respondWith(cacheFirstStrategy(event.request));
+    return;
+  }
+
+  // 4. NETWORK-FIRST: Local application files (HTML, CSS, JS, assets)
+  // Ensures code changes reflect immediately on page reload while offline fallback persists
+  if (url.hostname === location.hostname) {
+    event.respondWith(networkFirstStrategy(event.request));
     return;
   }
   
