@@ -14,6 +14,7 @@
     --color-bg-surface:       #1A1816;   /* Elevated surface                  */
     --color-bg-card:          #201E1B;   /* Card background                   */
     --color-bg-overlay:       rgba(18, 16, 14, 0.85);
+    --bg-topo-pattern:        url('../assets/topo-pattern.svg');
 
     --color-brand:            #C0B89B;   /* Computational Beige — Brand       */
     --color-brand-muted:      rgba(192, 184, 155, 0.12);
@@ -116,6 +117,7 @@
     --color-bg-surface:       #FFFFFF;
     --color-bg-card:          #F1F3F5;
     --color-bg-overlay:       rgba(248, 249, 250, 0.85);
+    --bg-topo-pattern:        url('../assets/topo-pattern-light.svg');
 
     --color-brand:            #8A7D58;
     --color-brand-muted:      rgba(138, 125, 88, 0.12);
