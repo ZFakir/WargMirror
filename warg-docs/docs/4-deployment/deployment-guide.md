@@ -170,13 +170,19 @@ app.get('/health', (req, res) => res.status(200).json({ status: 'ok' }));
 
 Configure the **Health Check Path** in Render's service settings to `/health`.
 
-### 2.5 WebSocket Support (Socket.io)
+### 2.5 Cold Starts and Demo Warm-Up
+
+The current backend is hosted on Render's free tier. No external uptime monitor is configured, so the service can sleep after inactivity. Before a demo or marker walkthrough, open `https://wargmirror.onrender.com/health` and wait for its `200 OK` response before opening the application. This is a read-only request and does not modify the database.
+
+A cold and warm probe on 2026-10-11 returned `200 OK` in 23.67 seconds and 0.32 seconds respectively. Allow at least one minute for a cold warm-up, and repeat the health check if Render reports a transient deployment error. If a paid Render instance or an uptime monitor is adopted later, update this policy to state the actual plan or monitor cadence; do not claim a monitor exists until it has been configured.
+
+### 2.6 WebSocket Support (Socket.io)
 
 The server initialises Socket.io, but it is currently only a connect/disconnect stub — no gameplay feature depends on live WebSocket traffic yet, so no WebSocket-specific configuration is required. If real-time features are added later, Render's free tier supports WebSockets on the same port as HTTP without additional configuration, and Socket.io's polling fallback also works out of the box.
 
 > **Important:** Render's free-tier web services **spin down after 15 minutes of inactivity**. For WebSocket-dependent features, upgrade to at least the **Starter** plan to prevent connection drops during active gameplay sessions.
 
-### 2.6 Viewing Logs
+### 2.7 Viewing Logs
 
 From the Render dashboard, select your service and click the **Logs** tab. Live streaming logs are available for real-time debugging. For production, consider forwarding logs to a service like Papertrail or Logtail via Render's **Log Streams** feature.
 
@@ -337,6 +343,7 @@ Use this checklist before every production release:
 - [ ] Root Directory is set to `server`
 - [ ] Start Command is `npm start`
 - [ ] `/health` endpoint returns `200 OK`
+- [ ] The Render cold-start policy has been rehearsed: call `/health` and wait for `200 OK` before the demo
 - [ ] WebSocket connections verified (if deploying live-play features)
 - [ ] Render service is on a paid plan if WebSocket uptime is required
 
