@@ -6,11 +6,11 @@
 
 | Reference | Commit | Use in this document |
 |---|---:|---|
-| `main` | `0beaf22` | Current merged baseline; not modified by this document. |
-| `feet-/Polish-F` | `079b98c` | Completed-but-unmerged implementation baseline. This branch must be independently reviewed and merged through a PR. |
+| `main` | `0beaf22` | Baseline when this register was written; `main` has since advanced to `cebcfcd` via PR #67. |
+| `feet-/Polish-F` | `079b98c` | Completed implementation baseline; merged into `main` via PR #67 (`cebcfcd`, tip `5f0e6cf`). |
 | `feet/Missing-items` | `38e17aa` before this revision | Original missing-items register. |
 
-**Important:** Nothing listed as “addressed in Polish-F” is merged into `main` yet. It is excluded from the actionable backlog only to avoid duplicate implementation. If the Polish-F PR is changed, rejected, or fails verification, restore the relevant item to the backlog.
+**Update after merge:** `feet-/Polish-F` has since been merged into `main` via PR #67 (`cebcfcd`, tip `5f0e6cf`), so every item marked as addressed below is now live on `main` and the §2 merge gate is complete. The items stay out of the actionable backlog; no restoration is needed.
 
 ---
 
@@ -31,7 +31,7 @@ This section is a verification record, not an implementation to-do list. The che
 
 ### P1 — Direct mark recovery
 
-- [-] **P1-1 — Password reset.** A functional minimal flow exists: new reset-token columns in `database/schema.sql` / `server/src/models/User.js`; `forgotPassword` and `resetPassword` in `server/src/controllers/authController.js`; `POST /auth/forgot` and `POST /auth/reset`; `client/reset-password.html` and `client/scripts/reset-password.js`; and an updated `client/login.html` link. It remains partial because delivery is console-only and there is no abuse protection or repeatable database migration.
+- [x] **P1-1 — Password reset.** Implemented and merged into `main` via PR #65 & PR #67 (`cebcfcd`). Full end-to-end flow is live: `forgotPassword` and `resetPassword` in `server/src/controllers/authController.js`, `POST /auth/forgot` and `POST /auth/reset` in `server/src/routes/authRoutes.js`, reset token columns in `database/schema.sql` and `server/src/models/User.js`, migration script `server/migrate_password_reset.js`, client pages `client/reset-password.html` and `client/scripts/reset-password.js`, link in `client/login.html`, and full unit/integration/route tests in `server/tests/controllers/authController.test.js`, `server/tests/routes/authRoutes.test.js`, `server/tests/integration/auth.test.js`, and `client/tests/api.spec.js`.
 - [-] **P1-2 — AI usage attribution.** `warg-docs/docs/10-ai-usage/ai-attribution.md` exists, but it is a skeleton containing placeholders. It is not a submission-ready declaration.
 - [x] **P1-5 — Failing mocked tests + CI gap.** `.gitea/workflows/ci.yml` now runs `npm run test:mocked`; stale controller expectations were changed and additional tests were added.
 - [x] **P1-6 — Replace the placeholder client specs.** The API/config/component specs were replaced with non-trivial Playwright coverage rather than `expect(true)` placeholders.
@@ -48,9 +48,9 @@ This section is a verification record, not an implementation to-do list. The che
 
 ---
 
-## 2. Final merge gate for Polish-F (do this before implementing new work)
+## 2. Final merge gate for Polish-F — completed
 
-The work exists on `feet-/Polish-F`, not on `main`. Complete this gate in a PR before relying on any `[x]` item above.
+**Status: complete.** `feet-/Polish-F` was merged into `main` via PR #67 (`cebcfcd`). The checklist below is kept as a historical record; the standing §7 verification matrix covers post-merge checks, and the `IP-00` plan file has been removed from `implementation-plans/`.
 
 ### 2.1 Diff and review
 
@@ -641,7 +641,7 @@ npx playwright test --reporter=json
 
 ### Before merge
 
-1. Complete the Polish-F final merge gate in Section 2.
+1. Polish-F final merge gate (§2) — completed when PR #67 merged `feet-/Polish-F`.
 2. Merge only through a reviewed PR with green CI.
 3. Re-run the safe live probes: `/health`, unauthenticated flag (must be 401), test-file route (must be 404), public ARG payload size.
 
@@ -699,11 +699,11 @@ Every unchecked register item has a dedicated plan in `implementation-plans/` (b
 
 ### Merge gate
 
-- [IP-00 — Polish-F merge gate](implementation-plans/IP-00-polish-f-merge-gate.md) — **hard prerequisite for all items below**
+- **IP-00 — Polish-F merge gate — completed.** `feet-/Polish-F` was merged into `main` via PR #67 (`cebcfcd`); the plan file has been removed. All plans below are now buildable directly from `main`.
 
 ### P1 — Highest priority
 
-- [IP-P1-1b — Password reset completion](implementation-plans/IP-P1-1b-password-reset-completion.md)
+- **IP-P1-1b — Password reset completion — completed.** Implemented and merged into `main` via PR #65 & PR #67 (`cebcfcd`); the plan file has been removed.
 - [IP-P1-2b — AI attribution declaration](implementation-plans/IP-P1-2b-ai-attribution-declaration.md)
 - [IP-P1-3 — Docs site deployment](implementation-plans/IP-P1-3-docs-site-deployment.md)
 - [IP-P1-4 — ARG list payload + cover delivery](implementation-plans/IP-P1-4-arg-list-payload.md)
