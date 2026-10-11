@@ -43,19 +43,6 @@ var api = (function () {
     return res.json();
   }
 
-  async function _put(path, body) {
-    const res = await fetch(API_BASE + path, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-      credentials: 'include'
-    });
-    if (!res.ok) {
-      throw Object.assign(new Error('API error'), { status: res.status, path });
-    }
-    return res.json();
-  }
-
   async function _delete(path) {
     const res = await fetch(API_BASE + path, {
       method: 'DELETE',
@@ -246,12 +233,19 @@ var api = (function () {
     return _post('/api/args/' + argId + '/vote', { vote: voteType });
   }
 
-  async function flagArg(argId, reason, description, reporterId = 1) { // Defaulting user_id to 1 until auth is hooked up
-    return _post('/api/args/' + argId + '/flag', { reason, description, reporter_id: reporterId });
+  async function flagArg(argId, reason, description) {
+    // The server attributes the flag to the authenticated session user.
+    return _post('/api/args/' + argId + '/flag', { reason, description });
   }
 
-  async function removeRecentArg(argId, userId = 1) { // Defaulting user_id to 1 until auth is hooked up
-    return _delete('/api/sessions/' + userId + '/arg/' + argId);
+  async function removeRecentArg(argId) {
+    // The endpoint requires the owner's id in the path — resolve the current
+    // session user rather than assuming a fixed id.
+    const me = await getCurrentUser();
+    if (!me) {
+      throw Object.assign(new Error('API error'), { status: 401, path: '/auth/me' });
+    }
+    return _delete('/api/sessions/' + me.user_id + '/arg/' + argId);
   }
 
   /**
@@ -384,16 +378,51 @@ var api = (function () {
   }
 
   async function logout() {
-    // Fetch directly because _get expects JSON but /auth/logout redirects
-    return fetch(API_BASE + '/auth/logout', { credentials: 'include' });
+    return fetch(API_BASE + '/auth/logout', { method: 'POST', credentials: 'include' });
   }
 
   async function updateAccount(data) {
-    return _put('/auth/account', data);
+    // Parse { error } so the settings page can show real messages
+    // (e.g. "Current password is incorrect.").
+    const res = await fetch(API_BASE + '/auth/account', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+      credentials: 'include'
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.error || 'Failed to update account.');
+    return body;
   }
 
   async function deleteAccount() {
     return _delete('/auth/account');
+  }
+
+  // Password reset — parse the server's { error } message so the page can
+  // show the real reason (e.g. "Invalid or expired reset token.").
+  async function forgotPassword(email) {
+    const res = await fetch(API_BASE + '/auth/forgot', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+      credentials: 'include'
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Failed to request a reset link.');
+    return data;
+  }
+
+  async function resetPassword(token, password) {
+    const res = await fetch(API_BASE + '/auth/reset', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, password }),
+      credentials: 'include'
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Failed to reset the password.');
+    return data;
   }
 
   /* ── Public API ─────────────────────────────────────────── */
@@ -424,6 +453,8 @@ var api = (function () {
     logout,
     updateAccount,
     deleteAccount,
+    forgotPassword,
+    resetPassword,
     resetGameSession
   };
 

@@ -64,7 +64,7 @@ describe('minigameController', () => {
       req.file = { buffer: Buffer.from('test'), mimetype: 'image/jpeg' };
       req.params.gameId = 1;
       Minigame.findByPk.mockResolvedValue({
-        Waypoint: { Arg: { author_id: 999 } }
+        Waypoint: { Arg: { creator_id: 999 } }
       });
       await uploadReference(req, res);
       expect(res.status).toHaveBeenCalledWith(403);
@@ -74,7 +74,7 @@ describe('minigameController', () => {
       req.file = { buffer: Buffer.from('test'), mimetype: 'image/jpeg' };
       req.params.gameId = 1;
       const mockMinigame = {
-        Waypoint: { Arg: { author_id: 1 } },
+        Waypoint: { Arg: { creator_id: 1 } },
         config_json: {},
         changed: jest.fn(),
         save: jest.fn()
@@ -84,8 +84,15 @@ describe('minigameController', () => {
       await uploadReference(req, res);
       
       expect(mockMinigame.config_json.reference_image_base64).toBe(Buffer.from('test').toString('base64'));
+      expect(mockMinigame.config_json.reference_image_mimetype).toBe('image/jpeg');
       expect(mockMinigame.save).toHaveBeenCalled();
-      expect(res.json).toHaveBeenCalledWith({ message: 'Reference uploaded successfully', url: '/api/minigames/1/reference/image' });
+
+      // The URL carries a cache-busting timestamp that must change on every upload.
+      expect(res.json).toHaveBeenCalledTimes(1);
+      const payload = res.json.mock.calls[0][0];
+      expect(payload.message).toBe('Reference uploaded successfully');
+      expect(payload.url).toMatch(/^\/api\/minigames\/1\/reference\/image\?ts=\d+$/);
+      expect(payload.url).toBe(mockMinigame.config_json.reference_image_url);
     });
 
     it('should handle errors', async () => {

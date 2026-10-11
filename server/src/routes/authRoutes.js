@@ -83,7 +83,7 @@ router.post('/login', (req, res, next) => {
 });
 
 // Logout
-router.get('/logout', (req, res) => {
+router.post('/logout', (req, res) => {
   req.logout((err) => {
     if (err) {
       console.error('❌ Logout Error:', err);
@@ -128,5 +128,9 @@ router.put('/account', authController.updateAccount);
 
 // Delete account
 router.delete('/account', authController.deleteAccount);
+
+// Password reset flow
+router.post('/forgot', authController.forgotPassword);
+router.post('/reset', authController.resetPassword);
 
 module.exports = router;

@@ -105,7 +105,7 @@ describe('Auth API (/auth)', () => {
     });
   });
 
-  describe('GET /auth/logout', () => {
+  describe('POST /auth/logout', () => {
     it('ends the session so /me becomes unauthenticated again', async () => {
       const { user, password } = await createUser({ email: 'logout@example.com' });
       const agent = request.agent(app);
@@ -113,8 +113,49 @@ describe('Auth API (/auth)', () => {
       await agent.post('/auth/login').send({ email: user.email, password });
       expect((await agent.get('/auth/me')).status).toBe(200);
 
-      await agent.get('/auth/logout');
+      await agent.post('/auth/logout');
       expect((await agent.get('/auth/me')).status).toBe(401);
+    });
+  });
+
+  describe('Password reset (/auth/forgot + /auth/reset)', () => {
+    it('always returns a generic success message (no email enumeration)', async () => {
+      await createUser({ email: 'known@example.com' });
+
+      const known = await request(app).post('/auth/forgot').send({ email: 'known@example.com' });
+      const unknown = await request(app).post('/auth/forgot').send({ email: 'unknown@example.com' });
+
+      expect(known.status).toBe(200);
+      expect(unknown.status).toBe(200);
+      expect(known.body.message).toBe(unknown.body.message);
+    });
+
+    it('resets the password with a valid token; the old password stops working', async () => {
+      const crypto = require('crypto');
+      const { User } = require('../../src/models');
+      const { user, password } = await createUser({ email: 'reset@example.com' });
+
+      // Issue a token the same way the controller does, stored as its SHA-256 hash.
+      const token = crypto.randomBytes(32).toString('hex');
+      const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+      await User.update(
+        { password_reset_token: tokenHash, password_reset_expires: new Date(Date.now() + 60000) },
+        { where: { user_id: user.user_id } }
+      );
+
+      const res = await request(app).post('/auth/reset').send({ token, password: 'NewPassword123!' });
+      expect(res.status).toBe(200);
+
+      const oldLogin = await request(app).post('/auth/login').send({ email: user.email, password });
+      expect(oldLogin.status).toBe(401);
+
+      const newLogin = await request(app).post('/auth/login').send({ email: user.email, password: 'NewPassword123!' });
+      expect(newLogin.status).toBe(200);
+    });
+
+    it('rejects an invalid or expired token', async () => {
+      const res = await request(app).post('/auth/reset').send({ token: 'not-a-real-token', password: 'NewPassword123!' });
+      expect(res.status).toBe(400);
     });
   });
 });

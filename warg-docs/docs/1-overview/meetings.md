@@ -110,7 +110,7 @@ Log of check-ins with our assigned tutor (client). Per the Methodology, we meet 
 **Discussed:**
 - **Follow-up:** Demonstrated the mobile UI improvements (flexbox, z-index fixes) that were implemented directly as a result of the playtesting action item set by the tutor last week.
 - Confirmed that the full anti-spoofing system (speed limits, teleportation blocks) is active.
-- Reviewed final coverage reports (>60% achieved) and Lighthouse performance scores.
+- Reviewed the latest test coverage reports and acknowledged the remaining gaps against the 60% coverage target.
 
 **Feedback / Decisions:**
 - Tutor is highly satisfied with how responsive the team has been to feedback throughout the sprints.
