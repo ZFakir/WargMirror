@@ -2,6 +2,8 @@ const express = require('express');
 const passport = require('passport');
 const router = express.Router();
 const authController = require('../controllers/authController');
+const { validate } = require('../middleware/validate');
+const { auth } = require('../validators/requestSchemas');
 
 // Redirect to Google's consent screen
 router.get('/google', (req, res, next) => {
@@ -57,13 +59,13 @@ router.get('/google/callback', (req, res, next) => {
 });
 
 // Local Signup
-router.post('/signup', authController.signup);
+router.post('/signup', validate('body', auth.signup), authController.signup);
 
 // Check if user exists (for frontend validation)
-router.get('/check-user', authController.checkUserExists);
+router.get('/check-user', validate('query', auth.checkUser), authController.checkUserExists);
 
 // Local Login
-router.post('/login', (req, res, next) => {
+router.post('/login', validate('body', auth.login), (req, res, next) => {
   passport.authenticate('local', (err, user, info) => {
     if (err) {
       console.error('❌ Local Auth Error:', err.message);
@@ -124,13 +126,13 @@ router.get('/me', async (req, res) => {
 });
 
 // Update account (email/password)
-router.put('/account', authController.updateAccount);
+router.put('/account', validate('body', auth.account), authController.updateAccount);
 
 // Delete account
 router.delete('/account', authController.deleteAccount);
 
 // Password reset flow
-router.post('/forgot', authController.forgotPassword);
-router.post('/reset', authController.resetPassword);
+router.post('/forgot', validate('body', auth.forgot), authController.forgotPassword);
+router.post('/reset', validate('body', auth.reset), authController.resetPassword);
 
 module.exports = router;

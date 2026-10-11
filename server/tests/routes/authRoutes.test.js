@@ -142,27 +142,39 @@ describe('Auth Routes', () => {
 
   describe('POST /auth/login', () => {
     it('should return 500 on server error', async () => {
-      const res = await request(app).post('/auth/login').send({ error: 'true' });
+      const res = await request(app).post('/auth/login').send({ email: 'test@example.com', password: 'password', error: 'true' });
       expect(res.status).toBe(500);
       expect(res.body.error).toBe('Server error during authentication');
     });
 
     it('should return 401 on auth failure', async () => {
-      const res = await request(app).post('/auth/login').send({ fail: 'true' });
+      const res = await request(app).post('/auth/login').send({ email: 'test@example.com', password: 'password', fail: 'true' });
       expect(res.status).toBe(401);
       expect(res.body.error).toBe('Auth failed');
     });
 
     it('should return 500 on session error', async () => {
-      const res = await request(app).post('/auth/login').send({ loginError: 'true' });
+      const res = await request(app).post('/auth/login').send({ email: 'test@example.com', password: 'password', loginError: 'true' });
       expect(res.status).toBe(500);
       expect(res.body.error).toBe('Session error');
     });
 
     it('should return 200 on successful login', async () => {
-      const res = await request(app).post('/auth/login').send({});
+      const res = await request(app).post('/auth/login').send({ email: 'test@example.com', password: 'password' });
       expect(res.status).toBe(200);
       expect(res.body.message).toBe('Login successful');
+    });
+  });
+
+  describe('POST /auth/login validation', () => {
+    it('returns a structured 400 response before Passport receives malformed input', async () => {
+      const res = await request(app).post('/auth/login').send({ email: 'not-an-email' });
+      expect(res.status).toBe(400);
+      expect(res.body.error).toBe('Invalid request data');
+      expect(res.body.fields).toEqual(expect.arrayContaining([
+        expect.objectContaining({ field: 'email' }),
+        expect.objectContaining({ field: 'password' })
+      ]));
     });
   });
 
