@@ -19,7 +19,8 @@ jest.mock('../../src/models', () => {
   return {
     sequelize: {
       transaction: jest.fn(),
-      fn: jest.fn()
+      fn: jest.fn(),
+      literal: jest.fn()
     },
     Arg: { findAll: jest.fn(), findByPk: jest.fn(), create: jest.fn(), update: jest.fn(), destroy: jest.fn() },
     User: {},
@@ -47,11 +48,33 @@ describe('argController', () => {
   });
 
   describe('getAllArgs', () => {
-    it('should return published args', async () => {
-      Arg.findAll.mockResolvedValue([{ toJSON: () => ({ title: 'Test Arg' }) }]);
+    it('returns published ARGs without serializing cover or avatar BLOBs', async () => {
+      Arg.findAll.mockResolvedValue([{
+        toJSON: () => ({
+          title: 'Test Arg',
+          has_cover: 1,
+          cover_image: Buffer.from('cover'),
+          Creator: { username: 'creator', avatar: Buffer.from('avatar') }
+        })
+      }]);
+
       await getAllArgs(req, res);
-      expect(Arg.findAll).toHaveBeenCalledWith(expect.objectContaining({ where: { status: 'published' } }));
-      expect(res.json).toHaveBeenCalledWith([{ title: 'Test Arg', user_vote: null }]);
+
+      expect(Arg.findAll).toHaveBeenCalledWith(expect.objectContaining({
+        where: { status: 'published' },
+        attributes: expect.objectContaining({ exclude: ['cover_image'] }),
+        include: expect.arrayContaining([
+          expect.objectContaining({ as: 'Creator', attributes: ['username'] })
+        ])
+      }));
+      const [responseBody] = res.json.mock.calls[0];
+      expect(responseBody).toEqual([expect.objectContaining({
+        title: 'Test Arg',
+        has_cover: true,
+        user_vote: null
+      })]);
+      expect(responseBody[0]).not.toHaveProperty('cover_image');
+      expect(responseBody[0].Creator).not.toHaveProperty('avatar');
     });
 
     it('should handle errors', async () => {
@@ -378,6 +401,7 @@ describe('argController', () => {
       await getCoverImage(req, res);
       
       expect(res.set).toHaveBeenCalledWith('Content-Type', 'image/jpeg');
+      expect(res.set).toHaveBeenCalledWith('Cache-Control', 'private, max-age=300');
       expect(res.send).toHaveBeenCalled();
     });
 

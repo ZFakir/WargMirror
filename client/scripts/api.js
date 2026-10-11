@@ -59,9 +59,9 @@ var api = (function () {
    * Maps an API Arg object → GameCard-compatible shape.
    *
    * API shape:
-   *   { arg_id, title, mode, caption, cover_image, like_count, dislike_count,
+   *   { arg_id, title, mode, caption, has_cover, like_count, dislike_count,
    *     rating_sum, rating_count, status, play_count, created_at, updated_at,
-   *     Creator: { username, avatar } }
+   *     Creator: { username} }
    *
    * GameCard shape:
    *   { id, title, mode, caption, emoji, image, progress, progressLabel,
@@ -85,9 +85,10 @@ var api = (function () {
       ? Math.round((arg.rating_sum / ratingCount) * 10) / 10
       : 0;
 
-    // cover_image from the DB is a BLOB — the API sends it as a Buffer/null.
+    // List endpoints expose has_cover rather than serializing the image BLOB.
+    // Retain cover_image as a fallback for the single-ARG endpoint.
     var image = null;
-    if (arg.cover_image) {
+    if (arg.has_cover || arg.cover_image) {
       image = API_BASE + '/api/args/' + arg.arg_id + '/cover-image';
     }
 

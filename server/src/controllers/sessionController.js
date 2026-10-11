@@ -8,7 +8,7 @@ exports.getActiveSessions = async (req, res) => {
     }
     const sessions = await GameSession.findAll({
       where: { user_id: req.user.user_id },
-      include: [{ model: Arg, attributes: ['title', 'caption', 'cover_image'] }],
+      include: [{ model: Arg, attributes: ['arg_id', 'title', 'caption'] }],
       order: [['last_active_at', 'DESC']]
     });
     res.json(sessions);

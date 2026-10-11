@@ -6,14 +6,21 @@ exports.getAllArgs = async (req, res) => {
     const user_id = req.user ? req.user.user_id : null;
     const args = await Arg.findAll({
       where: { status: 'published' },
+      attributes: {
+        exclude: ['cover_image'],
+        include: [[sequelize.literal('cover_image IS NOT NULL'), 'has_cover']]
+      },
       include: [
-        { model: User, as: 'Creator', attributes: ['username', 'avatar'] },
+        { model: User, as: 'Creator', attributes: ['username'] },
         { model: ArgVote, attributes: ['vote'], where: { user_id }, required: false }
       ]
     });
 
     const mappedArgs = args.map(arg => {
       const argJSON = arg.toJSON();
+      argJSON.has_cover = Boolean(argJSON.has_cover);
+      delete argJSON.cover_image;
+      if (argJSON.Creator) delete argJSON.Creator.avatar;
       argJSON.user_vote = argJSON.ArgVotes && argJSON.ArgVotes.length > 0 ? argJSON.ArgVotes[0].vote : null;
       delete argJSON.ArgVotes;
       return argJSON;
@@ -466,6 +473,7 @@ exports.getCoverImage = async (req, res) => {
     }
 
     res.set('Content-Type', 'image/jpeg');
+    res.set('Cache-Control', 'private, max-age=300');
     res.send(arg.cover_image);
   } catch (err) {
     console.error('Error in getCoverImage:', err);
