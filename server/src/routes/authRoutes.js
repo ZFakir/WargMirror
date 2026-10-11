@@ -4,6 +4,7 @@ const router = express.Router();
 const authController = require('../controllers/authController');
 const { validate } = require('../middleware/validate');
 const { auth } = require('../validators/requestSchemas');
+const { authLimiter } = require('../middleware/rateLimits');
 
 // Redirect to Google's consent screen
 router.get('/google', (req, res, next) => {
@@ -59,13 +60,13 @@ router.get('/google/callback', (req, res, next) => {
 });
 
 // Local Signup
-router.post('/signup', validate('body', auth.signup), authController.signup);
+router.post('/signup', authLimiter, validate('body', auth.signup), authController.signup);
 
 // Check if user exists (for frontend validation)
 router.get('/check-user', validate('query', auth.checkUser), authController.checkUserExists);
 
 // Local Login
-router.post('/login', validate('body', auth.login), (req, res, next) => {
+router.post('/login', authLimiter, validate('body', auth.login), (req, res, next) => {
   passport.authenticate('local', (err, user, info) => {
     if (err) {
       console.error('❌ Local Auth Error:', err.message);
@@ -132,7 +133,7 @@ router.put('/account', validate('body', auth.account), authController.updateAcco
 router.delete('/account', authController.deleteAccount);
 
 // Password reset flow
-router.post('/forgot', validate('body', auth.forgot), authController.forgotPassword);
-router.post('/reset', validate('body', auth.reset), authController.resetPassword);
+router.post('/forgot', authLimiter, validate('body', auth.forgot), authController.forgotPassword);
+router.post('/reset', authLimiter, validate('body', auth.reset), authController.resetPassword);
 
 module.exports = router;
