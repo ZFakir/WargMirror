@@ -179,7 +179,7 @@ describe('minigameController', () => {
         { transaction }
       );
       expect(transaction.commit).toHaveBeenCalled();
-      expect(res.json).toHaveBeenCalledWith({ passed: true, confidence_score: 95 });
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ passed: true, confidence_score: 95 }));
     });
 
     it('should process colour_match fail with retry', async () => {
@@ -202,7 +202,7 @@ describe('minigameController', () => {
         { transaction }
       );
       expect(transaction.commit).toHaveBeenCalled();
-      expect(res.json).toHaveBeenCalledWith({ passed: false, confidence_score: 10, can_retry: true });
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ passed: false, confidence_score: 10, can_retry: true }));
     });
 
     it('should process plaque_scan fail without retry', async () => {

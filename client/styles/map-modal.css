@@ -233,10 +233,16 @@
   box-shadow: 0 0 6px var(--color-secondary-glow);
 }
 
-.map-modal .node-row.status-current .node-row__dot {
+.map-modal .node-row.status-current .node-row__dot,
+.map-modal .node-row.status-unlocked .node-row__dot {
   background: var(--color-accent);
   box-shadow: 0 0 6px var(--color-accent-glow);
   animation: pulse-dot 1.6s ease-in-out infinite;
+}
+
+.map-modal .node-row.status-failed .node-row__dot {
+  background: var(--color-danger, #ef4444);
+  box-shadow: 0 0 6px rgba(239, 68, 68, 0.4);
 }
 
 .map-modal .node-row.status-locked .node-row__dot {
@@ -271,8 +277,13 @@
   margin-top: 2px;
 }
 
-.map-modal .node-row.status-current .node-row__meta {
+.map-modal .node-row.status-current .node-row__meta,
+.map-modal .node-row.status-unlocked .node-row__meta {
   color: var(--color-accent);
+}
+
+.map-modal .node-row.status-failed .node-row__meta {
+  color: var(--color-danger, #ef4444);
 }
 
 .map-modal .node-row.status-completed .node-row__meta {
@@ -779,6 +790,13 @@
   background: rgba(51, 255, 51, 0.12);
   color: var(--color-secondary);
   border: 1px solid rgba(51, 255, 51, 0.3);
+}
+
+.map-modal .pc__btn--failed {
+  background: rgba(255, 68, 68, 0.12);
+  color: #ff4444;
+  border: 1px solid rgba(255, 68, 68, 0.3);
+  cursor: not-allowed;
 }
 
 @media (max-width: 768px) {

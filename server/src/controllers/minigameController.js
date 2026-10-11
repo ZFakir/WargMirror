@@ -166,9 +166,13 @@ exports.submitAttempt = async (req, res) => {
     const arg_id = minigame.Waypoint ? minigame.Waypoint.arg_id : null;
     
     const transaction = await Minigame.sequelize.transaction();
+    let unlockedNodes = [];
+    let session_completed = false;
+    let can_retry = false;
+    const outcome = data.passed ? 'pass' : 'fail';
+    const finalStatus = outcome === 'pass' ? 'completed' : 'failed';
+
     try {
-      const outcome = data.passed ? 'pass' : 'fail';
-      
       await MinigameAttempt.upsert({
         user_id,
         game_id: gameId,
@@ -178,39 +182,29 @@ exports.submitAttempt = async (req, res) => {
         attempted_at: new Date()
       }, { transaction });
 
-      if (outcome === 'fail') {
-        const config = minigame.config_json || {};
-        if (config.allow_multiple_attempts) {
-          await transaction.commit();
-          return res.json({ ...data, can_retry: true });
-        } else {
-          await WaypointProgress.upsert({
-            user_id,
-            waypoint_id,
-            status: 'failed',
-            completed_at: new Date()
-          }, { transaction });
-        }
-      } else {
-        // If passed, unlock waypoint
+      const config = minigame.config_json || {};
+      can_retry = Boolean(outcome === 'fail' && config.allow_multiple_attempts);
+
+      if (waypoint_id) {
         await WaypointProgress.upsert({
           user_id,
           waypoint_id,
-          status: 'completed',
+          status: finalStatus,
           completed_at: new Date()
         }, { transaction });
-      }
 
-      const edges = await WaypointEdge.findAll({ where: { from_waypoint_id: waypoint_id }, transaction });
-      for (const edge of edges) {
-        const canUnlock = await evaluateConditions(user_id, edge.conditions_json, transaction);
-        if (canUnlock) {
-          await WaypointProgress.upsert({
-            user_id,
-            waypoint_id: edge.to_waypoint_id,
-            status: 'unlocked',
-            unlocked_at: new Date()
-          }, { transaction });
+        const edges = await WaypointEdge.findAll({ where: { from_waypoint_id: waypoint_id }, transaction });
+        for (const edge of edges) {
+          const canUnlock = await evaluateConditions(user_id, edge.conditions_json, transaction);
+          if (canUnlock) {
+            await WaypointProgress.upsert({
+              user_id,
+              waypoint_id: edge.to_waypoint_id,
+              status: 'unlocked',
+              unlocked_at: new Date()
+            }, { transaction });
+            unlockedNodes.push(edge.to_waypoint_id);
+          }
         }
       }
 
@@ -222,11 +216,14 @@ exports.submitAttempt = async (req, res) => {
         const sessionProgress = activeProgress.filter(p => argWpIds.includes(p.waypoint_id));
         const hasUnlocked = sessionProgress.some(p => p.status === 'unlocked');
         
-        if (!hasUnlocked && sessionProgress.some(p => p.status === 'completed' || p.status === 'failed')) {
-          await GameSession.update({ status: 'completed', completed_at: new Date() }, {
-            where: { user_id, arg_id },
-            transaction
-          });
+        if (!hasUnlocked && sessionProgress.length > 0 && sessionProgress.length === argWpIds.length && sessionProgress.every(p => p.status === 'completed' || p.status === 'failed')) {
+          if (!(outcome === 'fail' && can_retry && unlockedNodes.length === 0)) {
+            session_completed = true;
+            await GameSession.update({ status: 'completed', completed_at: new Date() }, {
+              where: { user_id, arg_id },
+              transaction
+            });
+          }
         }
       }
 
@@ -237,7 +234,14 @@ exports.submitAttempt = async (req, res) => {
       console.error('Database error during progression:', dbErr);
     }
 
-    return res.json(data);
+    return res.json({
+      ...data,
+      outcome,
+      can_retry,
+      unlockedNodes,
+      session_completed,
+      nodeStatus: finalStatus
+    });
   } catch (err) {
     console.error('Error in submitAttempt:', err);
     require('fs').appendFileSync('error.log', new Date().toISOString() + ' - ' + err.stack + '\n');

@@ -325,11 +325,7 @@ exports.submitMinigame = async (req, res) => {
       attempted_at: new Date()
     }, { transaction });
 
-    if (outcome === 'fail' && config.allow_multiple_attempts) {
-      await transaction.commit();
-      return res.json({ outcome: 'fail', can_retry: true });
-    }
-
+    const can_retry = Boolean(outcome === 'fail' && config.allow_multiple_attempts);
     let unlockedNodes = [];
 
     const finalStatus = outcome === 'pass' ? 'completed' : 'failed';
@@ -373,22 +369,23 @@ exports.submitMinigame = async (req, res) => {
     const hasUnlocked = sessionProgress.some(p => p.status === 'unlocked');
     let session_completed = false;
     
-    if (!hasUnlocked && sessionProgress.some(p => p.status === 'completed' || p.status === 'failed')) {
-      session_completed = true;
-      await GameSession.update({ status: 'completed', completed_at: new Date() }, {
-        where: { user_id, arg_id },
-        transaction
-      });
+    if (!hasUnlocked && sessionProgress.length > 0 && sessionProgress.length === argWpIds.length && sessionProgress.every(p => p.status === 'completed' || p.status === 'failed')) {
+      if (!(outcome === 'fail' && can_retry && unlockedNodes.length === 0)) {
+        session_completed = true;
+        await GameSession.update({ status: 'completed', completed_at: new Date() }, {
+          where: { user_id, arg_id },
+          transaction
+        });
+      }
     }
 
     // NOTE: no points are awarded here on purpose — the points economy is
     // planned around PvP games, which are not implemented yet, so the
     // total_points / total_points_earned columns stay untouched.
     await transaction.commit();
-
     badgeService.evaluateAndAwardBadges(user_id).catch(() => {});
 
-    res.json({ outcome, unlockedNodes, session_completed });
+    res.json({ outcome, can_retry, unlockedNodes, session_completed, nodeStatus: finalStatus });
   } catch (error) {
     await transaction.rollback();
     console.error(error);
