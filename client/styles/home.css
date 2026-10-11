@@ -24,6 +24,11 @@
     line-height: var(--line-height-body);
     color: var(--color-text-primary);
     background-color: var(--color-bg);
+    background-image: var(--bg-topo-pattern);
+    background-repeat: repeat;
+    background-size: 800px 800px;
+    background-attachment: fixed;
+    background-position: center;
     /* Let body scroll on mobile; overridden to hidden on desktop via .app-shell */
   }
 
@@ -71,7 +76,10 @@
   }
 
   /* ── Right panel collapsed: 0px ── */
-  .app-shell.right-collapsed {
+  .app-shell.right-collapsed,
+  .app-shell:not(:has(.right-panel)),
+  .app-shell:has(#btn-right-panel-toggle:disabled),
+  .app-shell:has(#btn-right-panel-toggle[disabled]) {
     --_right-w: 0px;
   }
 }
@@ -487,19 +495,36 @@
   /* ── Collapsed state (desktop icon-only) ── */
   .app-shell.sidebar-collapsed .sidebar {
     overflow: hidden;
+    padding-inline: var(--space-2);
   }
 
-  .app-shell.sidebar-collapsed .nav-item__label,
-  .app-shell.sidebar-collapsed .nav-item__badge,
-  .app-shell.sidebar-collapsed .sidebar__divider {
-    opacity: 0;
-    max-inline-size: 0;
-    overflow: hidden;
+  .app-shell.sidebar-collapsed .sidebar__nav,
+  .app-shell.sidebar-collapsed .sidebar__footer {
+    align-items: center;
   }
 
   .app-shell.sidebar-collapsed .nav-item {
     justify-content: center;
     padding-inline: 0;
+    gap: 0;
+    inline-size: var(--touch-target);
+    block-size: var(--touch-target);
+    margin-inline: auto;
+  }
+
+  .app-shell.sidebar-collapsed .nav-item svg {
+    margin: 0;
+    flex-shrink: 0;
+  }
+
+  .app-shell.sidebar-collapsed .nav-item__label,
+  .app-shell.sidebar-collapsed .nav-item__badge {
+    display: none;
+  }
+
+  .app-shell.sidebar-collapsed .sidebar__divider {
+    inline-size: 32px;
+    margin-inline: auto;
   }
 
   .app-shell.sidebar-collapsed .nav-item.active::before {
@@ -953,9 +978,13 @@ body.admin-mode .gc-action--admin-delete {
   }
 
   /* Collapse state — right panel slides out */
-  .app-shell.right-collapsed .right-panel {
+  .app-shell.right-collapsed .right-panel,
+  .app-shell:not(:has(.right-panel)) .right-panel,
+  .app-shell:has(#btn-right-panel-toggle:disabled) .right-panel,
+  .app-shell:has(#btn-right-panel-toggle[disabled]) .right-panel {
     overflow: hidden;
     pointer-events: none;
+    border-inline-start: none;
   }
 
   .right-panel__header {
@@ -1314,16 +1343,39 @@ body.admin-mode .gc-action--admin-delete {
   .topbar { grid-area: unset; }
 
   /* Override collapsed states — irrelevant on mobile */
-  .app-shell.sidebar-collapsed .nav-item__label,
-  .app-shell.sidebar-collapsed .nav-item__badge,
-  .app-shell.sidebar-collapsed .sidebar__divider {
+  .app-shell.sidebar-collapsed .sidebar {
+    padding: var(--space-2) var(--space-2) var(--space-4);
+  }
+
+  .app-shell.sidebar-collapsed .sidebar__nav,
+  .app-shell.sidebar-collapsed .sidebar__footer {
+    align-items: stretch;
+  }
+
+  .app-shell.sidebar-collapsed .nav-item__label {
+    display: inline;
     opacity: 1;
     max-inline-size: 200px;
+  }
+
+  .app-shell.sidebar-collapsed .nav-item__badge {
+    display: inline-block;
+    opacity: 1;
+  }
+
+  .app-shell.sidebar-collapsed .sidebar__divider {
+    display: block;
+    inline-size: auto;
+    margin-inline: var(--space-2);
   }
 
   .app-shell.sidebar-collapsed .nav-item {
     justify-content: flex-start;
     padding-inline: var(--space-2);
+    gap: var(--space-3);
+    inline-size: 100%;
+    block-size: var(--touch-target);
+    margin-inline: 0;
   }
 
   /* Slightly smaller cards on mobile */
