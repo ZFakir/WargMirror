@@ -255,7 +255,7 @@ document.addEventListener('DOMContentLoaded', () => {
           mapModal.showCompletedOverlay(() => {
             window.confirmModal.open({
               title: 'Replay ARG',
-              desc: 'Are you sure you want to replay this ARG? Your session progress and points will be reset.',
+              desc: 'Are you sure you want to replay this ARG? Your session progress will be reset.',
               confirmText: 'Replay',
               callback: async () => {
                 try {
@@ -578,21 +578,10 @@ document.addEventListener('DOMContentLoaded', () => {
           if (!arriveRes.ok) throw new Error('Arrive check failed');
           const arriveData = await arriveRes.json();
 
-          let geofenceOverride = false;
           if (!arriveData.within_radius) {
-            // TEMP: Dev Override kept for ongoing testing — remove/gate before release.
-            const unit = localStorage.getItem('warg_units') || 'metric';
-            const dist = unit === 'imperial' ? (arriveData.distance * 3.28084).toFixed(1) + 'ft' : Math.round(arriveData.distance) + 'm';
-            const rad = unit === 'imperial' ? (arriveData.radius * 3.28084).toFixed(1) + 'ft' : arriveData.radius + 'm';
-            const override = confirm(`You are outside of the geofence (Distance: ${dist}, Radius: ${rad}).\n\nProceed anyway (Dev Override)?`);
-            if (!override) {
-              playModal.showFeedback('fail');
-              setTimeout(() => { playModal.close(); }, 2000);
-              return;
-            }
-            // Sent with the minigame submission so the server's proximity
-            // re-check keeps honouring the override (remove together with it).
-            geofenceOverride = true;
+            playModal.showFeedback('fail');
+            setTimeout(() => { playModal.close(); }, 2000);
+            return;
           }
 
           const proceedWithGame = () => {
@@ -665,8 +654,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     body: JSON.stringify({
                       game_id: minigame.game_id,
                       game_type: minigame.game_type,
-                      submission,
-                      geofence_override: geofenceOverride
+                      submission
                     })
                   });
                   if (!submitRes.ok) throw new Error('Submission failed');
@@ -698,7 +686,7 @@ document.addEventListener('DOMContentLoaded', () => {
                           mapModal.showCompletedOverlay(() => {
                             window.confirmModal.open({
                               title: 'Replay ARG',
-                              desc: 'Are you sure you want to replay this ARG? Your session progress and points will be reset.',
+                              desc: 'Are you sure you want to replay this ARG? Your session progress will be reset.',
                               confirmText: 'Replay',
                               callback: async () => {
                                 try {

@@ -48,12 +48,10 @@ The platform's features are categorized into three development tiers:
 <details>
 <summary><strong>🔴 Advanced Tier</strong></summary>
 
-*   **Live Synchronization (Co-op Puzzles):** Live-play mechanics allowing multiple players in collaborative or competitive ARG instances using WebSockets (e.g., socket.io).
+*   **Multiplayer Game Modes:** Collaborative and competitive ARG instances (Co-op and PvP game types, including Point Domination) with server-side session tracking.
 *   **Augmented Reality (AR) & Environmental Mechanics:** Canvas-based minigames, AR overlay viewports, Shape Matching (via python API with Jaccard index), and Colour Matching (HSV colour-space with Bhattacharyya distance).
 *   **Behavioral Trust Profiles:** Anti-spoofing mechanism utilizing drift detection, pedometer integration, and speed detection to build trust scores and flag suspicious accounts.
-*   **Algorithmic Routing:** Assistance for creators to ensure accessible walking paths, avoid unsafe clustering, and balance geographic spread.
 *   **Creator Analytics:** Performance dashboards with deep engagement metrics.
-*   **Push Notification Subsystem:** Alerts for players when followed creators publish new ARGs.
 
 </details>
 
@@ -82,17 +80,15 @@ The system operates using a client-server architecture built on a microservices 
 # 1. Clone the repository
 git clone <repo-url> && cd WARG-Platform
 
-# 2. Install dependencies
-npm install
+# 2. Install and start the API server
+cd server && npm install
+npm run dev                     # Express API on http://localhost:3000
 
-# 3. Configure environment
-cp .env.example .env    # then fill in your DB and OAuth credentials
-
-# 4. Start the dev server
-npm run dev
+# 3. Serve the static client (from a second terminal)
+cd ../client && npx http-server ./ -p 8080 -a 127.0.0.1
 ```
 
-> See [DEPLOYMENT.md](./DEPLOYMENT.md) for full production setup instructions.
+> The API reads its configuration from `server/.env` — see the [deployment guide](./warg-docs/docs/4-deployment/deployment-guide.md) for the environment variables and full production setup instructions.
 
 ---
 
@@ -146,7 +142,7 @@ The WARG platform's visual language is built on the **VJB System**, which follow
 ## 🤝 Contributions
 This project is the work of Luc & Friends. Special thanks to the team - Zaeem, Yami, and Chris.
 
-> See [METHODOLOGY.md](./METHODOLOGY.md) for our day-to-day development process, [MEETINGS.md](./MEETINGS.md) for our stakeholder meeting notes, and [WARG_GIT_Policy.pdf](./MiscellaneousDocumentation/WARG_GIT_Policy.pdf) for our version control conventions.
+> See the [methodology](./warg-docs/docs/1-overview/methodology.md) for our day-to-day development process, our [meeting notes](./warg-docs/docs/1-overview/meetings.md) for stakeholder meeting records, and the [Git policy](./warg-docs/docs/5-policies/git-policy.md) for our version control conventions.
 
 ---
 

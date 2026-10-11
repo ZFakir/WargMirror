@@ -63,7 +63,10 @@ describe('userController', () => {
       req.params.id = 1;
       Arg.findAll.mockResolvedValue([{ title: 'Arg 1' }]);
       await getUserLibrary(req, res);
-      expect(Arg.findAll).toHaveBeenCalledWith({ where: { creator_id: 1 } });
+      expect(Arg.findAll).toHaveBeenCalledWith(expect.objectContaining({
+        where: { creator_id: 1 },
+        include: [expect.objectContaining({ as: 'Creator' })]
+      }));
       expect(res.json).toHaveBeenCalledWith([{ title: 'Arg 1' }]);
     });
 

@@ -39,6 +39,9 @@ CREATE TABLE IF NOT EXISTS users (
     -- Soft-delete / suspension
     is_suspended      TINYINT(1)       NOT NULL DEFAULT 0,
     suspended_until   DATETIME             NULL DEFAULT NULL,
+    -- Password reset (local accounts): SHA-256 hash of a single-use token
+    password_reset_token    VARCHAR(64)  NULL DEFAULT NULL,
+    password_reset_expires  DATETIME     NULL DEFAULT NULL,
 
     PRIMARY KEY (user_id),
     UNIQUE KEY uq_users_google   (google_uid),

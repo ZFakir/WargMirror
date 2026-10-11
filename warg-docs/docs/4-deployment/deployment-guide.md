@@ -162,7 +162,7 @@ Render automatically redeploys whenever a commit is pushed to the configured bra
 
 ### 2.4 Health Checks
 
-Render pings a health-check endpoint to confirm the service is live. Add a lightweight health route to `server.js` if not already present:
+Render pings a health-check endpoint to confirm the service is live. The API exposes one at `GET /health` (see `server/src/app.js`):
 
 ```js
 app.get('/health', (req, res) => res.status(200).json({ status: 'ok' }));
@@ -172,7 +172,7 @@ Configure the **Health Check Path** in Render's service settings to `/health`.
 
 ### 2.5 WebSocket Support (Socket.io)
 
-The WARG platform uses **Socket.io** for live co-op and PvP gameplay (live-play ARGs, Point Domination, Landmark Relay). Render's free tier supports WebSockets on the same port as HTTP without any additional configuration — Socket.io's polling fallback also works out of the box.
+The server initialises Socket.io, but it is currently only a connect/disconnect stub — no gameplay feature depends on live WebSocket traffic yet, so no WebSocket-specific configuration is required. If real-time features are added later, Render's free tier supports WebSockets on the same port as HTTP without additional configuration, and Socket.io's polling fallback also works out of the box.
 
 > **Important:** Render's free-tier web services **spin down after 15 minutes of inactivity**. For WebSocket-dependent features, upgrade to at least the **Starter** plan to prevent connection drops during active gameplay sessions.
 

@@ -185,8 +185,12 @@
               <input type="email" id="setting-email" class="settings-input" placeholder="player@example.com" />
             </div>
             <div class="settings-group">
+              <label class="settings-group__label" for="setting-current-password">Current Password</label>
+              <input type="password" id="setting-current-password" class="settings-input" placeholder="Required when setting a new password" autocomplete="current-password" />
+            </div>
+            <div class="settings-group">
               <label class="settings-group__label" for="setting-password">New Password</label>
-              <input type="password" id="setting-password" class="settings-input" placeholder="Leave blank to keep current" />
+              <input type="password" id="setting-password" class="settings-input" placeholder="Leave blank to keep current" autocomplete="new-password" />
             </div>
             
             <div id="google-auth-warning" style="display: none; padding: var(--space-3); margin-top: var(--space-3); background: rgba(255, 209, 102, 0.1); border: 1px solid rgba(255, 209, 102, 0.3); border-radius: var(--radius-sm); color: var(--color-warning); font-size: var(--font-size-caption);">
@@ -300,6 +304,7 @@
       if (currentUser) {
         const emailInput = document.getElementById('setting-email');
         const passInput = document.getElementById('setting-password');
+        const currentPassInput = document.getElementById('setting-current-password');
         const warningBox = document.getElementById('google-auth-warning');
         
         if (emailInput) emailInput.value = currentUser.email || '';
@@ -315,6 +320,11 @@
             passInput.disabled = true;
             passInput.style.opacity = '0.6';
             passInput.style.cursor = 'not-allowed';
+          }
+          if (currentPassInput) {
+            currentPassInput.disabled = true;
+            currentPassInput.style.opacity = '0.6';
+            currentPassInput.style.cursor = 'not-allowed';
           }
           if (warningBox) {
             warningBox.style.display = 'block';
@@ -409,15 +419,24 @@
         if (currentUser && currentUser.auth_provider !== 'google') {
           const newEmail = document.getElementById('setting-email').value;
           const newPass = document.getElementById('setting-password').value;
+          const currentPass = document.getElementById('setting-current-password').value;
           
           const updates = {};
           if (newEmail && newEmail !== currentUser.email) updates.email = newEmail;
-          if (newPass) updates.password = newPass;
+          if (newPass) {
+            // The server requires the current password before accepting a new one.
+            if (!currentPass) {
+              throw new Error('Enter your current password to set a new one.');
+            }
+            updates.password = newPass;
+            updates.current_password = currentPass;
+          }
 
           if (Object.keys(updates).length > 0) {
             await api.updateAccount(updates);
-            // Clear password field after successful update
+            // Clear password fields after successful update
             document.getElementById('setting-password').value = '';
+            document.getElementById('setting-current-password').value = '';
             currentUser.email = newEmail; // Update local state
           }
         }

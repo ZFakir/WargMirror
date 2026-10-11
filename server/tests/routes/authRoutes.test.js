@@ -7,7 +7,9 @@ jest.mock('../../src/controllers/authController', () => ({
   signup: (req, res) => res.status(201).json({ message: 'Signup success' }),
   checkUserExists: (req, res) => res.status(200).json({ exists: false }),
   updateAccount: (req, res) => res.status(200).json({ message: 'Account updated' }),
-  deleteAccount: (req, res) => res.status(200).json({ message: 'Account deleted' })
+  deleteAccount: (req, res) => res.status(200).json({ message: 'Account deleted' }),
+  forgotPassword: (req, res) => res.status(200).json({ message: 'If that email is registered, a reset link has been created.' }),
+  resetPassword: (req, res) => res.status(200).json({ message: 'Password reset successful. You can now log in.' })
 }));
 
 // Mock passport authenticate
@@ -108,11 +110,23 @@ describe('Auth Routes', () => {
     });
 
     it('should handle comma-separated CLIENT_URL', async () => {
+      // CLIENT_PAGES_URL takes precedence over CLIENT_URL in the route, and a
+      // sibling suite may have loaded it from server/.env in a shared jest
+      // process — clear it so this test only exercises the CLIENT_URL path.
+      const originalPagesUrl = process.env.CLIENT_PAGES_URL;
+      const originalClientUrl = process.env.CLIENT_URL;
+      delete process.env.CLIENT_PAGES_URL;
       process.env.CLIENT_URL = 'http://url1.com, http://url2.com';
-      const res = await request(app).get('/auth/google/callback');
-      expect(res.status).toBe(302);
-      expect(res.header.location).toContain('http://url1.com/home.html');
-      delete process.env.CLIENT_URL;
+      try {
+        const res = await request(app).get('/auth/google/callback');
+        expect(res.status).toBe(302);
+        expect(res.header.location).toContain('http://url1.com/home.html');
+      } finally {
+        if (originalPagesUrl === undefined) delete process.env.CLIENT_PAGES_URL;
+        else process.env.CLIENT_PAGES_URL = originalPagesUrl;
+        if (originalClientUrl === undefined) delete process.env.CLIENT_URL;
+        else process.env.CLIENT_URL = originalClientUrl;
+      }
     });
 
     it('should set oauthReturnTo in session if referer is present', async () => {
@@ -173,16 +187,30 @@ describe('Auth Routes', () => {
     });
   });
 
-  describe('GET /auth/logout', () => {
+  describe('POST /auth/logout', () => {
     it('should return 200 on logout', async () => {
-      const res = await request(app).get('/auth/logout');
+      const res = await request(app).post('/auth/logout');
       expect(res.status).toBe(200);
       expect(res.body.message).toBe('Logged out successfully');
     });
 
     it('should return 500 if logout fails', async () => {
-      const res = await request(app).get('/auth/logout').set('logouterror', 'true');
+      const res = await request(app).post('/auth/logout').set('logouterror', 'true');
       expect(res.status).toBe(500);
+    });
+  });
+
+  describe('POST /auth/forgot and /auth/reset', () => {
+    it('should route POST /auth/forgot to the controller', async () => {
+      const res = await request(app).post('/auth/forgot').send({ email: 'user@example.com' });
+      expect(res.status).toBe(200);
+      expect(res.body.message).toBe('If that email is registered, a reset link has been created.');
+    });
+
+    it('should route POST /auth/reset to the controller', async () => {
+      const res = await request(app).post('/auth/reset').send({ token: 'tok', password: 'newpassword' });
+      expect(res.status).toBe(200);
+      expect(res.body.message).toBe('Password reset successful. You can now log in.');
     });
   });
 });

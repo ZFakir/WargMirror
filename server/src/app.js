@@ -102,6 +102,11 @@ function createApp() {
     res.json({ message: 'WARG Platform Backend is running!' });
   });
 
+  // Health check (used by deployment platforms / uptime monitors)
+  app.get('/health', (req, res) => {
+    res.status(200).json({ status: 'ok' });
+  });
+
   // Mount API Routes
   app.use('/auth', authRoutes);
   app.use('/api/args', argRoutes);
