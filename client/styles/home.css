@@ -1164,6 +1164,9 @@ body.admin-mode .gc-action--admin-delete {
   }
 
   .stat-block__value {
+    min-block-size: 1.5rem;
+    display: inline-flex;
+    align-items: center;
     font-size: var(--font-size-h3);
     font-weight: var(--font-weight-bold);
     letter-spacing: -0.03em;
@@ -1421,9 +1424,9 @@ body.admin-mode .gc-action--admin-delete {
   border-radius: var(--radius-sm, 4px);
   background: linear-gradient(
     90deg,
-    var(--color-surface-3, #2a2724) 25%,
-    var(--color-surface-2, #201e1b) 50%,
-    var(--color-surface-3, #2a2724) 75%
+    var(--color-bg-card, #201e1b) 25%,
+    var(--color-border-hover, #2a2724) 50%,
+    var(--color-bg-card, #201e1b) 75%
   );
   background-size: 800px 100%;
   animation: skeleton-shimmer 1.4s ease-in-out infinite;
@@ -1438,6 +1441,50 @@ body.admin-mode .gc-action--admin-delete {
 .skeleton-line--caption {
   height: 0.75rem;
   width: 95%;
+}
+
+.skeleton-line--stat {
+  display: inline-block;
+  block-size: 1.25rem;
+  inline-size: 2.75rem;
+  margin: 0;
+  vertical-align: middle;
+}
+
+.friend-item--skeleton {
+  pointer-events: none;
+  cursor: default;
+}
+
+.friend-item--skeleton:hover {
+  background: transparent;
+}
+
+.skeleton-circle {
+  inline-size: 36px;
+  block-size: 36px;
+  border-radius: var(--radius-full, 9999px);
+  background: linear-gradient(
+    90deg,
+    var(--color-bg-card, #201e1b) 25%,
+    var(--color-border-hover, #2a2724) 50%,
+    var(--color-bg-card, #201e1b) 75%
+  );
+  background-size: 800px 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.friend-item--skeleton .skeleton-line--name {
+  block-size: 0.875rem;
+  inline-size: 72px;
+  margin: 0 0 4px 0;
+}
+
+.friend-item--skeleton .skeleton-line--activity {
+  block-size: 0.75rem;
+  inline-size: 110px;
+  margin: 0;
 }
 
 /* Empty-state message inside card rows */

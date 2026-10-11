@@ -212,6 +212,63 @@ function showRowEmpty(rowId, message) {
   container.innerHTML = '<p class="row-empty-msg">' + (message || 'No games found.') + '</p>';
 }
 
+function renderRightPanelSkeletons() {
+  var rightPanel = document.getElementById('right-panel');
+  if (!rightPanel) return;
+
+  var stats = rightPanel.querySelector('.activity-card__stats');
+  if (stats && !stats.querySelector('.skeleton-line--stat')) {
+    stats.innerHTML =
+      '<div class="stat-block">' +
+        '<span class="stat-block__value stat-block__value--accent"><span class="skeleton-line skeleton-line--stat"></span></span>' +
+        '<span class="stat-block__label">Games Played</span>' +
+      '</div>' +
+      '<div class="stat-block">' +
+        '<span class="stat-block__value stat-block__value--green"><span class="skeleton-line skeleton-line--stat"></span></span>' +
+        '<span class="stat-block__label">Points</span>' +
+      '</div>' +
+      '<div class="stat-block">' +
+        '<span class="stat-block__value" id="sidebar-stat-completed"><span class="skeleton-line skeleton-line--stat"></span></span>' +
+        '<span class="stat-block__label">Completed</span>' +
+      '</div>' +
+      '<div class="stat-block">' +
+        '<span class="stat-block__value"><span class="skeleton-line skeleton-line--stat"></span></span>' +
+        '<span class="stat-block__label">Badges</span>' +
+      '</div>';
+  }
+
+  var onlineList = document.getElementById('online-friends-list');
+  if (onlineList && (!onlineList.children.length || onlineList.querySelector('.friend-item--skeleton'))) {
+    onlineList.innerHTML =
+      '<li class="friend-item friend-item--skeleton" aria-hidden="true">' +
+        '<div class="skeleton-circle"></div>' +
+        '<div class="friend-item__info">' +
+          '<div class="skeleton-line skeleton-line--name"></div>' +
+          '<div class="skeleton-line skeleton-line--activity"></div>' +
+        '</div>' +
+      '</li>' +
+      '<li class="friend-item friend-item--skeleton" aria-hidden="true">' +
+        '<div class="skeleton-circle"></div>' +
+        '<div class="friend-item__info">' +
+          '<div class="skeleton-line skeleton-line--name"></div>' +
+          '<div class="skeleton-line skeleton-line--activity"></div>' +
+        '</div>' +
+      '</li>';
+  }
+
+  var offlineList = document.getElementById('offline-friends-list');
+  if (offlineList && (!offlineList.children.length || offlineList.querySelector('.friend-item--skeleton'))) {
+    offlineList.innerHTML =
+      '<li class="friend-item friend-item--skeleton" aria-hidden="true">' +
+        '<div class="skeleton-circle"></div>' +
+        '<div class="friend-item__info">' +
+          '<div class="skeleton-line skeleton-line--name"></div>' +
+          '<div class="skeleton-line skeleton-line--activity"></div>' +
+        '</div>' +
+      '</li>';
+  }
+}
+
 async function initHomeData() {
   if (typeof api === 'undefined') {
     console.error('API not loaded'); return;
@@ -221,6 +278,7 @@ async function initHomeData() {
   if (document.getElementById('row-recent')) GameCard.renderSkeletons('row-recent', 4);
   if (document.getElementById('row-new')) GameCard.renderSkeletons('row-new', 4);
   if (document.getElementById('row-creators')) GameCard.renderSkeletons('row-creators', 4);
+  renderRightPanelSkeletons();
 
   // Fetch ARGs (public) and current user (optional) in parallel
   var results = await Promise.allSettled([
@@ -260,7 +318,16 @@ async function initHomeData() {
       var statBadges = document.getElementById('sidebar-stat-badges') ||
                        document.querySelector('#right-panel .activity-card__stats .stat-block:nth-child(4) .stat-block__value');
       if (statBadges) statBadges.textContent = (profile.Badges || []).length;
-    } catch { /* profile stats are non-critical */ }
+    } catch {
+      var fallbackPlayed = document.querySelector('#right-panel .activity-card__stats .stat-block:nth-child(1) .stat-block__value');
+      if (fallbackPlayed && fallbackPlayed.querySelector('.skeleton-line')) fallbackPlayed.textContent = '0';
+      var fallbackPoints = document.querySelector('#right-panel .activity-card__stats .stat-block:nth-child(2) .stat-block__value');
+      if (fallbackPoints && fallbackPoints.querySelector('.skeleton-line')) fallbackPoints.textContent = '0';
+      var fallbackCompleted = document.getElementById('sidebar-stat-completed');
+      if (fallbackCompleted && fallbackCompleted.querySelector('.skeleton-line')) fallbackCompleted.textContent = '0';
+      var fallbackBadges = document.querySelector('#right-panel .activity-card__stats .stat-block:nth-child(4) .stat-block__value');
+      if (fallbackBadges && fallbackBadges.querySelector('.skeleton-line')) fallbackBadges.textContent = '0';
+    }
 
     // Fetch and render friends & requests
     try {
@@ -271,6 +338,14 @@ async function initHomeData() {
       renderPendingRequests(requests);
     } catch (err) {
       console.error('Failed to fetch friends/requests', err);
+      var onlineFallback = document.getElementById('online-friends-list');
+      var offlineFallback = document.getElementById('offline-friends-list');
+      if (onlineFallback && onlineFallback.querySelector('.friend-item--skeleton')) {
+        onlineFallback.innerHTML = '<li style="padding:1rem;color:var(--text-muted);font-size:var(--font-size-sm);text-align:center;">Could not load friends</li>';
+      }
+      if (offlineFallback && offlineFallback.querySelector('.friend-item--skeleton')) {
+        offlineFallback.innerHTML = '';
+      }
     }
 
     // Fetch active sessions for "Recently Played"

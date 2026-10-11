@@ -1,60 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
   const form = document.getElementById('signup-form');
-  const avatarPreview = document.getElementById('avatar-preview');
-  const avatarUpload = document.getElementById('avatar-upload');
-  const btnUploadAvatar = document.getElementById('btn-upload-avatar');
-  const avatarGrid = document.getElementById('avatar-grid');
-
-  // Pre-generated pixel avatars from DiceBear
-  const avatarSeeds = ['WARG', 'Jasper', 'Nova', 'Orion', 'Lyra'];
-  let currentAvatarUrl = `https://api.dicebear.com/9.x/pixel-art/svg?seed=WARG`;
-
-  // Render starter avatars
-  avatarSeeds.forEach(seed => {
-    const url = `https://api.dicebear.com/9.x/pixel-art/svg?seed=${seed}`;
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'avatar-option';
-    if (seed === 'WARG') btn.classList.add('selected'); // Default selected
-    btn.innerHTML = `<img src="${url}" alt="Avatar ${seed}" />`;
-    
-    btn.addEventListener('click', () => {
-      // Clear selected state
-      document.querySelectorAll('.avatar-option').forEach(el => el.classList.remove('selected'));
-      btn.classList.add('selected');
-      // Update preview
-      avatarPreview.src = url;
-      currentAvatarUrl = url;
-    });
-    
-    avatarGrid.appendChild(btn);
-  });
-
-  // Handle custom file upload
-  btnUploadAvatar.addEventListener('click', () => {
-    avatarUpload.click();
-  });
-
-  avatarUpload.addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      // Simple validation for image types
-      if (!file.type.startsWith('image/')) {
-        alert('Please select a valid image file.');
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        avatarPreview.src = e.target.result;
-        currentAvatarUrl = e.target.result; // Data URL for the uploaded image
-        
-        // Clear selected state from generated avatars
-        document.querySelectorAll('.avatar-option').forEach(el => el.classList.remove('selected'));
-      };
-      reader.readAsDataURL(file);
-    }
-  });
 
   // Form Validation and Submission
   form.addEventListener('submit', async (e) => {
@@ -100,8 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
           body: JSON.stringify({
             username,
             email,
-            password,
-            avatar: currentAvatarUrl
+            password
           })
         });
 

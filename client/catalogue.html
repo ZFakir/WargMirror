@@ -246,19 +246,19 @@
       <div class="activity-card__label">My Progress</div>
       <div class="activity-card__stats">
         <div class="stat-block">
-          <span class="stat-block__value stat-block__value--accent">12</span>
+          <span class="stat-block__value stat-block__value--accent"><span class="skeleton-line skeleton-line--stat"></span></span>
           <span class="stat-block__label">Games Played</span>
         </div>
         <div class="stat-block">
-          <span class="stat-block__value stat-block__value--green">840</span>
+          <span class="stat-block__value stat-block__value--green"><span class="skeleton-line skeleton-line--stat"></span></span>
           <span class="stat-block__label">Points</span>
         </div>
         <div class="stat-block">
-          <span class="stat-block__value" id="sidebar-stat-completed">-</span>
+          <span class="stat-block__value" id="sidebar-stat-completed"><span class="skeleton-line skeleton-line--stat"></span></span>
           <span class="stat-block__label">Completed</span>
         </div>
         <div class="stat-block">
-          <span class="stat-block__value" id="sidebar-stat-badges">-</span>
+          <span class="stat-block__value" id="sidebar-stat-badges"><span class="skeleton-line skeleton-line--stat"></span></span>
           <span class="stat-block__label">Badges</span>
         </div>
       </div>
@@ -307,10 +307,23 @@
 
       <!-- Online friends -->
       <div class="panel-title" style="font-size:var(--font-size-caption);">
-        <span>Online <span class="text-green">·</span> <span id="online-friends-count">0</span></span>
+        <span>Online <span class="text-green">·</span> <span id="online-friends-count">-</span></span>
       </div>
       <ul class="friends-list" id="online-friends-list" aria-label="Online friends">
-        <!-- Dynamically populated by home.js -->
+        <li class="friend-item friend-item--skeleton" aria-hidden="true">
+          <div class="skeleton-circle"></div>
+          <div class="friend-item__info">
+            <div class="skeleton-line skeleton-line--name"></div>
+            <div class="skeleton-line skeleton-line--activity"></div>
+          </div>
+        </li>
+        <li class="friend-item friend-item--skeleton" aria-hidden="true">
+          <div class="skeleton-circle"></div>
+          <div class="friend-item__info">
+            <div class="skeleton-line skeleton-line--name"></div>
+            <div class="skeleton-line skeleton-line--activity"></div>
+          </div>
+        </li>
       </ul>
 
       <!-- Away/Offline friends -->
@@ -318,7 +331,13 @@
         <span>Away / Offline</span>
       </div>
       <ul class="friends-list" id="offline-friends-list" aria-label="Away and offline friends">
-        <!-- Dynamically populated by home.js -->
+        <li class="friend-item friend-item--skeleton" aria-hidden="true">
+          <div class="skeleton-circle"></div>
+          <div class="friend-item__info">
+            <div class="skeleton-line skeleton-line--name"></div>
+            <div class="skeleton-line skeleton-line--activity"></div>
+          </div>
+        </li>
       </ul>
     </div>
 
