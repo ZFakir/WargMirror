@@ -31,7 +31,33 @@ export class CameraCapture {
     }
     
     this.stream = null;
+    this.spinnerElement = null;
     this.onScoreUpdate = null; // Stub for score updates, currently unused until snap
+  }
+
+  showSpinner(message = 'Analyzing...') {
+    if (this.spinnerElement) {
+      const textElem = this.spinnerElement.querySelector('.camera-spinner-text');
+      if (textElem) textElem.textContent = message;
+      return;
+    }
+    this.spinnerElement = document.createElement('div');
+    this.spinnerElement.className = 'camera-spinner-overlay';
+    this.spinnerElement.innerHTML = `
+      <div class="camera-spinner"></div>
+      <p class="camera-spinner-text">${message}</p>
+      <span class="camera-spinner-subtext">Comparing with waypoint target...</span>
+    `;
+    this.container.appendChild(this.spinnerElement);
+  }
+
+  hideSpinner() {
+    if (this.spinnerElement) {
+      if (this.spinnerElement.parentNode) {
+        this.spinnerElement.parentNode.removeChild(this.spinnerElement);
+      }
+      this.spinnerElement = null;
+    }
   }
 
   async start() {
@@ -54,6 +80,7 @@ export class CameraCapture {
   }
 
   stop() {
+    this.hideSpinner();
     if (this.stream) {
       this.stream.getTracks().forEach(track => track.stop());
     }
