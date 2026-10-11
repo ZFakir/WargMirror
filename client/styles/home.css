@@ -71,7 +71,10 @@
   }
 
   /* ── Right panel collapsed: 0px ── */
-  .app-shell.right-collapsed {
+  .app-shell.right-collapsed,
+  .app-shell:not(:has(.right-panel)),
+  .app-shell:has(#btn-right-panel-toggle:disabled),
+  .app-shell:has(#btn-right-panel-toggle[disabled]) {
     --_right-w: 0px;
   }
 }
@@ -970,9 +973,13 @@ body.admin-mode .gc-action--admin-delete {
   }
 
   /* Collapse state — right panel slides out */
-  .app-shell.right-collapsed .right-panel {
+  .app-shell.right-collapsed .right-panel,
+  .app-shell:not(:has(.right-panel)) .right-panel,
+  .app-shell:has(#btn-right-panel-toggle:disabled) .right-panel,
+  .app-shell:has(#btn-right-panel-toggle[disabled]) .right-panel {
     overflow: hidden;
     pointer-events: none;
+    border-inline-start: none;
   }
 
   .right-panel__header {

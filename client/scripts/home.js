@@ -97,15 +97,20 @@ function toggleRightPanel() {
 }
 
 /* ── Wire up buttons ── */
-if (!rightPanel && btnRightPanelToggle) {
-  btnRightPanelToggle.disabled = true;
-  btnRightPanelToggle.style.opacity = '0.4';
-  btnRightPanelToggle.style.cursor = 'not-allowed';
+const isRightPanelDisabled = !rightPanel || btnRightPanelToggle?.disabled || btnRightPanelToggle?.hasAttribute('disabled');
+if (isRightPanelDisabled) {
+  if (btnRightPanelToggle) {
+    btnRightPanelToggle.disabled = true;
+    btnRightPanelToggle.style.opacity = '0.4';
+    btnRightPanelToggle.style.cursor = 'not-allowed';
+    btnRightPanelToggle.setAttribute('aria-expanded', 'false');
+  }
+  appShell?.classList.add('right-collapsed');
 }
 
 btnSidebarToggle?.addEventListener('click', toggleSidebar);
 btnSidebarClose?.addEventListener('click', closeSidebar);
-if (rightPanel) {
+if (rightPanel && !btnRightPanelToggle?.disabled) {
   btnRightPanelToggle?.addEventListener('click', toggleRightPanel);
 }
 btnRightPanelClose?.addEventListener('click', closeRightPanel);
