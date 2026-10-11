@@ -146,7 +146,19 @@ router.post('/login', (req, res, next) => {
         console.error('❌ Session Error:', loginErr.message);
         return res.status(500).json({ error: 'Session error' });
       }
-      return res.json({ message: 'Login successful', user_id: user.user_id });
+      const sendSuccess = () => res.json({ message: 'Login successful', user_id: user.user_id });
+
+      if (req.session && typeof req.session.save === 'function') {
+        req.session.save((saveErr) => {
+          if (saveErr) {
+            console.error('❌ Session save after login failed:', saveErr.message);
+            return res.status(500).json({ error: 'Session error' });
+          }
+          return sendSuccess();
+        });
+      } else {
+        return sendSuccess();
+      }
     });
   })(req, res, next);
 });

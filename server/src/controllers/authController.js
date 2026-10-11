@@ -44,7 +44,7 @@ exports.signup = async (req, res) => {
       if (err) {
         return res.status(500).json({ error: 'Failed to log in after signup.' });
       }
-      return res.status(201).json({ 
+      const sendSuccess = () => res.status(201).json({ 
         message: 'Signup successful',
         user: {
           user_id: newUser.user_id,
@@ -53,6 +53,18 @@ exports.signup = async (req, res) => {
           role: newUser.role
         }
       });
+
+      if (req.session && typeof req.session.save === 'function') {
+        req.session.save((saveErr) => {
+          if (saveErr) {
+            console.error('❌ Session save after signup failed:', saveErr.message);
+            return res.status(500).json({ error: 'Failed to save session.' });
+          }
+          return sendSuccess();
+        });
+      } else {
+        return sendSuccess();
+      }
     });
 
   } catch (error) {

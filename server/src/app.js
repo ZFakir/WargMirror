@@ -65,6 +65,7 @@ function createApp() {
       maxAge: 86400000, // 24 hours
       secure: process.env.NODE_ENV === 'production',
       sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      partitioned: process.env.NODE_ENV === 'production',
       httpOnly: true
     }
   };
