@@ -130,7 +130,7 @@ erDiagram
 
 ## 3. Community, Moderation & Meta-Progression
 
-This module covers player feedback (ratings, comments), safety (flags, location trust events), and long-term progression (badges, leaderboards).
+This module covers player feedback (ratings, comments, feedback surveys), safety (flags, location trust events), and long-term progression (badges, leaderboards), plus operational tables (analytics rollups, admin audit log).
 
 ```mermaid
 erDiagram
@@ -151,6 +151,13 @@ erDiagram
         int arg_id FK
         int user_id FK
         string body
+    }
+    user_feedback {
+        int feedback_id PK
+        int user_id FK
+        int nps
+        string feature_request
+        text feedback_text
     }
     flags {
         int flag_id PK
@@ -175,6 +182,25 @@ erDiagram
         int user_id FK
         int points
     }
+    leaderboard_global {
+        int user_id PK,FK
+        int total_points
+        int games_completed
+        int global_rank
+    }
+    arg_analytics_daily {
+        int analytics_id PK
+        int arg_id FK
+        date stat_date
+        int unique_players
+    }
+    admin_audit_log {
+        int log_id PK
+        int admin_id FK
+        string action
+        string target_type
+        int target_id
+    }
     trust_events {
         int event_id PK
         int user_id FK
@@ -191,6 +217,8 @@ erDiagram
     users ||--o{ comments : "writes"
     args ||--o{ comments : "commented on"
     
+    users ||--o{ user_feedback : "submits"
+    
     users ||--o{ flags : "reports"
     args ||--o{ flags : "flagged for"
     
@@ -200,5 +228,11 @@ erDiagram
     users ||--o{ leaderboard_arg : "ranks in"
     args ||--o{ leaderboard_arg : "ranked in"
     
+    users ||--|| leaderboard_global : "ranked globally"
+    args ||--o{ arg_analytics_daily : "tracked daily"
+    users ||--o{ admin_audit_log : "audits (admin)"
+    
     users ||--o{ trust_events : "generates"
 ```
+
+> **Schema-first tables:** `arg_ratings`, `push_subscriptions`, `leaderboard_arg` / `leaderboard_global`, `arg_analytics_daily`, and `admin_audit_log` exist in `database/schema.sql` ahead of their server features — the running application (the Sequelize models) does not read or write them yet. `user_feedback`, by contrast, is live and served by the feedback API.

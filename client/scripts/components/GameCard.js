@@ -549,7 +549,7 @@ var GameCard = (function () {
     var skeletons = '';
     for (var i = 0; i < count; i++) {
       skeletons += '<div class="game-card game-card--skeleton" aria-hidden="true">' +
-        '<div class="gc-cover" style="background:var(--color-surface-2)"></div>' +
+        '<div class="gc-cover" style="background:var(--color-bg-card)"></div>' +
         '<div class="gc-body">' +
           '<div class="skeleton-line skeleton-line--title"></div>' +
           '<div class="skeleton-line skeleton-line--caption"></div>' +
