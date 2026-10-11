@@ -27,6 +27,15 @@ document.addEventListener('DOMContentLoaded', () => {
     submitBtn.disabled = true;
     submitBtn.textContent = 'Processing...';
 
+    // The backend sleeps after ~15 min idle (Render free tier), and waking it
+    // can take 30s+. Never hang silently on "Processing..." — explain the
+    // wait and time out with a clear message.
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000);
+    const wakeTimer = setTimeout(() => {
+      if (submitBtn.disabled) submitBtn.textContent = 'Waking the server — this can take up to a minute…';
+    }, 5000);
+
     try {
       const response = await fetch(`${window.API_BASE_URL || 'https://wargmirror.onrender.com'}/auth/login`, {
         method: 'POST',
@@ -34,7 +43,8 @@ document.addEventListener('DOMContentLoaded', () => {
           'Content-Type': 'application/json'
         },
         credentials: 'include',
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ email, password }),
+        signal: controller.signal
       });
 
       const data = await response.json();
@@ -50,9 +60,16 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     } catch (error) {
       console.error('Login error:', error);
-      showError('An error occurred while logging in. Please try again later.');
+      if (error.name === 'AbortError') {
+        showError('The server is taking too long to respond. Please try again in a moment.');
+      } else {
+        showError('An error occurred while logging in. Please try again later.');
+      }
       submitBtn.disabled = false;
       submitBtn.textContent = originalText;
+    } finally {
+      clearTimeout(timeout);
+      clearTimeout(wakeTimer);
     }
   });
 });

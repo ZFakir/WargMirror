@@ -30,46 +30,89 @@ router.get('/google', (req, res, next) => {
   scope: ['profile', 'email']
 }));
 
+// Origins the OAuth callback is allowed to redirect to: the configured client
+// URL(s), CLIENT_PAGES_URL, and the backend itself (which also serves the
+// client under /client).
+function allowedRedirectOrigins(req) {
+  const origins = new Set();
+  const add = value => {
+    if (!value) return;
+    try { origins.add(new URL(value.trim()).origin); } catch { /* skip malformed entries */ }
+  };
+  (process.env.CLIENT_URL || '').split(',').forEach(add);
+  add(process.env.CLIENT_PAGES_URL);
+  const host = req.get('host');
+  if (host) {
+    add(`http://${host}`);
+    add(`https://${host}`);
+  }
+  return origins;
+}
+
+// Pick a validated redirect base (e.g. "https://app.vercel.app", optionally
+// with a trailing "/client"). The session's oauthReturnTo originates from a
+// browser referer, which can be missing, stripped, or shaped like
+// <origin>/auth — composing a target from it unchecked produced 404s such as
+// <origin>/auth/home.html. Only http(s) URLs whose origin is allowlisted and
+// whose path is empty or /client are accepted; anything else falls through
+// to the next candidate. Returns '' when nothing validates, in which case
+// callers use the backend-served /client/* pages.
+function pickRedirectBase(req) {
+  const allowed = allowedRedirectOrigins(req);
+  const firstEntry = value => (value ? value.split(',')[0].trim() : '');
+  const candidates = [
+    req.session.oauthReturnTo,
+    firstEntry(process.env.CLIENT_PAGES_URL),
+    firstEntry(process.env.CLIENT_URL)
+  ].filter(Boolean);
+
+  for (const candidate of candidates) {
+    try {
+      const url = new URL(candidate);
+      const basePath = url.pathname.replace(/\/+$/, '');
+      const validProtocol = url.protocol === 'http:' || url.protocol === 'https:';
+      if (validProtocol && allowed.has(url.origin) && (basePath === '' || basePath === '/client')) {
+        return url.origin + (basePath === '/client' ? '/client' : '');
+      }
+      console.warn(`⚠️ Ignoring unsafe OAuth redirect base: ${candidate}`);
+    } catch {
+      console.warn(`⚠️ Ignoring malformed OAuth redirect base: ${candidate}`);
+    }
+  }
+  return '';
+}
+
 // Google redirects back here after the user grants/denies permission
 router.get('/google/callback', (req, res, next) => {
   passport.authenticate('google', (err, user) => {
-    // Determine redirect URL:
-    // 1. Where they initiated the login from (saved in session)
-    // 2. The explicit CLIENT_PAGES_URL (if configured)
-    // 3. The default CLIENT_URL
-    let clientUrl = req.session.oauthReturnTo || process.env.CLIENT_PAGES_URL || process.env.CLIENT_URL || '';
-    
-    // If CLIENT_URL is a comma-separated list, take the first one
-    if (clientUrl && clientUrl.includes(',')) {
-      clientUrl = clientUrl.split(',')[0].trim();
-    }
+    // Where to send the user. The base is validated against an origin
+    // allowlist — never composed blindly from the session/referer.
+    const redirectBase = pickRedirectBase(req);
     
     // Clean up session
     delete req.session.oauthReturnTo;
 
-    // Fallback when neither the session nor the env config yields a base URL:
-    // the backend also serves the client under /client, so a relative path
-    // still lands the user on a real page (instead of /home.html on the
-    // backend origin, which only works by accident).
-    const homeTarget = clientUrl ? clientUrl + '/home.html' : '/client/home.html';
-    const loginTarget = clientUrl ? clientUrl + '/login.html' : '/client/login.html';
+    const homeTarget = redirectBase ? redirectBase + '/home.html' : '/client/home.html';
+    const loginTarget = redirectBase ? redirectBase + '/login.html' : '/client/login.html';
+
+    console.log(`🔀 OAuth callback redirect → ${homeTarget} (referer: ${req.headers.referer || 'none'})`);
 
     // Database or other server error
     if (err) {
       console.error('❌ Google Auth Error:', err.message);
-      return res.redirect(loginTarget + (clientUrl ? '?error=server_error' : ''));
+      return res.redirect(loginTarget + (redirectBase ? '?error=server_error' : ''));
     }
 
     // Authentication failed (user denied, or strategy returned false)
     if (!user) {
-      return res.redirect(loginTarget + (clientUrl ? '?error=auth_failed' : ''));
+      return res.redirect(loginTarget + (redirectBase ? '?error=auth_failed' : ''));
     }
 
     // Log the user in and create a session
     req.logIn(user, (loginErr) => {
       if (loginErr) {
         console.error('❌ Session Error:', loginErr.message);
-        return res.redirect(loginTarget + (clientUrl ? '?error=session_error' : ''));
+        return res.redirect(loginTarget + (redirectBase ? '?error=session_error' : ''));
       }
       // Save before redirecting: res.redirect can otherwise outrun the
       // session write on a cold/slow session store, and the browser reaches
