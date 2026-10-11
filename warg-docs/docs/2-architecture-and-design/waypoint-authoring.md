@@ -20,7 +20,7 @@ The game engine dynamically determines the starting point(s) of an ARG when a pl
 - **Root Nodes (In-degree of 0)**: Any waypoint that has no edges pointing *to* it is considered a starting node. 
 - **Multiple Starting Nodes**: If the graph has multiple nodes with an in-degree of 0, **all of them** are unlocked simultaneously when the player starts the game. This allows creators to build non-linear or "choose your own path" starting areas.
 - **Disconnected Graphs / No Edges**: If the creator provides no edges at all, the engine treats every waypoint as a root node, unlocking all waypoints immediately. This is ideal for "open world" collection games.
-- **Closed Loops**: If every node in the graph has an incoming edge (i.e. a massive closed cycle with no distinct beginning), the engine falls back to treating **all waypoints in the ARG** as root nodes, unlocking everything at the start.
+- **Closed Loops**: Authors are disallowed from creating cyclic games
 
 ## 3. End of the Graph and Game Completion
 

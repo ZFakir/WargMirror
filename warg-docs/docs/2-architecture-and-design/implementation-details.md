@@ -71,7 +71,7 @@ To moderate and evaluate the minigames, the platform introduces a rating subsyst
 
 ## 4 Minigame Implementations
 
-> **Implementation status (October 2026):** Sections 4.1–4.3, 4.5, 4.9, 4.10 and 4.11.1 describe mechanics available in the current platform (the corresponding minigame types are part of the shipped set). Sections 4.4 (Shadow Tracing), 4.6 (Sign Hunt), 4.7 (Shortest Path Finder), 4.8 (Height Guesser), 4.11.2 (Landmark Relay), 4.11.3 (AR Photo-Bombs) and 4.12 (Synchronisation) are retained as design specifications for future work — they are **not implemented** in the current platform.
+> **Implementation status (October 2026):** Sections 4.1–4.3, 4.5, 4.9, 4.10 and 4.11.1 describe mechanics available in the current platform (the corresponding minigame types are part of the shipped set). Sections 4.4 (Shadow Tracing), 4.6 (Sign Hunt), 4.7 (Shortest Path Finder), 4.8 (Height Guesser), 4.11.2 (Landmark Relay), 4.11.3 (AR Photo-Bombs) and 4.12 (Synchronisation) are retained as design specifications — they are **not implemented** in the current platform as they were not sufficiently interesting to players.
 
 ### 4.1 Scannable Asset Tags (Barcode Integration)
 Creators will be able to link barcodes to puzzles within their creator studio. This scanning is facilitated using `html5-qrcode`, which will capture the barcode data and trigger a callback with the decoded data. Similarly, players will scan barcodes which, once captured, will trigger a callback to validate the decoded barcode against the data set up by the author.
@@ -180,19 +180,14 @@ The player draws a single line on the canvas overlay indicating the perceived ax
 The captured frame is mirrored about the drawn axis, and the mirrored half is compared against the opposite half of the original image using a structural similarity index (SSIM). This computation is delegated to the Python inference microservice alongside the shape- and texture-matching workloads, keeping all image-comparison logic centralised in one service. A high SSIM score between the mirrored and actual halves marks the puzzle solved, with a threshold that is deliberately generous to account for minor camera skew and imperfect real-world symmetry.
 
 ### 4.11 PvP and Social Minigames
-The following minigames were designed to build on the Synchronisation infrastructure described in Section 4.12, and additionally make use of the Social and Rating Subsystem (Section 3.3) for team formation and content moderation.
+
 
 #### 4.11.1 Point Domination
 Contested campus zones (courtyards, quads, plazas) are modelled as MySQL `POLYGON` geometries rather than single waypoints, each associated with a controlling faction or team.
-- **Capture logic:** while a team’s players are physically present within a zone’s geofence, a capture-progress value accrues on a per-tick basis. Ties and contested captures (players from opposing teams present simultaneously) pause or reverse progress rather than favouring either side, to discourage camping.
+- **Capture logic:** while a player is physically present within a zone’s geofence radius, a capture-progress value accrues on a per-tick basis. Authors define a "wipe" interval which will clear the leaderboard. Players are awared points based on how long they are first on the leaderboard.
 - **Live-play integration:** while a player is active in a zone, their client streams throttled location pings to the `domination-ping` endpoint (roughly every 30 seconds) and reads the current standings from the matching `domination-scores` endpoint, so rival progress appears as their clients report in. The tick-based Socket.io broadcast described in Section 4.12 is a planned refinement rather than a dependency of the current implementation.
 - **Persistence:** zone ownership and capture history are written to the database on ownership change (not every tick) to avoid excessive write load, consistent with the persistence approach used for turn-based games.
 
-#### 4.11.2 Landmark Relay
-A team-based hunt in which each team member is assigned a different waypoint; visiting it and passing its geofence check yields a fragment (partial code, image tile, or puzzle piece) rather than solving the puzzle outright.
-- **Turn/coordination model:** the design is a turn-based game, with the Express server holding the authoritative relay state (which fragments have been collected, by whom) as a JSON object, and validating each fragment collection server-side against the reporting player’s geofence.
-- **Assembly:** once all assigned fragments for a team have been collected, the server would assemble and unlock the combined result (e.g., a final code or composite image) and notify all team members.
-- **Offline caveat:** like any live or co-op game, Landmark Relay would be excluded from the offline caching described in Section 3.2, since fragment state must remain synchronised across teammates in real time.
 
 #### 4.11.3 AR Photo-Bombs
 A player (or a creator, as a seeded challenge) places a virtual object or mascot at a specific real-world pose — position and orientation — at a waypoint. Other players must locate it in AR and reproduce a matching ”photo” of it.
@@ -203,8 +198,6 @@ A player (or a creator, as a seeded challenge) places a virtual object or mascot
 ### 4.12 Synchronisation (Co-op Puzzles)
 Live-play mechanics will allow multiple players to participate in collaborative or competitive ARG instances concurrently.
 
-#### 4.12.1 Turn-Based games and puzzles
-Servers will act as the authority on game state and rules. The Express server will represent the game-state as a JSON object and will verify player actions when a move is submitted. This will be implemented over a WebSocket protocol for concurrent games. For every validated move, data is written to a table in the database in order to persist in the event of a lost/spotty connection.
 
-#### 4.12.2 Live-play games and puzzles
-Utilising an appropriate tick speed, player inputs will be transmitted and processed. At the end of each tick, a new game state will be broadcast to the players in the geofenced location. This will be implemented using WebSockets (such as Socket.io) and dumb clients. In order to smooth the transition between game-ticks, rendering will occur at a higher refresh rate and states will be interpolated between each other.
+
+
