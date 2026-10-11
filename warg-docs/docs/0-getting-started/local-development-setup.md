@@ -4,7 +4,7 @@ sidebar_position: 1
 
 # Local Development Setup
 
-This guide gets the full WARG Platform running on your machine. For production deployments, see the [Deployment Guide](../4-deployment/deployment-guide).
+This guide gets the full WARG Platform running on your machine. For production deployments, see the [Deployment Guide](../4-deployment/deployment-guide.md).
 
 ## Prerequisites
 

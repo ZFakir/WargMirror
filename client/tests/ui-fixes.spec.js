@@ -1,4 +1,4 @@
-// Throwaway probe: spoiler theming, nav badge removal, admin skeletons.
+// Tests for UI fixes: spoiler theming and reveals, nav badge removal, admin skeletons.
 const { test, expect } = require('@playwright/test');
 
 test('spoiler box is theme-aware, labelled, and reveals on click', async ({ page }) => {
@@ -6,7 +6,11 @@ test('spoiler box is theme-aware, labelled, and reveals on click', async ({ page
   await page.setContent(`
     <link rel="stylesheet" href="http://localhost:8080/styles/tokens.css">
     <link rel="stylesheet" href="http://localhost:8080/styles/game.css">
-    <p class="comment-item__content"><span id="sp" class="spoiler-text">secret body</span></p>
+    <p class="comment-item__content"><span id="sp" class="spoiler-text" tabindex="0" role="button">secret body</span></p>
+    <script>
+      const sp = document.getElementById('sp');
+      sp.addEventListener('click', () => sp.classList.add('is-revealed'), { once: true });
+    </script>
   `);
   const sp = page.locator('#sp');
   // Chromium may report computed colors as rgba with a ~1 alpha; compare RGB channels only

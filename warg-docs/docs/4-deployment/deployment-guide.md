@@ -335,7 +335,7 @@ NODE_ENV=development
 
 > **Never commit your `.env` file.** It is listed in `.gitignore`. Use Render's **Environment** tab to manage secrets in production.
 >
-> **Local development:** see [Local Development Setup](../0-getting-started/local-development-setup) for creating `server/.env` from `.env.example`.
+> **Local development:** see [Local Development Setup](../0-getting-started/local-development-setup.md) for creating `server/.env` from `.env.example`.
 
 ---
 
