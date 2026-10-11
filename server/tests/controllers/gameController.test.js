@@ -18,6 +18,7 @@ const {
   WaypointProgress, 
   MinigameAttempt, 
   LocationEvent, 
+  Arg,
   User 
 } = require('../../src/models');
 
@@ -33,6 +34,7 @@ jest.mock('../../src/models', () => {
     Waypoint: { findAll: jest.fn(), findByPk: jest.fn() },
     WaypointEdge: { findAll: jest.fn() },
     Minigame: { findByPk: jest.fn() },
+    Arg: { increment: jest.fn() },
     GameSession: { findOne: jest.fn(), create: jest.fn(), update: jest.fn() },
     WaypointProgress: { findAll: jest.fn(), create: jest.fn(), upsert: jest.fn(), findOne: jest.fn() },
     MinigameAttempt: { findOne: jest.fn(), findAll: jest.fn(), upsert: jest.fn(), create: jest.fn() },
@@ -58,7 +60,8 @@ describe('gameController', () => {
     };
     transaction = {
       commit: jest.fn(),
-      rollback: jest.fn()
+      rollback: jest.fn(),
+      LOCK: { UPDATE: 'UPDATE' }
     };
     sequelize.transaction.mockResolvedValue(transaction);
   });
@@ -142,6 +145,10 @@ describe('gameController', () => {
         { user_id: 1, arg_id: 10, status: 'active' },
         { transaction }
       );
+      expect(Arg.increment).toHaveBeenCalledWith('play_count', {
+        where: { arg_id: 10 },
+        transaction
+      });
       expect(WaypointProgress.create).toHaveBeenCalledTimes(2);
       expect(WaypointProgress.create).toHaveBeenCalledWith(
         expect.objectContaining({ waypoint_id: 1, status: 'unlocked' }),
@@ -163,6 +170,7 @@ describe('gameController', () => {
       await startGameSession(req, res);
 
       expect(mockSession.update).toHaveBeenCalledWith({ status: 'active' }, { transaction });
+      expect(Arg.increment).not.toHaveBeenCalled();
       expect(transaction.commit).toHaveBeenCalled();
     });
 
@@ -357,6 +365,30 @@ describe('gameController', () => {
       
       await submitMinigame(req, res);
       expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ outcome: 'pass' }));
+    });
+
+    it('increments completion_count only when an active session completes', async () => {
+      const activeSession = { status: 'active', update: jest.fn() };
+      Minigame.findByPk.mockResolvedValue({
+        game_type: 'text_answer',
+        config_json: { answer: 'test' },
+        Waypoint: { arg_id: 10 },
+        waypoint_id: 2
+      });
+      GameSession.findOne.mockResolvedValue(activeSession);
+      WaypointProgress.findOne.mockResolvedValue({ status: 'unlocked' });
+      WaypointEdge.findAll.mockResolvedValue([]);
+      WaypointProgress.findAll.mockResolvedValue([{ waypoint_id: 2, status: 'completed' }]);
+      Waypoint.findAll.mockResolvedValue([{ waypoint_id: 2 }]);
+
+      await submitMinigame(req, res);
+
+      expect(GameSession.findOne).toHaveBeenCalledWith(expect.objectContaining({ lock: 'UPDATE' }));
+      expect(activeSession.update).toHaveBeenCalledWith(expect.objectContaining({ status: 'completed' }), { transaction });
+      expect(Arg.increment).toHaveBeenCalledWith('completion_count', {
+        where: { arg_id: 10 },
+        transaction
+      });
     });
 
     it('should handle errors in submitMinigame', async () => {

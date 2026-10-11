@@ -1,4 +1,4 @@
-const { sequelize, Waypoint, WaypointEdge, Minigame, GameSession, WaypointProgress, MinigameAttempt, LocationEvent, User } = require('../models');
+const { sequelize, Arg, Waypoint, WaypointEdge, Minigame, GameSession, WaypointProgress, MinigameAttempt, LocationEvent, User } = require('../models');
 
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
 
@@ -49,6 +49,7 @@ exports.startGameSession = async (req, res) => {
     if (!session) {
       // Create new session
       session = await GameSession.create({ user_id, arg_id, status: 'active' }, { transaction });
+      await Arg.increment('play_count', { where: { arg_id }, transaction });
       
       // Initialize WaypointProgress
       const edges = await WaypointEdge.findAll({ where: { arg_id }, transaction });
@@ -232,7 +233,8 @@ exports.submitMinigame = async (req, res) => {
     // Without this a raw API call could complete waypoints without ever playing.
     const activeSession = await GameSession.findOne({
       where: { user_id, arg_id, status: 'active' },
-      transaction
+      transaction,
+      lock: transaction.LOCK.UPDATE
     });
     if (!activeSession) {
       await transaction.rollback();
@@ -384,10 +386,8 @@ exports.submitMinigame = async (req, res) => {
     
     if (!hasUnlocked && sessionProgress.some(p => p.status === 'completed' || p.status === 'failed')) {
       session_completed = true;
-      await GameSession.update({ status: 'completed', completed_at: new Date() }, {
-        where: { user_id, arg_id },
-        transaction
-      });
+      await activeSession.update({ status: 'completed', completed_at: new Date() }, { transaction });
+      await Arg.increment('completion_count', { where: { arg_id }, transaction });
     }
 
     // NOTE: no points are awarded here on purpose — the points economy is
