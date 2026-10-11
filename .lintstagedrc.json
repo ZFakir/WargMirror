@@ -1,0 +1,4 @@
+{
+  "server/**/*.js": "node server/node_modules/eslint/bin/eslint.js --config server/eslint.config.mjs --fix",
+  "client/**/*.js": "node client/node_modules/eslint/bin/eslint.js --config client/eslint.config.mjs --fix"
+}

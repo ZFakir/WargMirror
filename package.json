@@ -3,5 +3,12 @@
     "express-session": "^1.19.0",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^17.6.0"
+  },
+  "scripts": {
+    "prepare": "husky"
   }
 }

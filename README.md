@@ -90,6 +90,10 @@ cd ../client && npx http-server ./ -p 8080 -a 127.0.0.1
 
 > The API reads its configuration from `server/.env` — see the [deployment guide](./warg-docs/docs/4-deployment/deployment-guide.md) for the environment variables and full production setup instructions.
 
+### Local pre-commit checks
+
+Run `npm install` at the repository root once after cloning. Husky then installs a fast pre-commit hook that runs ESLint with `--fix` on staged JavaScript in `server/` and `client/`; it never runs tests, migrations, seeds, or network operations. Prettier is deliberately deferred until the repository has an agreed formatting configuration. For emergencies, `git commit --no-verify` bypasses the local hook, but CI remains required.
+
 ---
 
 ## ☁️ Deployment
