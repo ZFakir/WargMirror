@@ -1124,14 +1124,31 @@ export class MapModal {
   }
 
   popupHTML(node) {
+    const minigames = node.games || node.minigames || [];
+    const allowsRetry = minigames.some(mg => {
+      const cfg = mg.config_json || mg.minigame_config || {};
+      return Boolean(cfg.allow_multiple_attempts);
+    });
+
     let btn;
     if (node.status === 'locked') {
       btn = `<div class="pc__btn pc__btn--locked">Locked</div>`;
     } else if (node.status === 'completed') {
       btn = `<div class="pc__btn pc__btn--done">Completed</div>`;
+    } else if (node.status === 'failed') {
+      if (allowsRetry) {
+        btn = `<div class="pc__btn pc__btn--go map-play-btn" data-node-id="${node.id}">Retry</div>`;
+      } else {
+        btn = `<div class="pc__btn pc__btn--failed">Failed</div>`;
+      }
     } else {
       btn = `<div class="pc__btn pc__btn--go map-play-btn" data-node-id="${node.id}">Play</div>`;
     }
+
+    const isFailed = node.status === 'failed';
+    const fillStyle = isFailed ? 'background: var(--color-danger, #ef4444); width: 100%;' : `width:${node.progress}%`;
+    const labelStyle = isFailed ? 'color: var(--color-danger, #ef4444); font-weight: 700;' : '';
+
     return `
       <div class="pc">
         <span class="pc__badge pc__badge--${node.type}">${this.BADGE_LABEL[node.type]}</span>
@@ -1139,8 +1156,8 @@ export class MapModal {
         <div class="pc__desc">${node.desc}</div>
         <div class="pc__coords">${node.lat.toFixed(5)}, ${node.lng.toFixed(5)}</div>
         <div class="pc__row">
-          <div class="pc__track"><div class="pc__fill" style="width:${node.progress}%"></div></div>
-          <div class="pc__label">${node.progLabel}</div>
+          <div class="pc__track"><div class="pc__fill" style="${fillStyle}"></div></div>
+          <div class="pc__label" style="${labelStyle}">${node.progLabel}</div>
         </div>
         ${btn}
       </div>`;
@@ -1172,12 +1189,26 @@ export class MapModal {
   }
 
   updateNodeStatus(nodeId, newStatus) {
-    const node = this.NODES.find(n => n.id === nodeId);
+    const node = this.NODES.find(n => n.id.toString() === nodeId.toString());
     if (node) {
       node.status = newStatus;
 
+      if (newStatus === 'unlocked' || newStatus === 'current') {
+        node.progLabel = 'Available';
+        node.progress = 10;
+      } else if (newStatus === 'completed') {
+        node.progLabel = 'Completed';
+        node.progress = 100;
+      } else if (newStatus === 'failed') {
+        node.progLabel = 'Failed';
+        node.progress = 100;
+      } else if (newStatus === 'locked') {
+        node.progLabel = 'Not started';
+        node.progress = 0;
+      }
+
       // Update marker icon
-      const marker = this.markerLookup[nodeId];
+      const marker = this.markerLookup[node.id];
       if (marker) {
         marker.setIcon(this.iconFor(node));
         marker.bindPopup(this.popupHTML(node)); // rebind popup to update UI
@@ -1189,10 +1220,10 @@ export class MapModal {
   }
 
   focusNode(nodeId) {
-    const node = this.NODES.find(n => n.id === nodeId);
-    if (node && this.map && this.markerLookup[nodeId]) {
+    const node = this.NODES.find(n => n.id.toString() === nodeId.toString());
+    if (node && this.map && this.markerLookup[node.id]) {
       this.map.flyTo([node.lat, node.lng], MapModal.MAP_CONFIG.startZoom, { duration: 0.6 });
-      this.markerLookup[nodeId].openPopup();
+      this.markerLookup[node.id].openPopup();
     }
   }
 

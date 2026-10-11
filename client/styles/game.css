@@ -16,7 +16,7 @@
   position: relative;
   width: 100%;
   height: 400px;
-  background-color: var(--color-surface);
+  background-color: var(--color-bg-surface);
   border-radius: var(--radius-lg);
   overflow: hidden;
   flex-shrink: 0;
@@ -38,8 +38,8 @@
   gap: var(--spacing-sm);
   color: var(--color-text-muted);
   background: repeating-linear-gradient(45deg,
-      var(--color-surface),
-      var(--color-surface) 10px,
+      var(--color-bg-surface),
+      var(--color-bg-surface) 10px,
       var(--color-bg) 10px,
       var(--color-bg) 20px);
 }
@@ -52,7 +52,7 @@
 /* ── Progress Tracker Area ── */
 .game-progress-wrapper {
   position: relative;
-  background-color: var(--color-surface);
+  background-color: var(--color-bg-surface);
   border-radius: var(--radius-lg);
   padding: var(--spacing-xl);
   border: 1px solid var(--color-border);
@@ -95,7 +95,7 @@
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background-color: var(--color-surface);
+  background-color: var(--color-bg-surface);
   border: 4px solid var(--color-border);
   cursor: pointer;
   transition: all 0.2s ease;
@@ -454,7 +454,7 @@
 
 /* ── Game Feedback & Discussion ── */
 .game-feedback-wrapper {
-  background-color: var(--color-surface);
+  background-color: var(--color-bg-surface);
   border-radius: var(--radius-lg);
   padding: var(--spacing-xl);
   border: 1px solid var(--color-border);
@@ -594,19 +594,64 @@
   line-height: 1.5;
 }
 
-/* Spoiler bodies are rendered as text (never HTML) and hidden until clicked. */
+/* Spoiler bodies are rendered as text (never HTML) and hidden until clicked.
+   The block is solid — near-white in dark mode, near-black in light mode — and
+   carries a visible label so it is obvious it can be clicked. (The previous
+   rule used var(--color-text), which is not a defined token, so no box was
+   painted at all.) */
 .spoiler-text {
+  --spoiler-bg: #F1F3F5;
+  --spoiler-label: #12100E;
   cursor: pointer;
-  background-color: var(--color-text);
+  background-color: var(--spoiler-bg);
   color: transparent;
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-sm);
+  padding: 0.15em 0.5em;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  user-select: none;
   transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+[data-theme='light'] .spoiler-text {
+  --spoiler-bg: #12100E;
+  --spoiler-label: #F1F3F5;
+}
+
+[data-contrast='high'] .spoiler-text {
+  --spoiler-bg: #FFFFFF;
+  --spoiler-label: #000000;
+}
+
+[data-theme='light'][data-contrast='high'] .spoiler-text {
+  --spoiler-bg: #000000;
+  --spoiler-label: #FFFFFF;
+}
+
+.spoiler-text::before {
+  content: 'Spoiler — click to reveal';
+  color: var(--spoiler-label);
+  font-weight: 600;
+  font-size: 0.8em;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.spoiler-text:hover {
+  outline: 2px dashed var(--color-text-muted);
+  outline-offset: 2px;
 }
 
 .spoiler-text.is-revealed {
   cursor: auto;
+  user-select: text;
   background-color: transparent;
   color: inherit;
+  padding: 0;
+}
+
+.spoiler-text.is-revealed::before {
+  content: none;
 }
 
 .comment-replies {
@@ -728,18 +773,120 @@
   transform: scale(0.95);
 }
 
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid var(--color-bg-elevated, rgba(255, 255, 255, 0.2));
+  border-top: 4px solid var(--color-brand, #ff6600);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.btn-capture:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+  transform: none;
+}
+
+.btn-capture.is-loading {
+  border: 4px solid rgba(255, 255, 255, 0.2) !important;
+  border-top-color: var(--color-brand, #ff6600) !important;
+  animation: spin 0.8s linear infinite !important;
+  background-color: rgba(0, 0, 0, 0.5) !important;
+  cursor: not-allowed !important;
+  pointer-events: none !important;
+  box-shadow: 0 0 12px rgba(255, 102, 0, 0.4) !important;
+}
+
 .camera-feedback {
   position: absolute;
   top: 20px;
   left: 50%;
   transform: translateX(-50%);
   background-color: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   color: white;
   padding: 8px 16px;
   border-radius: var(--radius-full);
   font-weight: 600;
   z-index: 10;
   font-size: var(--text-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.camera-feedback-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: var(--color-brand, #ff6600);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  vertical-align: middle;
+}
+
+.camera-spinner-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  color: white;
+  z-index: 999;
+  padding: 20px;
+  text-align: center;
+  box-sizing: border-box;
+  animation: camera-fade-in 0.25s ease-out;
+}
+
+.camera-spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid rgba(255, 255, 255, 0.2);
+  border-top-color: var(--color-brand, #ff6600);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  box-shadow: 0 0 16px rgba(255, 102, 0, 0.45);
+  margin-bottom: 14px;
+}
+
+.camera-spinner-text {
+  font-size: var(--text-base, 1rem);
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0 0 4px 0;
+  letter-spacing: 0.5px;
+}
+
+.camera-spinner-subtext {
+  font-size: var(--text-xs, 0.75rem);
+  color: rgba(255, 255, 255, 0.7);
+  margin: 0;
+}
+
+@keyframes camera-fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .camera-result-overlay {

@@ -1,3 +1,4 @@
+import os
 import cv2
 import numpy as np
 import torch
@@ -5,14 +6,15 @@ from mobile_sam import sam_model_registry, SamPredictor
 
 # Initialise SAM (Requires downloading the model checkpoint locally)
 MODEL_TYPE = "vit_t"
-CHECKPOINT_PATH = "weights/mobile_sam.pt"
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+CHECKPOINT_PATH = os.path.join(BASE_DIR, "weights", "mobile_sam.pt")
 
 try:
     sam = sam_model_registry[MODEL_TYPE](checkpoint=CHECKPOINT_PATH)
     sam.to(device="cuda" if torch.cuda.is_available() else "cpu")
     predictor = SamPredictor(sam)
 except Exception as e:
-    print(f"Warning: SAM weights not found. Ensure {CHECKPOINT_PATH} exists.")
+    print(f"Warning: SAM weights not found at {CHECKPOINT_PATH}. Error: {e}")
     predictor = None
 
 def crop_and_align_masks(ref_mask: np.ndarray, player_mask: np.ndarray):

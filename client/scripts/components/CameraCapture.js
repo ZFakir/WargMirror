@@ -31,7 +31,43 @@ export class CameraCapture {
     }
     
     this.stream = null;
+    this.spinnerElement = null;
     this.onScoreUpdate = null; // Stub for score updates, currently unused until snap
+  }
+
+  showSpinner(message = 'Analyzing...') {
+    if (!document.getElementById('camera-spinner-keyframes')) {
+      const style = document.createElement('style');
+      style.id = 'camera-spinner-keyframes';
+      style.textContent = '@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }';
+      document.head.appendChild(style);
+    }
+    if (this.container && getComputedStyle(this.container).position === 'static') {
+      this.container.style.position = 'relative';
+    }
+    if (this.spinnerElement) {
+      const textElem = this.spinnerElement.querySelector('.camera-spinner-text');
+      if (textElem) textElem.textContent = message;
+      return;
+    }
+    this.spinnerElement = document.createElement('div');
+    this.spinnerElement.className = 'camera-spinner-overlay';
+    this.spinnerElement.style.cssText = 'position:absolute;top:0;left:0;right:0;bottom:0;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);color:#fff;z-index:999;padding:20px;text-align:center;box-sizing:border-box;';
+    this.spinnerElement.innerHTML = `
+      <div class="camera-spinner" style="width:48px;height:48px;border:4px solid rgba(255,255,255,0.2);border-top-color:var(--color-brand,#ff6600);border-radius:50%;animation:spin 0.8s linear infinite;box-shadow:0 0 16px rgba(255,102,0,0.45);margin-bottom:14px;"></div>
+      <p class="camera-spinner-text" style="font-size:1rem;font-weight:600;color:#ffffff;margin:0 0 4px 0;letter-spacing:0.5px;">${message}</p>
+      <span class="camera-spinner-subtext" style="font-size:0.75rem;color:rgba(255,255,255,0.7);margin:0;">Comparing with waypoint target...</span>
+    `;
+    this.container.appendChild(this.spinnerElement);
+  }
+
+  hideSpinner() {
+    if (this.spinnerElement) {
+      if (this.spinnerElement.parentNode) {
+        this.spinnerElement.parentNode.removeChild(this.spinnerElement);
+      }
+      this.spinnerElement = null;
+    }
   }
 
   async start() {
@@ -54,6 +90,7 @@ export class CameraCapture {
   }
 
   stop() {
+    this.hideSpinner();
     if (this.stream) {
       this.stream.getTracks().forEach(track => track.stop());
     }

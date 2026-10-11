@@ -311,10 +311,12 @@ async function initHomeData() {
       var statPoints = document.querySelector('#right-panel .activity-card__stats .stat-block:nth-child(2) .stat-block__value');
       if (statPoints) statPoints.textContent = (profile.total_points || 0).toLocaleString();
       
-      var statCompleted = document.getElementById('sidebar-stat-completed');
+      var statCompleted = document.getElementById('sidebar-stat-completed') ||
+                          document.querySelector('#right-panel .activity-card__stats .stat-block:nth-child(3) .stat-block__value');
       if (statCompleted) statCompleted.textContent = profile.games_completed || 0;
       
-      var statBadges = document.querySelector('#right-panel .activity-card__stats .stat-block:nth-child(4) .stat-block__value');
+      var statBadges = document.getElementById('sidebar-stat-badges') ||
+                       document.querySelector('#right-panel .activity-card__stats .stat-block:nth-child(4) .stat-block__value');
       if (statBadges) statBadges.textContent = (profile.Badges || []).length;
     } catch {
       var fallbackPlayed = document.querySelector('#right-panel .activity-card__stats .stat-block:nth-child(1) .stat-block__value');

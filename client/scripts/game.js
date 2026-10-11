@@ -402,29 +402,61 @@ document.addEventListener('DOMContentLoaded', () => {
   // Listen for the 'Play' event from the Map Modal
   document.addEventListener('warg:play-node', async (e) => {
     const node = e.detail;
+
+    if (node.status === 'locked') {
+      alert("This waypoint is locked. Complete earlier waypoints to unlock it.");
+      return;
+    }
+
+    if (node.status === 'completed') {
+      alert("You have already completed this waypoint.");
+      return;
+    }
+
+    const minigames = node.minigames || [];
+    const allowsRetry = minigames.some(mg => {
+      const cfg = mg.config_json || mg.minigame_config || {};
+      return Boolean(cfg.allow_multiple_attempts);
+    });
+
+    if (node.status === 'failed' && !allowsRetry) {
+      alert("You have already failed this waypoint.");
+      return;
+    }
+
     // Launch the game's actual Play Modal using the node's data
     playModal.open(node.name, node.desc);
 
     const cvGameTypes = ['shape_match', 'colour_match', 'texture_match', 'sift_match', 'symmetry_finder', 'plaque_scan'];
 
     // Check if the node has a CV minigame
+    const wpData = gameState && gameState.waypoints ? gameState.waypoints.find(w => w.waypoint_id.toString() === node.id.toString()) : null;
+    const allMinigames = (node.minigames && node.minigames.length > 0) ? node.minigames : ((wpData && (wpData.Minigames || wpData.minigames)) || node.games || []);
     let cvMinigame = null;
-    if (node.minigames && node.minigames.length > 0) {
-      cvMinigame = node.minigames.find(mg => cvGameTypes.includes(mg.game_type));
+    if (allMinigames && allMinigames.length > 0) {
+      cvMinigame = allMinigames.find(mg => cvGameTypes.includes(mg.game_type || mg.type));
     }
 
     if (cvMinigame) {
+      const cvGameType = cvMinigame.game_type || cvMinigame.type;
+      const cvGameId = cvMinigame.game_id || cvMinigame.id;
+
       playModal.setControls('<div id="camera-container" class="camera-container" style="position:relative; width:100%; min-height:300px;"></div>');
       const container = document.getElementById('camera-container');
 
       try {
         let refData = null;
-        if (cvMinigame.game_type !== 'symmetry_finder') {
-          refData = await api.getMinigameReference(cvMinigame.game_id);
+        if (cvGameType !== 'symmetry_finder') {
+          try {
+            refData = await api.getMinigameReference(cvGameId);
+          } catch (refErr) {
+            console.warn('Could not load minigame reference image:', refErr);
+            refData = null;
+          }
         }
-        const { CameraCapture } = await import('./components/CameraCapture.js');
+        const { CameraCapture } = await import('./components/CameraCapture.js?v=12');
 
-        const camera = new CameraCapture(container, cvMinigame.game_type, refData);
+        const camera = new CameraCapture(container, cvGameType, refData);
 
         // Setup UI
         const captureBtn = document.createElement('button');
@@ -440,19 +472,76 @@ document.addEventListener('DOMContentLoaded', () => {
         feedbackDiv.textContent = 'Aligning...';
         container.appendChild(feedbackDiv);
 
+        let isAnalyzing = false;
+
         camera.onScoreUpdate = (score) => {
+          if (isAnalyzing) return;
           feedbackDiv.textContent = `Match: ${Math.round(score)}%`;
           if (score > 80) captureBtn.style.borderColor = 'var(--color-success)';
           else captureBtn.style.borderColor = 'var(--color-brand)';
         };
 
+        const resetCaptureBtn = () => {
+          captureBtn.disabled = false;
+          captureBtn.classList.remove('is-loading');
+          captureBtn.style.border = '4px solid white';
+          captureBtn.style.animation = 'none';
+          captureBtn.style.backgroundColor = 'rgba(255, 255, 255, 0.3)';
+          if (typeof camera.hideSpinner === 'function') {
+            camera.hideSpinner();
+          }
+          const existingOverlay = container.querySelector('.camera-spinner-overlay');
+          if (existingOverlay) existingOverlay.remove();
+        };
+
         await camera.start();
 
         captureBtn.addEventListener('click', async () => {
-          const blob = await camera.snap();
-          feedbackDiv.textContent = 'Analyzing...';
+          if (isAnalyzing) return;
+          isAnalyzing = true;
+
+          if (!document.getElementById('camera-spinner-keyframes')) {
+            const style = document.createElement('style');
+            style.id = 'camera-spinner-keyframes';
+            style.textContent = '@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }';
+            document.head.appendChild(style);
+          }
+
+          captureBtn.disabled = true;
+          captureBtn.classList.add('is-loading');
+          captureBtn.style.border = '4px solid rgba(255, 255, 255, 0.2)';
+          captureBtn.style.borderTopColor = 'var(--color-brand, #ff6600)';
+          captureBtn.style.animation = 'spin 0.8s linear infinite';
+          captureBtn.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+
+          feedbackDiv.innerHTML = '<span class="camera-feedback-spinner" style="display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:var(--color-brand,#ff6600);border-radius:50%;animation:spin 0.8s linear infinite;vertical-align:middle;margin-right:6px;"></span> Analyzing...';
+
+          if (typeof camera.showSpinner === 'function') {
+            camera.showSpinner('Analyzing...');
+          }
+          // Direct fallback ensuring overlay presence in DOM:
+          let spinnerOverlay = container.querySelector('.camera-spinner-overlay');
+          if (!spinnerOverlay) {
+            spinnerOverlay = document.createElement('div');
+            spinnerOverlay.className = 'camera-spinner-overlay';
+            spinnerOverlay.style.cssText = 'position:absolute;top:0;left:0;right:0;bottom:0;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);color:#fff;z-index:999;padding:20px;text-align:center;box-sizing:border-box;';
+            spinnerOverlay.innerHTML = `
+              <div class="camera-spinner" style="width:48px;height:48px;border:4px solid rgba(255,255,255,0.2);border-top-color:var(--color-brand,#ff6600);border-radius:50%;animation:spin 0.8s linear infinite;box-shadow:0 0 16px rgba(255,102,0,0.45);margin-bottom:14px;"></div>
+              <p class="camera-spinner-text" style="font-size:1rem;font-weight:600;color:#ffffff;margin:0 0 4px 0;letter-spacing:0.5px;">Analyzing...</p>
+              <span class="camera-spinner-subtext" style="font-size:0.75rem;color:rgba(255,255,255,0.7);margin:0;">Comparing with waypoint target...</span>
+            `;
+            container.appendChild(spinnerOverlay);
+          }
+
           try {
-            const result = await api.submitMinigameAttempt(cvMinigame.game_id, blob);
+            const blob = await camera.snap();
+            const result = await api.submitMinigameAttempt(cvGameId, blob);
+
+            if (typeof camera.hideSpinner === 'function') {
+              camera.hideSpinner();
+            }
+            const existingOverlay = container.querySelector('.camera-spinner-overlay');
+            if (existingOverlay) existingOverlay.remove();
 
             // Show result overlay
             const overlay = document.createElement('div');
@@ -471,7 +560,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 overlay.innerHTML = `
                   <h2>Match Found!</h2>
                   <p>Score: ${Math.round(result.confidence_score * 100)}%</p>
-                  <p>+${result.points_awarded} Points</p>
+                  <p>+${result.points_awarded || 0} Points</p>
                   <p>${result.message || ''}</p>
                 `;
               } else {
@@ -479,14 +568,19 @@ document.addEventListener('DOMContentLoaded', () => {
                   <h2>Not Quite...</h2>
                   <p>Score: ${Math.round(result.confidence_score * 100)}%</p>
                   <p>${result.message || ''}</p>
-                  <button id="btn-retry-ar" class="btn btn--outline" style="margin-top: 1rem; border-color: white; color: white;">Try Again</button>
+                  ${result.can_retry ? `
+                    <div style="display:flex;gap:0.75rem;justify-content:center;margin-top:1rem;">
+                      <button id="btn-retry-ar" class="btn btn--outline" style="border-color: white; color: white;">Try Again</button>
+                      <button id="btn-continue-ar" class="btn btn--primary">Continue</button>
+                    </div>
+                  ` : '<p style="margin-top: 1rem; color: #ff6b6b; font-weight: bold;">Waypoint Failed</p>'}
                 `;
               }
             }
             container.appendChild(overlay);
 
             if (result.offline) {
-              const closeBtn = document.getElementById('camera-overlay-close-btn-offline');
+              const closeBtn = document.getElementById('camera-overlay-close-btn');
               if (closeBtn) {
                 closeBtn.addEventListener('click', () => {
                   overlay.remove();
@@ -495,23 +589,76 @@ document.addEventListener('DOMContentLoaded', () => {
               }
             } else {
               if (!result.passed) {
-                const retryBtn = overlay.querySelector('#btn-retry-ar');
-                if (retryBtn) {
-                  retryBtn.addEventListener('click', () => {
-                    overlay.remove();
-                    feedbackDiv.textContent = 'Aligning...';
-                  });
+                // Immediately update map node to failed and unlock successor nodes
+                if (typeof mapModal !== 'undefined') {
+                  mapModal.updateNodeStatus(node.id.toString(), 'failed');
+                  if (result.unlockedNodes && result.unlockedNodes.length > 0) {
+                    result.unlockedNodes.forEach(unlockedId => {
+                      mapModal.updateNodeStatus(unlockedId.toString(), 'unlocked');
+                    });
+                  }
+                  if (result.session_completed) {
+                    setTimeout(() => {
+                      mapModal.showCompletedOverlay();
+                    }, 1000);
+                  }
+                }
+
+                if (result.can_retry) {
+                  const retryBtn = overlay.querySelector('#btn-retry-ar');
+                  if (retryBtn) {
+                    retryBtn.addEventListener('click', () => {
+                      overlay.remove();
+                      feedbackDiv.textContent = 'Aligning...';
+                      resetCaptureBtn();
+                      isAnalyzing = false;
+                    });
+                  }
+                  const continueBtn = overlay.querySelector('#btn-continue-ar');
+                  if (continueBtn) {
+                    continueBtn.addEventListener('click', () => {
+                      if (typeof playModal !== 'undefined') playModal.close();
+                      if (typeof mapModal !== 'undefined' && typeof mapModal.focusNode === 'function') {
+                        mapModal.focusNode(node.id.toString());
+                      }
+                    });
+                  }
+                } else {
+                  setTimeout(() => {
+                    if (typeof playModal !== 'undefined') playModal.close();
+                    if (typeof mapModal !== 'undefined' && typeof mapModal.focusNode === 'function') {
+                      mapModal.focusNode(node.id.toString());
+                    }
+                  }, 2000);
                 }
               } else {
+                // Passed: immediately update map node to completed and unlock successor nodes
+                if (typeof mapModal !== 'undefined') {
+                  mapModal.updateNodeStatus(node.id.toString(), 'completed');
+                  if (result.unlockedNodes && result.unlockedNodes.length > 0) {
+                    result.unlockedNodes.forEach(unlockedId => {
+                      mapModal.updateNodeStatus(unlockedId.toString(), 'unlocked');
+                    });
+                  }
+                  if (result.session_completed) {
+                    setTimeout(() => {
+                      mapModal.showCompletedOverlay();
+                    }, 1000);
+                  }
+                }
                 setTimeout(() => {
                   if (typeof playModal !== 'undefined') playModal.close();
-                  if (typeof mapModal !== 'undefined' && typeof mapModal.focusNode === 'function') mapModal.focusNode(argId);
+                  if (typeof mapModal !== 'undefined' && typeof mapModal.focusNode === 'function') {
+                    mapModal.focusNode(node.id.toString());
+                  }
                 }, 2000);
               }
             }
 
           } catch (err) {
             console.error(err);
+            resetCaptureBtn();
+            isAnalyzing = false;
             feedbackDiv.textContent = 'Error: ' + err.message;
           }
         });
@@ -685,24 +832,27 @@ document.addEventListener('DOMContentLoaded', () => {
                   const isLastGame = index === minigames.length - 1;
                   playModal.showFeedback(result.outcome, isLastGame, result.can_retry);
 
+                  if (result.unlockedNodes && result.unlockedNodes.length > 0) {
+                    result.unlockedNodes.forEach(unlockedId => {
+                      mapModal.updateNodeStatus(unlockedId.toString(), 'unlocked');
+                    });
+                  }
+
+                  if (isLastGame) {
+                    const nodeStatus = result.outcome === 'fail' ? 'failed' : 'completed';
+                    mapModal.updateNodeStatus(node.id.toString(), nodeStatus);
+                  }
+
                   if (result.can_retry && result.outcome === 'fail') {
                     setTimeout(() => {
                       renderMinigame(index);
                     }, 2000);
                   } else if (result.outcome === 'pass' || result.outcome === 'fail') {
-                    if (result.unlockedNodes) {
-                      result.unlockedNodes.forEach(unlockedId => {
-                        mapModal.updateNodeStatus(unlockedId.toString(), 'unlocked');
-                      });
-                    }
-
                     if (!isLastGame) {
                       setTimeout(() => {
                         renderMinigame(index + 1);
                       }, 2000);
                     } else {
-                      const nodeStatus = result.outcome === 'fail' ? 'failed' : 'completed';
-                      mapModal.updateNodeStatus(node.id, nodeStatus);
                       if (result.session_completed) {
                         setTimeout(() => {
                           mapModal.showCompletedOverlay(() => {
@@ -850,7 +1000,18 @@ document.addEventListener('DOMContentLoaded', () => {
           spoiler.className = 'spoiler-text';
           spoiler.title = 'Click to reveal spoiler';
           spoiler.textContent = comment.body;
-          spoiler.addEventListener('click', () => spoiler.classList.add('is-revealed'), { once: true });
+          // Keyboard-accessible reveal, not just click.
+          spoiler.tabIndex = 0;
+          spoiler.setAttribute('role', 'button');
+          spoiler.setAttribute('aria-label', 'Spoiler — activate to reveal');
+          const revealSpoiler = () => spoiler.classList.add('is-revealed');
+          spoiler.addEventListener('click', revealSpoiler, { once: true });
+          spoiler.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              revealSpoiler();
+            }
+          });
           bodyEl.appendChild(spoiler);
         } else {
           bodyEl.textContent = comment.body;

@@ -24,10 +24,6 @@ This document outlines the third-party libraries, APIs, and external assets util
 - **Purpose**: Provides modern typography for the platform's UI.
 - **Motivation**: System fonts can look inconsistent across different operating systems. Google Fonts ensures a unified, modern, and polished aesthetic across all devices, directly contributing to the "Aesthetics" and "Design" rubric categories.
 
-### 5. Lorem Picsum (picsum.photos)
-- **Usage**: Used as placeholder source URLs for hero banners in `create_warg.html` and `edit_warg.html`.
-- **Purpose**: Provides randomized, high-quality placeholder images.
-- **Motivation**: Ensures the UI layout remains structurally sound and visually representative of the final product even when users haven't uploaded their own custom WARG banner images yet.
 
 ## Server-Side Dependencies (Node.js/Express)
 

@@ -646,7 +646,32 @@ CREATE TABLE IF NOT EXISTS admin_audit_log (
 
 
 -- ============================================================
--- §17  VIEWS
+-- §17  USER FEEDBACK (in-app feedback surveys)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS user_feedback (
+    feedback_id        INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    user_id            INT UNSIGNED     NULL DEFAULT NULL,   -- NULL = anonymous submission
+    ui_experience      INT              NULL,
+    game_experience    INT              NULL,
+    creator_experience INT              NULL,
+    gps_experience     INT              NULL,
+    social_experience  INT              NULL,
+    perf_experience    INT              NULL,
+    nps                INT              NULL,
+    feature_request    VARCHAR(255)     NULL,
+    feedback_text      TEXT             NULL,
+    created_at         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (feedback_id),
+    INDEX idx_feedback_user (user_id),
+    CONSTRAINT fk_feedback_user FOREIGN KEY (user_id)
+        REFERENCES users (user_id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- ============================================================
+-- §18  VIEWS
 -- ============================================================
 
 -- Computed average star rating per ARG

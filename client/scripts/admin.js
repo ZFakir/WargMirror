@@ -22,6 +22,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   async function loadMetrics() {
     const metricsEl = document.getElementById('admin-metrics');
     if (!metricsEl) return;
+
+    // Skeleton tiles while metrics load — one per metric, matching the grid
+    metricsEl.innerHTML = Array(5).fill(
+      `<div style="background:var(--color-bg-surface);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:var(--space-3);text-align:center;" aria-hidden="true">
+        <div class="skeleton-line skeleton-line--title" style="width:40%;margin:4px auto 10px;"></div>
+        <div class="skeleton-line skeleton-line--caption" style="width:60%;margin:0 auto;"></div>
+      </div>`
+    ).join('');
+
     try {
       const res = await fetch(`${window.API_BASE_URL || ''}/api/admin/metrics`, { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch metrics');
@@ -38,7 +47,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       metricsEl.innerHTML = '';
       items.forEach(([label, value]) => {
         const cell = document.createElement('div');
-        cell.style.cssText = 'background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:var(--space-3);text-align:center;';
+        cell.style.cssText = 'background:var(--color-bg-surface);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:var(--space-3);text-align:center;';
         const v = document.createElement('div');
         v.style.cssText = 'font-size:1.5rem;font-weight:700;';
         v.textContent = value !== undefined ? value : '—';
@@ -50,6 +59,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
     } catch (error) {
       console.error(error);
+      metricsEl.innerHTML = '<p style="color:var(--color-danger);grid-column:1/-1;text-align:center;padding:var(--space-3);">Platform metrics could not be loaded.</p>';
     }
   }
 
@@ -63,14 +73,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   async function loadFlags() {
     if (!flagsList) return;
 
-    // Show skeletons
+    // Skeleton cards in the flagged-games row while data loads
     if (flaggedGamesRow) {
-      flaggedGamesRow.innerHTML = ''; // Ensure no game cards are on screen initially
+      if (typeof GameCard !== 'undefined') {
+        GameCard.renderSkeletons('row-flagged-games', 3);
+      } else {
+        flaggedGamesRow.innerHTML = '';
+      }
     }
     
     flagsList.innerHTML = Array(3).fill(
       `<div class="flag-item" style="opacity: 0.7; animation: pulse 1.5s infinite ease-in-out;">
-        <div class="flag-item__icon" style="background:var(--color-surface-2); border-radius: 50%; color:transparent; width: 40px; height: 40px;"></div>
+        <div class="flag-item__icon" style="background:var(--color-bg-card); border-radius: 50%; color:transparent; width: 40px; height: 40px;"></div>
         <div class="flag-item__content" style="width: 100%;">
           <div class="skeleton-line skeleton-line--title" style="margin-bottom: 8px;"></div>
           <div class="skeleton-line skeleton-line--caption" style="margin-bottom: 8px; width: 80%;"></div>
@@ -150,7 +164,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           ));
           const valid = cards.filter(Boolean);
           if (valid.length > 0) {
-            GameCard.renderRow('flagged-games-row', valid, { hideProgress: true });
+            GameCard.renderRow('row-flagged-games', valid, { hideProgress: true });
           } else {
             flaggedGamesRow.innerHTML = '<p style="color:var(--color-text-muted);padding:var(--space-3) 0;">Flagged games could not be loaded.</p>';
           }
@@ -265,7 +279,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!searchResultsContainer) return;
     
     searchResultsContainer.innerHTML = Array(2).fill(
-      `<div class="user-search-result" style="display: flex; align-items: center; justify-content: space-between; padding: var(--space-3); border-bottom: 1px solid var(--color-border); background: var(--color-surface); opacity: 0.7; animation: pulse 1.5s infinite ease-in-out;">
+      `<div class="user-search-result" style="display: flex; align-items: center; justify-content: space-between; padding: var(--space-3); border-bottom: 1px solid var(--color-border); background: var(--color-bg-surface); opacity: 0.7; animation: pulse 1.5s infinite ease-in-out;">
         <div style="flex: 1;">
           <div class="skeleton-line skeleton-line--title" style="margin-bottom: 8px; width: 30%;"></div>
           <div class="skeleton-line skeleton-line--caption" style="width: 50%;"></div>
@@ -293,7 +307,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Built with DOM APIs + textContent — usernames/emails are user data.
         const row = document.createElement('div');
         row.className = 'user-search-result';
-        row.style.cssText = 'display: flex; align-items: center; justify-content: space-between; padding: var(--space-3); border-bottom: 1px solid var(--color-border); background: var(--color-surface);';
+        row.style.cssText = 'display: flex; align-items: center; justify-content: space-between; padding: var(--space-3); border-bottom: 1px solid var(--color-border); background: var(--color-bg-surface);';
 
         const left = document.createElement('div');
         const nameEl = document.createElement('div');
