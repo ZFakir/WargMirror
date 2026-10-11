@@ -19,7 +19,8 @@ module.exports = {
         '<rootDir>/tests/models/**/*.test.js',
         '<rootDir>/tests/controllers/**/*.test.js',
         '<rootDir>/tests/routes/**/*.test.js',
-        '<rootDir>/tests/config/**/*.test.js'
+        '<rootDir>/tests/config/**/*.test.js',
+        '<rootDir>/tests/services/**/*.test.js'
       ],
       testPathIgnorePatterns: [
         '/node_modules/'

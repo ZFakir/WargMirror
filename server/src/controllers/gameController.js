@@ -1,4 +1,5 @@
 const { sequelize, Waypoint, WaypointEdge, Minigame, GameSession, WaypointProgress, MinigameAttempt, LocationEvent, User } = require('../models');
+const badgeService = require('../services/badgeService');
 
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
 
@@ -384,6 +385,9 @@ exports.submitMinigame = async (req, res) => {
     // planned around PvP games, which are not implemented yet, so the
     // total_points / total_points_earned columns stay untouched.
     await transaction.commit();
+
+    badgeService.evaluateAndAwardBadges(user_id).catch(() => {});
+
     res.json({ outcome, unlockedNodes, session_completed });
   } catch (error) {
     await transaction.rollback();

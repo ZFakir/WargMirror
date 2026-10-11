@@ -1,11 +1,18 @@
 const { User, Arg, FriendRequest, GameSession, Badge } = require('../models');
 const { Op } = require('sequelize');
+const badgeService = require('../services/badgeService');
 
 // Profile fields that must never be exposed to other clients.
 const PRIVATE_USER_ATTRIBUTES = ['google_uid', 'session_token', 'password_hash', 'email'];
 
 exports.getUserProfile = async (req, res) => {
   try {
+    try {
+      await badgeService.evaluateAndAwardBadges(req.params.id);
+    } catch (badgeErr) {
+      console.warn('Badge evaluation error on profile fetch:', badgeErr.message);
+    }
+
     const user = await User.findByPk(req.params.id, {
       attributes: { exclude: PRIVATE_USER_ATTRIBUTES },
       include: [{ model: Badge, attributes: ['badge_id', 'name', 'description', 'icon_svg'], through: { attributes: ['awarded_at'] } }]
@@ -207,6 +214,11 @@ exports.respondToFriendRequest = async (req, res) => {
 
     request.status = status;
     await request.save();
+
+    if (status === 'accepted') {
+      badgeService.evaluateAndAwardBadges(request.sender_id).catch(() => {});
+      badgeService.evaluateAndAwardBadges(request.receiver_id).catch(() => {});
+    }
 
     res.json(request);
   } catch (error) {
