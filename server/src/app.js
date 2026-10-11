@@ -110,9 +110,19 @@ function createApp() {
     res.json({ message: 'WARG Platform Backend is running!' });
   });
 
-  // Health check (used by deployment platforms / uptime monitors)
-  app.get('/health', (req, res) => {
-    res.status(200).json({ status: 'ok' });
+  // Health check (used by deployment platforms / uptime monitors).
+  // Touches the database so that a ping keeps the Aiven connection warm,
+  // and so a monitor can distinguish "server up" from "db reachable".
+  app.get('/health', async (req, res) => {
+    let db = 'up';
+    try {
+      const sequelize = require('./config/database');
+      await sequelize.query('SELECT 1');
+    } catch {
+      db = 'down';
+    }
+    // Always 200: Render-style health checks treat non-2xx as a failed deploy.
+    res.status(200).json({ status: 'ok', db });
   });
 
   // Mount API Routes

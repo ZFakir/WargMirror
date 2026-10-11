@@ -578,10 +578,31 @@ document.addEventListener('DOMContentLoaded', () => {
           if (!arriveRes.ok) throw new Error('Arrive check failed');
           const arriveData = await arriveRes.json();
 
+          let geofenceOverride = false;
           if (!arriveData.within_radius) {
-            playModal.showFeedback('fail');
-            setTimeout(() => { playModal.close(); }, 2000);
-            return;
+            // Admin-only dev override: lets an admin outside the geofence
+            // proceed anyway. The server re-checks the admin role before
+            // honouring the flag, and logs every bypass.
+            if (window._isAdmin === true) {
+              const unit = localStorage.getItem('warg_units') || 'metric';
+              const dist = unit === 'imperial'
+                ? (arriveData.distance * 3.28084).toFixed(1) + 'ft'
+                : Math.round(arriveData.distance) + 'm';
+              const rad = unit === 'imperial'
+                ? (arriveData.radius * 3.28084).toFixed(1) + 'ft'
+                : Math.round(arriveData.radius) + 'm';
+              const override = confirm('You are outside of the geofence (Distance: ' + dist + ', Radius: ' + rad + ').\n\nProceed anyway (Dev Override)?');
+              if (!override) {
+                playModal.showFeedback('fail');
+                setTimeout(() => { playModal.close(); }, 2000);
+                return;
+              }
+              geofenceOverride = true;
+            } else {
+              playModal.showFeedback('fail');
+              setTimeout(() => { playModal.close(); }, 2000);
+              return;
+            }
           }
 
           const proceedWithGame = () => {
@@ -654,7 +675,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     body: JSON.stringify({
                       game_id: minigame.game_id,
                       game_type: minigame.game_type,
-                      submission
+                      submission,
+                      geofence_override: geofenceOverride
                     })
                   });
                   if (!submitRes.ok) throw new Error('Submission failed');

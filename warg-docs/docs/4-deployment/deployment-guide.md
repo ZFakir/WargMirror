@@ -165,10 +165,11 @@ Render automatically redeploys whenever a commit is pushed to the configured bra
 
 ### 2.4 Health Checks
 
-Render pings a health-check endpoint to confirm the service is live. The API exposes one at `GET /health` (see `server/src/app.js`):
+Render pings a health-check endpoint to confirm the service is live. The API exposes one at `GET /health` (see `server/src/app.js`). It runs a lightweight `SELECT 1` against the database and reports the result:
 
 ```js
-app.get('/health', (req, res) => res.status(200).json({ status: 'ok' }));
+// Always 200 (Render treats non-2xx as a failed deploy); the `db` field carries state.
+app.get('/health', async (req, res) => { ... res.status(200).json({ status: 'ok', db: 'up' | 'down' }); });
 ```
 
 Configure the **Health Check Path** in Render's service settings to `/health`.
@@ -179,19 +180,29 @@ The API applies Helmet response headers. Authentication and password-reset route
 
 The static client sets `nosniff`, frame denial, and strict referrer headers through `client/vercel.json`. Its CSP is report-only during rollout; review browser reports before enforcing it.
 
-### 2.6 Cold Starts and Demo Warm-Up
+### 2.6 Keep-Alive (Free-Tier Spin-Down)
+
+Render's free tier spins the web service down after ~15 minutes of inactivity, and Aiven's free plan puts the database to sleep as well — the first request after idle pays a cold-start of several seconds. Three mechanisms keep the stack warm, in order of reliability:
+
+1. **In-app ping** — `client/scripts/config.js` fetches `/health` ~3 seconds after every page load and then every 10 minutes while a user session is open. This is active in production today.
+2. **Server-side keep-alive** — `server/server.js` runs a `SELECT 1` every 10 minutes while the server is up, keeping the Aiven connection pool from going cold.
+3. **Scheduled CI ping** — `.gitea/workflows/keepalive.yml` pings `/health` every 10 minutes. Note that scheduled workflows only run once the file is merged to the repository's **default branch**, and CI cron can be delayed — treat this as a backup, not the primary mechanism.
+
+For guaranteed uptime, use an external uptime monitor (e.g. **UptimeRobot** or **cron-job.org**) hitting `https://<your-backend>.onrender.com/health` every 5 minutes — external pings are independent of CI queue delays and browser sessions. The definitive fix is upgrading Render to a paid plan (see §2.7), which disables spin-down entirely.
+
+### 2.7 Cold Starts and Demo Warm-Up
 
 The current backend is hosted on Render's free tier. No external uptime monitor is configured, so the service can sleep after inactivity. Before a demo or marker walkthrough, open `https://wargmirror.onrender.com/health` and wait for its `200 OK` response before opening the application. This is a read-only request and does not modify the database.
 
 A cold and warm probe on 2026-10-11 returned `200 OK` in 23.67 seconds and 0.32 seconds respectively. Allow at least one minute for a cold warm-up, and repeat the health check if Render reports a transient deployment error. If a paid Render instance or an uptime monitor is adopted later, update this policy to state the actual plan or monitor cadence; do not claim a monitor exists until it has been configured.
 
-### 2.7 WebSocket Support (Socket.io)
+### 2.8 WebSocket Support (Socket.io)
 
 The server initialises Socket.io, but it is currently only a connect/disconnect stub — no gameplay feature depends on live WebSocket traffic yet, so no WebSocket-specific configuration is required. If real-time features are added later, Render's free tier supports WebSockets on the same port as HTTP without additional configuration, and Socket.io's polling fallback also works out of the box.
 
 > **Important:** Render's free-tier web services **spin down after 15 minutes of inactivity**. For WebSocket-dependent features, upgrade to at least the **Starter** plan to prevent connection drops during active gameplay sessions.
 
-### 2.8 Viewing Logs
+### 2.9 Viewing Logs
 
 From the Render dashboard, select your service and click the **Logs** tab. Live streaming logs are available for real-time debugging. For production, consider forwarding logs to a service like Papertrail or Logtail via Render's **Log Streams** feature.
 
