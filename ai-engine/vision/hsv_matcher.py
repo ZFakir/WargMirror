@@ -67,8 +67,8 @@ def compare_histograms(upload_bytes: bytes, reference_bytes: bytes, mask_bytes: 
     h_up_s = smooth_hue_histogram(hist_upload.reshape(12,8)).flatten()
     h_ref_s = smooth_hue_histogram(hist_reference.reshape(12,8)).flatten()
     
-    h_up_s = h_up_s / (np.max(h_up_s) + 1e-8)
-    h_ref_s = h_ref_s / (np.max(h_ref_s) + 1e-8)
+    h_up_s = (h_up_s / (np.max(h_up_s) + 1e-8)).astype(np.float32)
+    h_ref_s = (h_ref_s / (np.max(h_ref_s) + 1e-8)).astype(np.float32)
     
     dist_hist = cv2.compareHist(h_up_s, h_ref_s, cv2.HISTCMP_BHATTACHARYYA)
     hist_score = max(0.0, 1.0 - dist_hist)
