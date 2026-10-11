@@ -101,16 +101,19 @@ dialectOptions: {
 
 > **Security note for production:** Download the **CA Certificate** from the Aiven service dashboard and set `rejectUnauthorized: true`, passing the cert via the `ca` field. This validates the server identity and prevents MITM attacks.
 
-### 1.4 Running Migrations / Seeding
+### 1.4 Running Migrations
 
-After connecting, run Sequelize sync to initialise the schema:
+Existing environments are grandfathered from `database/schema.sql`; all future schema changes use the versioned Umzug migrations in `server/src/migrations/`.
 
 ```bash
 # From the /server directory
-node -e "const db = require('./src/config/database'); db.sync({ force: false }).then(() => { console.log('DB synced'); process.exit(0); })"
+npm run db:migrate:status
+npm run db:migrate
 ```
 
-For a clean slate during development, use `force: true` (WARNING: **drops all tables**).
+Before running migrations against production, take and record a fresh Aiven backup, confirm the target `DATABASE_URL`, then inspect the migration status and key-table row counts after the command completes. Run `npm run db:migrate:undo` only against a non-production database unless a reviewed rollback procedure explicitly authorizes it.
+
+Never use `sync({ force: true })`, `sync({ alter: true })`, seed scripts, or historical ad-hoc migration scripts against production; they can modify or destroy data.
 
 ### 1.5 Monitoring & Backups
 
@@ -170,19 +173,25 @@ app.get('/health', (req, res) => res.status(200).json({ status: 'ok' }));
 
 Configure the **Health Check Path** in Render's service settings to `/health`.
 
-### 2.5 Cold Starts and Demo Warm-Up
+### 2.5 Security Headers and Request Limits
+
+The API applies Helmet response headers. Authentication and password-reset routes are limited to 20 requests per IP in 15 minutes; sensitive write routes are limited to 60 requests per authenticated user (or IP before authentication) per minute. A rejected request returns `429` with `{ "error": "Too many requests, try again later." }`.
+
+The static client sets `nosniff`, frame denial, and strict referrer headers through `client/vercel.json`. Its CSP is report-only during rollout; review browser reports before enforcing it.
+
+### 2.6 Cold Starts and Demo Warm-Up
 
 The current backend is hosted on Render's free tier. No external uptime monitor is configured, so the service can sleep after inactivity. Before a demo or marker walkthrough, open `https://wargmirror.onrender.com/health` and wait for its `200 OK` response before opening the application. This is a read-only request and does not modify the database.
 
 A cold and warm probe on 2026-10-11 returned `200 OK` in 23.67 seconds and 0.32 seconds respectively. Allow at least one minute for a cold warm-up, and repeat the health check if Render reports a transient deployment error. If a paid Render instance or an uptime monitor is adopted later, update this policy to state the actual plan or monitor cadence; do not claim a monitor exists until it has been configured.
 
-### 2.6 WebSocket Support (Socket.io)
+### 2.7 WebSocket Support (Socket.io)
 
 The server initialises Socket.io, but it is currently only a connect/disconnect stub — no gameplay feature depends on live WebSocket traffic yet, so no WebSocket-specific configuration is required. If real-time features are added later, Render's free tier supports WebSockets on the same port as HTTP without additional configuration, and Socket.io's polling fallback also works out of the box.
 
 > **Important:** Render's free-tier web services **spin down after 15 minutes of inactivity**. For WebSocket-dependent features, upgrade to at least the **Starter** plan to prevent connection drops during active gameplay sessions.
 
-### 2.7 Viewing Logs
+### 2.8 Viewing Logs
 
 From the Render dashboard, select your service and click the **Logs** tab. Live streaming logs are available for real-time debugging. For production, consider forwarding logs to a service like Papertrail or Logtail via Render's **Log Streams** feature.
 
@@ -334,7 +343,8 @@ Use this checklist before every production release:
 ### Database (Aiven)
 - [ ] Aiven service is in **Running** state
 - [ ] `DATABASE_URL` has been copied from the Aiven console (Overview tab)
-- [ ] Schema has been synced (`db.sync`)
+- [ ] A fresh backup was taken before running `npm run db:migrate`
+- [ ] `npm run db:migrate:status` shows the expected applied migrations
 - [ ] Spatial indexes are present on `POINT`, `LINESTRING`, and `POLYGON` columns
 
 ### Backend (Render)
