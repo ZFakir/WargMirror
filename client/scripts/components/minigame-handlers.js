@@ -172,6 +172,8 @@ export function getMinigameHandler(gameType) {
 
           btnSubmit.addEventListener('click', () => {
             if (base64Data) {
+              btnSubmit.disabled = true;
+              btnSubmit.innerHTML = '<span class="camera-feedback-spinner" style="display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.8s linear infinite;vertical-align:middle;margin-right:6px;"></span> Submitting...';
               onSubmit(base64Data);
             }
           });

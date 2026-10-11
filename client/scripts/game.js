@@ -430,23 +430,33 @@ document.addEventListener('DOMContentLoaded', () => {
     const cvGameTypes = ['shape_match', 'colour_match', 'texture_match', 'sift_match', 'symmetry_finder', 'plaque_scan'];
 
     // Check if the node has a CV minigame
+    const wpData = gameState && gameState.waypoints ? gameState.waypoints.find(w => w.waypoint_id.toString() === node.id.toString()) : null;
+    const allMinigames = (node.minigames && node.minigames.length > 0) ? node.minigames : ((wpData && (wpData.Minigames || wpData.minigames)) || node.games || []);
     let cvMinigame = null;
-    if (node.minigames && node.minigames.length > 0) {
-      cvMinigame = node.minigames.find(mg => cvGameTypes.includes(mg.game_type));
+    if (allMinigames && allMinigames.length > 0) {
+      cvMinigame = allMinigames.find(mg => cvGameTypes.includes(mg.game_type || mg.type));
     }
 
     if (cvMinigame) {
+      const cvGameType = cvMinigame.game_type || cvMinigame.type;
+      const cvGameId = cvMinigame.game_id || cvMinigame.id;
+
       playModal.setControls('<div id="camera-container" class="camera-container" style="position:relative; width:100%; min-height:300px;"></div>');
       const container = document.getElementById('camera-container');
 
       try {
         let refData = null;
-        if (cvMinigame.game_type !== 'symmetry_finder') {
-          refData = await api.getMinigameReference(cvMinigame.game_id);
+        if (cvGameType !== 'symmetry_finder') {
+          try {
+            refData = await api.getMinigameReference(cvGameId);
+          } catch (refErr) {
+            console.warn('Could not load minigame reference image:', refErr);
+            refData = null;
+          }
         }
-        const { CameraCapture } = await import('./components/CameraCapture.js');
+        const { CameraCapture } = await import('./components/CameraCapture.js?v=12');
 
-        const camera = new CameraCapture(container, cvMinigame.game_type, refData);
+        const camera = new CameraCapture(container, cvGameType, refData);
 
         // Setup UI
         const captureBtn = document.createElement('button');
@@ -471,26 +481,67 @@ document.addEventListener('DOMContentLoaded', () => {
           else captureBtn.style.borderColor = 'var(--color-brand)';
         };
 
+        const resetCaptureBtn = () => {
+          captureBtn.disabled = false;
+          captureBtn.classList.remove('is-loading');
+          captureBtn.style.border = '4px solid white';
+          captureBtn.style.animation = 'none';
+          captureBtn.style.backgroundColor = 'rgba(255, 255, 255, 0.3)';
+          if (typeof camera.hideSpinner === 'function') {
+            camera.hideSpinner();
+          }
+          const existingOverlay = container.querySelector('.camera-spinner-overlay');
+          if (existingOverlay) existingOverlay.remove();
+        };
+
         await camera.start();
 
         captureBtn.addEventListener('click', async () => {
           if (isAnalyzing) return;
           isAnalyzing = true;
+
+          if (!document.getElementById('camera-spinner-keyframes')) {
+            const style = document.createElement('style');
+            style.id = 'camera-spinner-keyframes';
+            style.textContent = '@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }';
+            document.head.appendChild(style);
+          }
+
           captureBtn.disabled = true;
           captureBtn.classList.add('is-loading');
+          captureBtn.style.border = '4px solid rgba(255, 255, 255, 0.2)';
+          captureBtn.style.borderTopColor = 'var(--color-brand, #ff6600)';
+          captureBtn.style.animation = 'spin 0.8s linear infinite';
+          captureBtn.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
 
-          feedbackDiv.innerHTML = '<span class="camera-feedback-spinner"></span> Analyzing...';
+          feedbackDiv.innerHTML = '<span class="camera-feedback-spinner" style="display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:var(--color-brand,#ff6600);border-radius:50%;animation:spin 0.8s linear infinite;vertical-align:middle;margin-right:6px;"></span> Analyzing...';
+
           if (typeof camera.showSpinner === 'function') {
             camera.showSpinner('Analyzing...');
+          }
+          // Direct fallback ensuring overlay presence in DOM:
+          let spinnerOverlay = container.querySelector('.camera-spinner-overlay');
+          if (!spinnerOverlay) {
+            spinnerOverlay = document.createElement('div');
+            spinnerOverlay.className = 'camera-spinner-overlay';
+            spinnerOverlay.style.cssText = 'position:absolute;top:0;left:0;right:0;bottom:0;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);color:#fff;z-index:999;padding:20px;text-align:center;box-sizing:border-box;';
+            spinnerOverlay.innerHTML = `
+              <div class="camera-spinner" style="width:48px;height:48px;border:4px solid rgba(255,255,255,0.2);border-top-color:var(--color-brand,#ff6600);border-radius:50%;animation:spin 0.8s linear infinite;box-shadow:0 0 16px rgba(255,102,0,0.45);margin-bottom:14px;"></div>
+              <p class="camera-spinner-text" style="font-size:1rem;font-weight:600;color:#ffffff;margin:0 0 4px 0;letter-spacing:0.5px;">Analyzing...</p>
+              <span class="camera-spinner-subtext" style="font-size:0.75rem;color:rgba(255,255,255,0.7);margin:0;">Comparing with waypoint target...</span>
+            `;
+            container.appendChild(spinnerOverlay);
           }
 
           try {
             const blob = await camera.snap();
-            const result = await api.submitMinigameAttempt(cvMinigame.game_id, blob);
+            const result = await api.submitMinigameAttempt(cvGameId, blob);
 
             if (typeof camera.hideSpinner === 'function') {
               camera.hideSpinner();
             }
+            const existingOverlay = container.querySelector('.camera-spinner-overlay');
+            if (existingOverlay) existingOverlay.remove();
 
             // Show result overlay
             const overlay = document.createElement('div');
@@ -559,8 +610,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     retryBtn.addEventListener('click', () => {
                       overlay.remove();
                       feedbackDiv.textContent = 'Aligning...';
-                      captureBtn.disabled = false;
-                      captureBtn.classList.remove('is-loading');
+                      resetCaptureBtn();
                       isAnalyzing = false;
                     });
                   }
@@ -607,11 +657,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
           } catch (err) {
             console.error(err);
-            if (typeof camera.hideSpinner === 'function') {
-              camera.hideSpinner();
-            }
-            captureBtn.disabled = false;
-            captureBtn.classList.remove('is-loading');
+            resetCaptureBtn();
             isAnalyzing = false;
             feedbackDiv.textContent = 'Error: ' + err.message;
           }
