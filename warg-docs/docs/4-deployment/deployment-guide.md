@@ -153,6 +153,13 @@ From the Render service dashboard, go to **Environment** and add the following v
 | `DATABASE_URL` | Your full Aiven MySQL URI (from §1.2) |
 | `PORT` | `3000` (Render also injects its own `PORT`; Express reads from `process.env.PORT`) |
 | `NODE_ENV` | `production` |
+| `SESSION_SECRET` | Long random string — **required**; the server refuses to start in production without it |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | From your Google Cloud OAuth client (enables "Sign in with Google") |
+| `GOOGLE_CALLBACK_URL` | Defaults to the relative path `/auth/google/callback`; only set it if your Google console requires an absolute URL |
+| `CLIENT_URL` | Comma-separated frontend origins allowed by CORS **and** the OAuth redirect allowlist, e.g. `https://your-app.vercel.app,http://localhost:8080` |
+| `CLIENT_PAGES_URL` | The Vercel origin used to build post-login redirect targets, e.g. `https://your-app.vercel.app` |
+
+> **Full list:** see `server/.env.example` or the [Environment Variables Reference](#environment-variables-reference) below.
 
 > **Tip:** Render also supports secret files (`.env` format) via **Secret Files** in the service settings if you prefer storing multiple variables in one place.
 
@@ -187,7 +194,7 @@ The server initialises Socket.io, but it is currently only a connect/disconnect 
 
 > **Important:** Render's free-tier web services **spin down after 15 minutes of inactivity**. For WebSocket-dependent features, upgrade to at least the **Starter** plan to prevent connection drops during active gameplay sessions.
 
-### 2.6 Viewing Logs
+### 2.7 Viewing Logs
 
 From the Render dashboard, select your service and click the **Logs** tab. Live streaming logs are available for real-time debugging. For production, consider forwarding logs to a service like Papertrail or Logtail via Render's **Log Streams** feature.
 
@@ -205,7 +212,7 @@ The AI Engine for shape matching, texture matching, and visual validations is ho
 
 ### 3.2 Docker Deployment
 
-The AI Engine is deployed as a Docker container, exposing a REST API via FastAPI or Flask.
+The AI Engine is deployed as a Docker container, exposing a REST API via FastAPI.
 
 ```bash
 # Clone the repository
@@ -228,7 +235,7 @@ docker-compose up -d --build
 
 Vercel hosts the static HTML/CSS/JS client located in the `/client` directory. It provides global CDN delivery, automatic HTTPS, and preview deployments for every pull request.
 
-### 3.1 Importing the Project
+### 4.1 Importing the Project
 
 1. Log in to [vercel.com](https://vercel.com) and click **Add New → Project**.
 2. Import the WARG Platform repository from your Git provider.
@@ -243,7 +250,7 @@ Vercel hosts the static HTML/CSS/JS client located in the `/client` directory. I
 
 4. Click **Deploy**.
 
-### 3.2 Routing Static HTML Pages
+### 4.2 Routing Static HTML Pages
 
 The WARG frontend is a multi-page application (MPA) with individual `.html` files:
 
@@ -268,7 +275,7 @@ To enable cleaner URLs (e.g., `/game` instead of `/game.html`), add a `vercel.js
 }
 ```
 
-### 3.3 Connecting the Frontend to the Backend
+### 4.3 Connecting the Frontend to the Backend
 
 After deploying to Render, your backend URL will look like:
 
@@ -276,23 +283,13 @@ After deploying to Render, your backend URL will look like:
 https://warg-backend.onrender.com
 ```
 
-Update all `fetch()` calls in the client scripts to reference the production backend URL. The recommended approach is a single constant at the top of each relevant script file:
+The client resolves the API base automatically — no per-file `fetch()` edits are needed. `client/scripts/config.js` sets a single `window.API_BASE_URL`: it points to `http://localhost:3000` when the pages are served from `localhost`/`127.0.0.1`, and to the production Render URL otherwise. To repoint production at a different backend, change the constant in `client/scripts/config.js`.
 
-```js
-// At the top of each script file (e.g., scripts/studio.js)
-const API_BASE = 'https://warg-backend.onrender.com';
-
-// Then use it consistently:
-const response = await fetch(`${API_BASE}/api/wargs`);
-```
-
-For local development, point this to `http://localhost:3000`.
-
-### 3.4 Environment Variables (Vercel)
+### 4.4 Environment Variables (Vercel)
 
 Vercel environment variables are designed for server-side rendering frameworks (Next.js, etc.). Since the WARG frontend is plain static HTML/JS with no build step, there is no environment variable injection at build time. All configuration (e.g., the API base URL) should be managed as JavaScript constants within the script files, or via a small shared `config.js` file served alongside the HTML.
 
-### 3.5 Custom Domain
+### 4.5 Custom Domain
 
 To attach a custom domain (e.g., `warg.wits.ac.za`):
 
@@ -300,7 +297,7 @@ To attach a custom domain (e.g., `warg.wits.ac.za`):
 2. Add your domain and follow the DNS configuration instructions (typically a `CNAME` or `A` record).
 3. Vercel automatically provisions and renews an SSL certificate via Let's Encrypt.
 
-### 3.6 Preview Deployments
+### 4.6 Preview Deployments
 
 Every pull/merge request automatically gets a unique preview URL (e.g., `https://warg-platform-git-feature-branch.vercel.app`). This is useful for reviewing frontend changes without affecting the production deployment.
 
@@ -318,17 +315,27 @@ Then fill in your actual Aiven credentials:
 
 ```env
 PORT=3000
-DATABASE_URL="mysql://avnadmin:<password>@<host>.aivencloud.com:<port>/defaultdb?ssl-mode=REQUIRE"
+DATABASE_URL="mysql://avnadmin:<password>@<host>.aivencloud.com:<port>/defaultdb?ssl-mode=REQUIRED"
 NODE_ENV=development
 ```
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `DATABASE_URL` | Yes | Full Aiven MySQL connection URI including credentials and SSL flag |
+| `DATABASE_URL` | Yes | Full MySQL connection URI including credentials and SSL flag (`?ssl-mode=REQUIRED` for Aiven) |
 | `PORT` | Optional | Defaults to `3000`; Render injects its own value automatically |
 | `NODE_ENV` | Optional | Set to `production` on Render to suppress dev-only logging |
+| `SESSION_SECRET` | Yes (production) | Signs session cookies; development falls back to an ephemeral secret, production refuses to start without it |
+| `CLIENT_URL` | Yes (production) | Comma-separated frontend origins — controls CORS **and** the OAuth redirect allowlist |
+| `CLIENT_PAGES_URL` | Recommended | Frontend origin used to build post-login redirect targets; falls back to the first `CLIENT_URL` entry |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | For Google login | Registers the `/auth/google` strategy; without them only email/password login works |
+| `GOOGLE_CALLBACK_URL` | Optional | Defaults to the relative `/auth/google/callback` |
+| `AI_SERVICE_URL` | Optional | AI Engine base URL; defaults to `http://localhost:8000` |
+| `AI_KEY` | Yes (production) | Shared secret for the AI Engine; development falls back to `dev-secret-key`, production refuses to start without it |
+| `AI_API_KEY` | Optional | Key used when the minigame routes call the AI Engine; defaults to `dev-secret-key` |
 
 > **Never commit your `.env` file.** It is listed in `.gitignore`. Use Render's **Environment** tab to manage secrets in production.
+>
+> **Local development:** see [Local Development Setup](../0-getting-started/local-development-setup) for creating `server/.env` from `.env.example`.
 
 ---
 
@@ -352,7 +359,7 @@ Use this checklist before every production release:
 - [ ] Render service is on a paid plan if WebSocket uptime is required
 
 ### Frontend (Vercel)
-- [ ] `API_BASE` constants in client scripts point to the production Render URL
+- [ ] `API_BASE_URL` in `client/scripts/config.js` points to the production Render URL
 - [ ] Root Directory is set to `client`
 - [ ] All HTML pages load correctly at their expected paths
 - [ ] CORS is configured on the Express server to allow requests from the Vercel domain
@@ -360,17 +367,15 @@ Use this checklist before every production release:
 
 ### CORS Configuration
 
-Ensure the Express backend explicitly allows requests from the Vercel frontend domain. In `server/server.js`:
+Ensure the Express backend allows requests from the Vercel frontend domain. CORS is driven by the `CLIENT_URL` environment variable (comma-separated origins) in `server/src/app.js`:
 
 ```js
-const cors = require('cors');
+const allowedOrigins = process.env.CLIENT_URL
+  ? process.env.CLIENT_URL.split(',').map((url) => url.trim().replace(/\/$/, ''))
+  : [];
 
-app.use(cors({
-  origin: [
-    'http://localhost:3000',          // Local frontend dev
-    'http://127.0.0.1:5500',          // VS Code Live Server
-    'https://your-app.vercel.app',    // Vercel production deployment
-  ],
-  credentials: true
-}));
+// Additionally, outside production any http://localhost / http://127.0.0.1 origin is allowed.
+app.use(cors({ origin: corsOriginCheck, credentials: true }));
 ```
+
+Set `CLIENT_URL` to include `https://your-app.vercel.app` (plus `http://localhost:8080` for local development).

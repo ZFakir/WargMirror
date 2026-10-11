@@ -67,7 +67,7 @@ sequenceDiagram
 To account for network dead-zones on campus, the client application will cache active puzzles (if the puzzle can be done offline). This caching will be implemented using Service Workers to intercept network requests and IndexedDB to persist puzzle states. If a player loses signal, their puzzle attempts will be held locally on the device and validated by the server as soon as the connection is restored, given the puzzle type is compatible with offline-play (live or co-op games will not be available offline).
 
 ### 3.3 Social and Rating Subsystem
-To moderate and evaluate the minigames, the platform introduces a rating subsystem for flagging content. This is supported by an interactive commenting system allowing players to discuss, and provide feedback on the specific games they are playing. Additionally, a rudimentary friends-system will allow players to participate in co-op ARGs and track each other’s progress.
+To moderate and evaluate the minigames, the platform introduces a rating subsystem for flagging content. This is supported by an interactive commenting system allowing players to discuss, and provide feedback on the specific games they are playing. Additionally, a rudimentary friends-system will allow players to view their friends progress and statistics.
 
 ## 4 Minigame Implementations
 
