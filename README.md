@@ -4,7 +4,7 @@
 
 **Turn your campus into the game.**
 
-[![Node.js](https://img.shields.io/badge/Node.js-18+-339933?logo=nodedotjs&logoColor=white)](https://nodejs.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-20+-339933?logo=nodedotjs&logoColor=white)](https://nodejs.org/)
 [![MySQL](https://img.shields.io/badge/MySQL-8+-4479A1?logo=mysql&logoColor=white)](https://www.mysql.com/)
 [![Leaflet](https://img.shields.io/badge/Leaflet-1.9-199900?logo=leaflet&logoColor=white)](https://leafletjs.com/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](#license)
@@ -69,7 +69,8 @@ The system operates using a client-server architecture built on a microservices 
 | **Maps** | Leaflet | Geolocation via `navigator.watchPosition()` |
 | **Auth** | Google OAuth | External identity provider |
 | **Scanning** | html5-QRCode | Barcode & QR asset tagging |
-| **Testing** | Jest + CI/CD | Unit tests and automated pipelines |
+| **AI Engine** | Python + FastAPI | Shape/colour matching microservice (Docker, optional locally) |
+| **Testing** | Jest + Playwright | Backend unit/mocked/integration suites + browser E2E with coverage |
 | **VCS** | Git (Git-E) | Version control and collaboration |
 
 ---
@@ -80,8 +81,10 @@ The system operates using a client-server architecture built on a microservices 
 # 1. Clone the repository
 git clone <repo-url> && cd WARG-Platform
 
-# 2. Install and start the API server
+# 2. Configure and start the API server (see server/.env.example for the full list)
 cd server && npm install
+cp .env.example .env            # then fill in DATABASE_URL (+ Google OAuth, optional)
+npm run seed                    # optional: idempotent campus demo data
 npm run dev                     # Express API on http://localhost:3000
 
 # 3. Serve the static client (from a second terminal)

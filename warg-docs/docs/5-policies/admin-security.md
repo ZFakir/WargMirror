@@ -11,7 +11,7 @@ Because this dashboard exposes sensitive user data and administrative controls, 
 ## 1. Authentication
 
 Admin access is layered on top of the standard user authentication flow. 
-- All users log in using their credentials (or Wits SSO if integrated).
+- All users log in using their credentials.
 - The authentication middleware issues a JSON Web Token (JWT) and a secure HTTP-only cookie.
 - The JWT payload contains an `admin: boolean` flag (or `role: 'ADMIN'`) mapped directly from the `Users` database table.
 
