@@ -115,7 +115,7 @@ async def evaluate_colour(image: UploadFile = File(...), reference_image: Upload
     
     return EvaluationResult(
         confidence_score=similarity_score,
-        passed=(similarity_score >= 0.80),
+        passed=(similarity_score >= 0.65),
         message="Colour evaluation complete."
     )
 
