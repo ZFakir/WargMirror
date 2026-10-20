@@ -155,7 +155,7 @@ async def evaluate_symmetry_endpoint(image: UploadFile = File(...), api_key: str
     result = symmetry.evaluate_symmetry(image_bytes)
     
     return EvaluationResult(
-        confidence_score=result["similarity_score"],
+        confidence_score=float(result["similarity_score"]) / 100,
         passed=result["passed"],
         message="Symmetry evaluation complete."
     )

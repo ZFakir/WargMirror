@@ -441,7 +441,10 @@ document.addEventListener('DOMContentLoaded', () => {
       const cvGameType = cvMinigame.game_type || cvMinigame.type;
       const cvGameId = cvMinigame.game_id || cvMinigame.id;
 
-      playModal.setControls('<div id="camera-container" class="camera-container" style="position:relative; width:100%; min-height:300px;"></div>');
+      const symmetryPrompt = cvGameType === 'symmetry_finder'
+        ? '<p style="text-align:center; margin:0 0 12px; color:var(--color-text-muted);">Open your camera, frame something you think is symmetrical, and take a photo to get its symmetry report.</p>'
+        : '';
+      playModal.setControls(`${symmetryPrompt}<div id="camera-container" class="camera-container" style="position:relative; width:100%; min-height:300px;"></div>`);
       const container = document.getElementById('camera-container');
 
       try {
@@ -556,17 +559,19 @@ document.addEventListener('DOMContentLoaded', () => {
               `;
             } else {
               overlay.className = `camera-result-overlay ${result.passed ? 'pass' : 'fail'}`;
+              const score = Math.round(result.confidence_score * 100);
+              const scoreLabel = cvGameType === 'symmetry_finder' ? 'Symmetry score' : 'Score';
               if (result.passed) {
                 overlay.innerHTML = `
-                  <h2>Match Found!</h2>
-                  <p>Score: ${Math.round(result.confidence_score * 100)}%</p>
+                  <h2>${cvGameType === 'symmetry_finder' ? 'Symmetry Report' : 'Match Found!'}</h2>
+                  <p>${scoreLabel}: ${score}%</p>
                   <p>+${result.points_awarded || 0} Points</p>
                   <p>${result.message || ''}</p>
                 `;
               } else {
                 overlay.innerHTML = `
-                  <h2>Not Quite...</h2>
-                  <p>Score: ${Math.round(result.confidence_score * 100)}%</p>
+                  <h2>${cvGameType === 'symmetry_finder' ? 'Symmetry Report' : 'Not Quite...'}</h2>
+                  <p>${scoreLabel}: ${score}%</p>
                   <p>${result.message || ''}</p>
                   ${result.can_retry ? `
                     <div style="display:flex;gap:0.75rem;justify-content:center;margin-top:1rem;">

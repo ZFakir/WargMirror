@@ -422,7 +422,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             node.games.forEach((game, index) => {
               const config = game.minigame_config || {};
               const unlimitedChecked = config.allow_multiple_attempts ? 'checked' : '';
-              const isCVGame = ['shape_match', 'colour_match', 'texture_match', 'sift_match', 'symmetry_finder', 'plaque_scan'].includes(game.type);
+              const isCVGame = ['shape_match', 'colour_match', 'texture_match', 'sift_match', 'plaque_scan'].includes(game.type);
               const isPDGame = game.type === 'point_domination' || game.gamemode === 'Point Domination';
 
               html += `
@@ -1407,4 +1407,3 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
   });
-

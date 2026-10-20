@@ -239,6 +239,8 @@ describe('minigameController', () => {
     it('should handle symmetry_finder without reference image', async () => {
       req.file = { buffer: Buffer.from('test'), mimetype: 'image/jpeg', originalname: 'test.jpg' };
       const mockMinigame = { game_type: 'symmetry_finder' }; // no config needed
+      const append = jest.fn();
+      global.FormData = class { append = append; };
       Minigame.findByPk.mockResolvedValue(mockMinigame);
       global.fetch.mockResolvedValue({
         ok: true,
@@ -248,6 +250,8 @@ describe('minigameController', () => {
       await submitAttempt(req, res);
       
       expect(global.fetch).toHaveBeenCalled();
+      expect(append).toHaveBeenCalledTimes(1);
+      expect(append).toHaveBeenCalledWith('image', expect.any(global.Blob), 'test.jpg');
       expect(MinigameAttempt.upsert).toHaveBeenCalled();
     });
 
