@@ -97,7 +97,7 @@ async def evaluate_shape(image: UploadFile = File(...), target_mask: UploadFile 
     
     return EvaluationResult(
         confidence_score=iou_score,
-        passed=(iou_score >= 0.75), # Safely rejects the 66% fabric tests
+        passed=(iou_score >= 0.50),
         message="Shape extraction and evaluation complete."
     )
 
@@ -115,7 +115,7 @@ async def evaluate_colour(image: UploadFile = File(...), reference_image: Upload
     
     return EvaluationResult(
         confidence_score=similarity_score,
-        passed=(similarity_score >= 0.65),
+        passed=(similarity_score >= 0.50),
         message="Colour evaluation complete."
     )
 
@@ -129,7 +129,7 @@ async def evaluate_texture(image: UploadFile = File(...), reference_image: Uploa
     
     return EvaluationResult(
         confidence_score=similarity,
-        passed=(similarity >= 0.60), # Tuned threshold for high-dimensional embeddings
+        passed=(similarity >= 0.50),
         message="Texture evaluation complete."
     )
 

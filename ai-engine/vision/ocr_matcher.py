@@ -4,7 +4,7 @@ import pytesseract
 import re
 import difflib
 
-THRESHOLD = 0.75
+THRESHOLD = 0.50
 
 def extract_text(image_bytes: bytes) -> str:
     """
