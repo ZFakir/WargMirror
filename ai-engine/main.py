@@ -129,6 +129,8 @@ async def evaluate_texture(image: UploadFile = File(...), reference_image: Uploa
     
     return EvaluationResult(
         confidence_score=similarity,
+        # Keep the 50% texture pass threshold in sync with MATCH_THRESHOLD in
+        # vision/mobilenet_extractor.py, which is used for tuning experiments.
         passed=(similarity >= 0.50),
         message="Texture evaluation complete."
     )

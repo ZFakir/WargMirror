@@ -43,6 +43,36 @@ curl -L -o weights/mobile_sam.pt https://github.com/ChaoningZhang/MobileSAM/raw/
 
 ---
 
+## Texture Matcher Tuning
+
+Texture matching uses MobileNetV2 features with lighting normalization and
+center-crop scales. The pass threshold remains 0.50. These optional environment
+variables can be set on the AI engine to compare configurations:
+
+| Variable | Default | Rollback / meaning |
+|----------|---------|--------------------|
+| `TEXTURE_CLAHE_CLIP` | `2.0` | Set to `0` to disable local contrast normalization |
+| `TEXTURE_CLAHE_GRID` | `8` | CLAHE tile grid size |
+| `TEXTURE_BLUR_KERNEL` | `3` | Odd Gaussian blur size; set to `0` to disable |
+| `TEXTURE_TAP_LAYER` | unset | Full feature trunk; values `2`-`18` select an earlier layer |
+| `TEXTURE_PYRAMID_SCALES` | `1.0,0.75,0.5,0.25` | Center-crop fractions; set to `1.0` for single-scale matching |
+
+Use real positive and negative camera samples to compare configurations before
+changing production settings. For example, from `ai-engine`:
+
+```powershell
+.\venv\Scripts\python.exe .\scripts\calibrate_texture.py `
+  --reference .\reference.jpg `
+  --matches .\samples\matches `
+  --non-matches .\samples\non-matches
+```
+
+The report shows the score range and the proportion of each group meeting the
+unchanged 0.50 pass threshold. A higher match score is only an improvement if
+non-matches do not also become more likely to pass.
+
+---
+
 ## Deploying to AWS Lightsail (Container Service)
 
 ### Prerequisites
