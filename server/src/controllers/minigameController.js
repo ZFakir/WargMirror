@@ -148,7 +148,7 @@ exports.submitAttempt = async (req, res) => {
       method: 'POST',
       body: formData,
       headers: {
-        'X-API-Key': process.env.AI_API_KEY || 'dev-secret-key'
+        'X-API-Key': process.env.AI_KEY || 'dev-secret-key'
       }
     });
 
