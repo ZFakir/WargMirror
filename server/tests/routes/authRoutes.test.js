@@ -82,6 +82,15 @@ app.use((req, res, next) => {
 
 jest.mock('../../src/models', () => {
   return {
+    User: {
+      findByPk: jest.fn().mockResolvedValue({
+        user_id: 1,
+        username: 'test',
+        email: 'test@example.com',
+        role: 'player',
+        is_suspended: false
+      })
+    },
     GameSession: {
       count: jest.fn().mockImplementation(() => {
         return Promise.resolve(5);
@@ -170,7 +179,7 @@ describe('Auth Routes', () => {
           .get('/auth/google/callback')
           .set('x-mock-oauth-return-to', 'http://client.test/auth');
         expect(res.status).toBe(302);
-        expect(res.header.location).toBe('http://client.test/home.html');
+        expect(res.header.location).toMatch(/^http:\/\/client\.test\/home\.html#oauth_code=[a-f0-9]{64}$/);
       } finally {
         if (originalPagesUrl === undefined) delete process.env.CLIENT_PAGES_URL;
         else process.env.CLIENT_PAGES_URL = originalPagesUrl;
@@ -189,7 +198,7 @@ describe('Auth Routes', () => {
           .get('/auth/google/callback')
           .set('x-mock-oauth-return-to', 'https://evil.example.com');
         expect(res.status).toBe(302);
-        expect(res.header.location).toBe('http://client.test/home.html');
+        expect(res.header.location).toMatch(/^http:\/\/client\.test\/home\.html#oauth_code=[a-f0-9]{64}$/);
       } finally {
         if (originalPagesUrl === undefined) delete process.env.CLIENT_PAGES_URL;
         else process.env.CLIENT_PAGES_URL = originalPagesUrl;
@@ -206,6 +215,53 @@ describe('Auth Routes', () => {
         console.error('Error body:', res.body, res.text);
       }
       expect(res.status).toBe(302); // Redirects to google
+    });
+  });
+
+  describe('POST /auth/exchange', () => {
+    it('exchanges a valid single-use code from the callback and rejects replay', async () => {
+      const cbRes = await request(app).get('/auth/google/callback');
+      expect(cbRes.status).toBe(302);
+      const match = cbRes.header.location.match(/#oauth_code=([a-f0-9]{64})$/);
+      expect(match).not.toBeNull();
+      const code = match[1];
+
+      const exchangeRes = await request(app).post('/auth/exchange').send({ code });
+      expect(exchangeRes.status).toBe(200);
+      expect(exchangeRes.body).toEqual({ message: 'Login successful', user_id: 1 });
+
+      // Replaying the same code must fail
+      const replayRes = await request(app).post('/auth/exchange').send({ code });
+      expect(replayRes.status).toBe(401);
+    });
+
+    it('returns 400 when code is missing or empty', async () => {
+      const res = await request(app).post('/auth/exchange').send({});
+      expect(res.status).toBe(400);
+    });
+
+    it('returns 401 for an unknown code', async () => {
+      const res = await request(app).post('/auth/exchange').send({ code: 'unknown-code' });
+      expect(res.status).toBe(401);
+    });
+
+    it('returns 401 when the user is suspended', async () => {
+      const cbRes = await request(app).get('/auth/google/callback');
+      const code = cbRes.header.location.match(/#oauth_code=([a-f0-9]{64})$/)[1];
+      const { User } = require('../../src/models');
+      User.findByPk.mockResolvedValueOnce({ user_id: 1, is_suspended: true });
+
+      const res = await request(app).post('/auth/exchange').send({ code });
+      expect(res.status).toBe(401);
+    });
+
+    it('returns 500 if req.logIn fails', async () => {
+      const cbRes = await request(app).get('/auth/google/callback');
+      const code = cbRes.header.location.match(/#oauth_code=([a-f0-9]{64})$/)[1];
+
+      const res = await request(app).post('/auth/exchange').send({ code, loginError: 'true' });
+      expect(res.status).toBe(500);
+      expect(res.body.error).toBe('Session error');
     });
   });
 

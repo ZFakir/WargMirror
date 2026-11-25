@@ -21,8 +21,38 @@ var API_BASE = window.API_BASE_URL;
 
 var api = (function () {
 
+  var _oauthExchangePromise = (function initOAuthExchange() {
+    var hash = window.location.hash || '';
+    if (!hash) return Promise.resolve();
+    var hashParams = new URLSearchParams(hash.slice(1));
+    var code = hashParams.get('oauth_code');
+    if (!code) return Promise.resolve();
+
+    hashParams.delete('oauth_code');
+    var remainingHash = hashParams.toString();
+    var cleanUrl = window.location.pathname + window.location.search + (remainingHash ? '#' + remainingHash : '');
+    if (window.history && typeof window.history.replaceState === 'function') {
+      window.history.replaceState(null, '', cleanUrl);
+    }
+
+    var base = window.API_BASE_URL || API_BASE;
+    return fetch(base + '/auth/exchange', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: code }),
+      credentials: 'include'
+    }).then(function (res) {
+      if (!res.ok) {
+        console.error('OAuth session exchange returned status:', res.status);
+      }
+    }).catch(function (err) {
+      console.error('OAuth session exchange failed:', err);
+    });
+  })();
+
   /* ── Generic fetch wrapper ──────────────────────────────── */
   async function _get(path) {
+    await _oauthExchangePromise;
     const res = await fetch(API_BASE + path, { credentials: 'include' });
     if (!res.ok) {
       throw Object.assign(new Error('API error'), { status: res.status, path });
@@ -31,6 +61,7 @@ var api = (function () {
   }
 
   async function _post(path, body) {
+    await _oauthExchangePromise;
     const res = await fetch(API_BASE + path, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -44,6 +75,7 @@ var api = (function () {
   }
 
   async function _delete(path) {
+    await _oauthExchangePromise;
     const res = await fetch(API_BASE + path, {
       method: 'DELETE',
       credentials: 'include'

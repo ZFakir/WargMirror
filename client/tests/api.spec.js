@@ -103,4 +103,31 @@ test.describe('Shared API client (api.js)', () => {
 
     expect(calls).toEqual(['GET /auth/me', 'DELETE /api/sessions/42/arg/9']);
   });
+
+  test('exchanges #oauth_code before calling /auth/me and strips it from the URL hash', async ({ page }) => {
+    const calls = [];
+    let exchangePayload = null;
+    await page.route('**/auth/exchange', async (route) => {
+      calls.push('POST /auth/exchange');
+      exchangePayload = route.request().postDataJSON();
+      await route.fulfill({ status: 200, contentType: 'application/json', body: '{"message":"Login successful","user_id":42}' });
+    });
+    await page.route('**/auth/me', async (route) => {
+      calls.push('GET /auth/me');
+      await route.fulfill({ status: 200, contentType: 'application/json', body: '{"user_id":42,"username":"oauthuser"}' });
+    });
+
+    await page.goto('/login.html#oauth_code=testcode123');
+    await page.addScriptTag({ content: 'window.API_BASE_URL = window.location.origin;' });
+    await page.addScriptTag({ url: '/scripts/api.js' });
+    await page.waitForFunction(() => typeof window.api === 'object');
+
+    const user = await page.evaluate(() => window.api.getCurrentUser());
+    const remainingHash = await page.evaluate(() => window.location.hash);
+
+    expect(exchangePayload).toEqual({ code: 'testcode123' });
+    expect(calls).toEqual(['POST /auth/exchange', 'GET /auth/me']);
+    expect(remainingHash).toBe('');
+    expect(user).toEqual({ user_id: 42, username: 'oauthuser' });
+  });
 });

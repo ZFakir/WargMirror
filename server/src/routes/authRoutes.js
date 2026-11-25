@@ -1,7 +1,41 @@
+const crypto = require('crypto');
 const express = require('express');
 const passport = require('passport');
 const router = express.Router();
 const authController = require('../controllers/authController');
+
+// Short-lived, single-use OAuth handoff codes for cross-origin redirects.
+// Because session cookies are Partitioned (CHIPS), a cookie set during the
+// top-level Google callback navigation on the backend origin lives in the
+// backend's partition and is not sent by cross-origin fetch() calls from the
+// frontend origin. Exchanging a single-use code via fetch() issues the session
+// cookie inside the frontend's CHIPS partition.
+const OAUTH_CODE_TTL_MS = 60 * 1000;
+const oauthCodes = new Map();
+
+function pruneExpiredOAuthCodes() {
+  const now = Date.now();
+  for (const [key, entry] of oauthCodes.entries()) {
+    if (entry.expiresAt <= now) {
+      oauthCodes.delete(key);
+    }
+  }
+}
+
+function issueOAuthCode(userId) {
+  pruneExpiredOAuthCodes();
+  const code = crypto.randomBytes(32).toString('hex');
+  oauthCodes.set(code, { userId, expiresAt: Date.now() + OAUTH_CODE_TTL_MS });
+  return code;
+}
+
+function consumeOAuthCode(code) {
+  if (typeof code !== 'string' || !code) return null;
+  const entry = oauthCodes.get(code);
+  oauthCodes.delete(code);
+  if (!entry || entry.expiresAt <= Date.now()) return null;
+  return entry.userId;
+}
 
 // Redirect to Google's consent screen
 router.get('/google', (req, res, next) => {
@@ -119,10 +153,61 @@ router.get('/google/callback', (req, res, next) => {
       // home.html without its logged-in session.
       req.session.save((saveErr) => {
         if (saveErr) console.error('❌ Session save after login failed:', saveErr.message);
-        res.redirect(homeTarget);
+        if (redirectBase) {
+          const code = issueOAuthCode(user.user_id);
+          return res.redirect(`${homeTarget}#oauth_code=${code}`);
+        }
+        return res.redirect(homeTarget);
       });
     });
   })(req, res, next);
+});
+
+// Exchange a short-lived, single-use OAuth handoff code for a session cookie
+// inside the frontend's CHIPS partition via cross-origin fetch().
+router.post('/exchange', async (req, res) => {
+  const rawCode = req.body && typeof req.body.code === 'string' ? req.body.code.trim() : '';
+  if (!rawCode) {
+    return res.status(400).json({ error: 'Missing OAuth exchange code' });
+  }
+
+  const userId = consumeOAuthCode(rawCode);
+  if (!userId) {
+    return res.status(401).json({ error: 'Invalid or expired OAuth code' });
+  }
+
+  try {
+    const { User } = require('../models');
+    const user = await User.findByPk(userId, {
+      attributes: { exclude: ['session_token'] }
+    });
+    if (!user || user.is_suspended) {
+      return res.status(401).json({ error: 'Account unavailable' });
+    }
+
+    req.logIn(user, (loginErr) => {
+      if (loginErr) {
+        console.error('❌ OAuth exchange session error:', loginErr.message);
+        return res.status(500).json({ error: 'Session error' });
+      }
+      const sendSuccess = () => res.json({ message: 'Login successful', user_id: user.user_id });
+
+      if (req.session && typeof req.session.save === 'function') {
+        req.session.save((saveErr) => {
+          if (saveErr) {
+            console.error('❌ Session save after OAuth exchange failed:', saveErr.message);
+            return res.status(500).json({ error: 'Session error' });
+          }
+          return sendSuccess();
+        });
+      } else {
+        return sendSuccess();
+      }
+    });
+  } catch (err) {
+    console.error('❌ OAuth exchange error:', err.message);
+    return res.status(500).json({ error: 'Server error during OAuth exchange' });
+  }
 });
 
 // Local Signup
@@ -171,7 +256,14 @@ router.post('/logout', (req, res) => {
       return res.status(500).json({ error: 'Failed to log out' });
     }
     req.session.destroy(() => {
-      res.clearCookie('connect.sid');
+      const isProd = process.env.NODE_ENV === 'production';
+      res.clearCookie('connect.sid', {
+        path: '/',
+        httpOnly: true,
+        secure: isProd,
+        sameSite: isProd ? 'none' : 'lax',
+        partitioned: isProd
+      });
       return res.json({ message: 'Logged out successfully' });
     });
   });

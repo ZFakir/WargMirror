@@ -32,4 +32,11 @@ test.describe('login page/script logic', () => {
 
     await page.click('button[type="submit"]');
   });
+
+  test('should display OAuth error message from query parameter', async ({ page }) => {
+    await page.goto('/login.html?error=auth_failed');
+    const errorEl = page.locator('.form-error');
+    await expect(errorEl).toBeVisible();
+    await expect(errorEl).toContainText('Google sign-in failed');
+  });
 });

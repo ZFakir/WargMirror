@@ -14,6 +14,17 @@ document.addEventListener('DOMContentLoaded', () => {
     errorEl.textContent = message;
   }
 
+  // Surface OAuth redirect errors (e.g. ?error=auth_failed)
+  const oauthError = new URLSearchParams(window.location.search).get('error');
+  if (oauthError) {
+    const errorMessages = {
+      auth_failed: 'Google sign-in failed or was cancelled. Please try again.',
+      server_error: 'A server error occurred during Google sign-in. Please try again.',
+      session_error: 'Could not start your session. Please try again.'
+    };
+    showError(errorMessages[oauthError] || 'Sign-in failed. Please try again.');
+  }
+
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
