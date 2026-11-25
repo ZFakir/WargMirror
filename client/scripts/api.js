@@ -152,6 +152,43 @@ var api = (function () {
   }
 
   /**
+   * Returns the admin-configured playable demo ARG, or null if none is set.
+   * Public endpoint — works for guests.
+   */
+  async function getDemoGame() {
+    try {
+      const res = await fetch(API_BASE + '/api/demo', { credentials: 'include', cache: 'no-store' });
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data && data.demo ? normaliseArg(data.demo) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  async function getAdminGames() {
+    const res = await fetch(API_BASE + '/api/admin/games', { credentials: 'include', cache: 'no-store' });
+    if (!res.ok) {
+      throw Object.assign(new Error('API error'), { status: res.status, path: '/api/admin/games' });
+    }
+    return res.json();
+  }
+
+  async function setAdminDemoGame(argId) {
+    const res = await fetch(API_BASE + '/api/admin/demo-game', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ arg_id: argId }),
+      credentials: 'include'
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw Object.assign(new Error(body.error || 'Failed to update demo game'), { status: res.status });
+    }
+    return body;
+  }
+
+  /**
    * Returns all available badges in the system.
    */
   async function getAllBadges() {
@@ -437,6 +474,9 @@ var api = (function () {
     getCurrentUser,
     requireAuthPage,
     getArgs,
+    getDemoGame,
+    getAdminGames,
+    setAdminDemoGame,
     getAllBadges,
     syncBadges,
     getArgById,

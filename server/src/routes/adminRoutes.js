@@ -17,4 +17,8 @@ router.put('/users/:id/ban', adminController.toggleBanUser);
 router.delete('/games/:id', adminController.deleteGame);
 router.delete('/comments/:id', adminController.deleteComment);
 
+router.get('/games', adminController.listGames);
+router.get('/demo-game', adminController.getDemoGame);
+router.put('/demo-game', adminController.setDemoGame);
+
 module.exports = router;

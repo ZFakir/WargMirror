@@ -280,14 +280,40 @@ async function initHomeData() {
   if (document.getElementById('row-creators')) GameCard.renderSkeletons('row-creators', 4);
   renderRightPanelSkeletons();
 
-  // Fetch ARGs (public) and current user (optional) in parallel
+  // Fetch ARGs (public), current user (optional), and configured demo game (public) in parallel
   var results = await Promise.allSettled([
     api.getArgs(),
-    api.getCurrentUser()
+    api.getCurrentUser(),
+    typeof api.getDemoGame === 'function' ? api.getDemoGame() : Promise.resolve(null)
   ]);
 
   var args = results[0].status === 'fulfilled' ? results[0].value : [];
   var currentUser = results[1].status === 'fulfilled' ? results[1].value : null;
+  var demoArg = results[2].status === 'fulfilled' ? results[2].value : null;
+
+  var demoBanner = document.getElementById('demo-banner');
+  if (demoBanner) {
+    if (demoArg && demoArg.id) {
+      var demoTitleEl = document.getElementById('demo-banner-title');
+      var demoCaptionEl = document.getElementById('demo-banner-caption');
+      var demoNoteEl = document.getElementById('demo-banner-note');
+      var demoPlayBtn = document.getElementById('btn-home-play-demo');
+
+      if (demoTitleEl) demoTitleEl.textContent = demoArg.title;
+      if (demoCaptionEl) demoCaptionEl.textContent = demoArg.caption || 'Jump straight into the campus adventure.';
+      if (demoNoteEl) {
+        demoNoteEl.textContent = currentUser
+          ? 'Featured campus demo'
+          : 'No account required — play instantly without logging in.';
+      }
+      if (demoPlayBtn) {
+        demoPlayBtn.href = 'game.html?id=' + encodeURIComponent(demoArg.id) + '&demo=1';
+      }
+      demoBanner.hidden = false;
+    } else {
+      demoBanner.hidden = true;
+    }
+  }
 
   // ── Update topbar avatar & user-gated UI ──
   if (currentUser) {

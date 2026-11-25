@@ -129,14 +129,16 @@ function createApp() {
   const aiRoutes = require('./routes/aiRoutes');
   const minigameRoutes = require('./routes/minigameRoutes');
   const badgeRoutes = require('./routes/badgeRoutes');
+  const demoRoutes = require('./routes/demoRoutes');
 
   app.use('/api/ai', aiRoutes);
   app.use('/api/minigames', minigameRoutes);
   app.use('/api/badges', badgeRoutes);
+  app.use('/api/demo', demoRoutes);
 
   const gameRoutes = require('./routes/gameRoutes');
 
-  app.use('/api/game', requireAuth, gameRoutes);
+  app.use('/api/game', gameRoutes);
   app.use('/api/admin', requireAuth, requireAdmin, adminRoutes);
 
   const path = require('path');

@@ -421,4 +421,74 @@ describe('gameController', () => {
       expect(res.status).toHaveBeenCalledWith(500);
     });
   });
+
+  describe('demo guest gameplay mode', () => {
+    beforeEach(() => {
+      req = {
+        isDemoGuest: true,
+        user: null,
+        session: {},
+        body: {},
+        params: { argId: '10' },
+        query: {}
+      };
+    });
+
+    it('startGameSession initializes session-scoped demo state without writing to DB', async () => {
+      WaypointEdge.findAll.mockResolvedValue([{ to_waypoint_id: 2 }]);
+      Waypoint.findAll.mockResolvedValue([{ waypoint_id: 1 }, { waypoint_id: 2 }]);
+
+      await startGameSession(req, res);
+
+      expect(GameSession.create).not.toHaveBeenCalled();
+      expect(WaypointProgress.create).not.toHaveBeenCalled();
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ arg_id: 10, status: 'active', is_demo: true }));
+      expect(req.session.demoSessions['10'].progress['1'].status).toBe('unlocked');
+      expect(req.session.demoSessions['10'].progress['2'].status).toBe('locked');
+    });
+
+    it('arriveAtWaypoint skips LocationEvent persistence for demo guests', async () => {
+      req.params.waypointId = 1;
+      req.body = { lat: -26.192, lng: 28.03, accuracy_m: 10 };
+      req.session.demoSessions = { '10': { session: { status: 'active' }, progress: {}, attempts: {} } };
+      Waypoint.findByPk.mockResolvedValue({ waypoint_id: 1, arg_id: 10, validation_radius_m: 30 });
+      sequelize.query.mockResolvedValue([{ distance: 8 }]);
+
+      await arriveAtWaypoint(req, res);
+
+      expect(LocationEvent.create).not.toHaveBeenCalled();
+      expect(res.json).toHaveBeenCalledWith({ within_radius: true, distance: 8, radius: 30 });
+      expect(req.session.demoSessions['10'].lastLocation).toMatchObject({ lat: -26.192, lng: 28.03 });
+    });
+
+    it('submitMinigame evaluates answers, unlocks successors, and completes session in session memory', async () => {
+      req.body = { game_id: 100, submission: '1922' };
+      req.session.demoSessions = {
+        '10': {
+          session: { arg_id: 10, status: 'active' },
+          progress: { '1': { waypoint_id: 1, status: 'unlocked' } },
+          attempts: {}
+        }
+      };
+      Minigame.findByPk.mockResolvedValue({
+        game_id: 100,
+        game_type: 'text_answer',
+        waypoint_id: 1,
+        config_json: { answer: '1922' },
+        Waypoint: { arg_id: 10 }
+      });
+      WaypointEdge.findAll.mockResolvedValue([]);
+      Waypoint.findAll.mockResolvedValue([{ waypoint_id: 1 }]);
+
+      await submitMinigame(req, res);
+
+      expect(MinigameAttempt.upsert).not.toHaveBeenCalled();
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+        outcome: 'pass',
+        session_completed: true,
+        nodeStatus: 'completed'
+      }));
+      expect(req.session.demoSessions['10'].session.status).toBe('completed');
+    });
+  });
 });

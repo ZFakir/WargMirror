@@ -46,7 +46,7 @@ async function seed() {
     // ==============================================================
     console.log('🗑  Clearing existing data...');
     const tables = [
-      'admin_audit_log', 'push_subscriptions', 'arg_analytics_daily',
+      'platform_settings', 'admin_audit_log', 'push_subscriptions', 'arg_analytics_daily',
       'leaderboard_global', 'leaderboard_arg', 'user_badges', 'badges',
       'flags', 'comments', 'arg_ratings', 'arg_votes',
       'trust_events', 'location_events', 'minigame_attempts',
@@ -508,6 +508,16 @@ async function seed() {
         (1, 'suspend_user', 'user', 6, '{"note": "Temporary suspension — reviewed and lifted.", "duration_hours": 0}')
     `);
     console.log('   Audit log created.\n');
+
+    // ==============================================================
+    // §17b PLATFORM SETTINGS (default Innovation Day demo game)
+    // ==============================================================
+    console.log('⚙️  Seeding platform settings...');
+    await q(`
+      INSERT INTO platform_settings (setting_key, setting_value)
+      VALUES ('demo_arg_id', '1')
+    `);
+    console.log('   Default demo game set to ARG #1.\n');
 
     // ==============================================================
     // DONE

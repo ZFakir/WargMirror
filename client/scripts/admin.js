@@ -180,6 +180,121 @@ document.addEventListener('DOMContentLoaded', async () => {
   loadFlags();
   loadMetrics();
 
+  // ── Demo Game Configuration ──
+  const demoSelect = document.getElementById('select-demo-game');
+  const demoStatusEl = document.getElementById('demo-current-status');
+  const btnSaveDemo = document.getElementById('btn-save-demo-game');
+  const btnClearDemo = document.getElementById('btn-clear-demo-game');
+  const linkPreviewDemo = document.getElementById('link-preview-demo');
+
+  function updateDemoStatusUI(games, demoArgId) {
+    const activeGame = demoArgId
+      ? games.find(g => Number(g.arg_id) === Number(demoArgId))
+      : null;
+
+    if (demoStatusEl) {
+      if (activeGame) {
+        demoStatusEl.textContent = `Active Demo: ${activeGame.title}`;
+        demoStatusEl.classList.add('is-active');
+      } else {
+        demoStatusEl.textContent = 'No demo game currently set';
+        demoStatusEl.classList.remove('is-active');
+      }
+    }
+
+    if (btnClearDemo) {
+      btnClearDemo.disabled = !demoArgId;
+    }
+
+    if (linkPreviewDemo) {
+      if (demoArgId) {
+        linkPreviewDemo.href = `game.html?id=${encodeURIComponent(demoArgId)}&demo=1`;
+        linkPreviewDemo.hidden = false;
+      } else {
+        linkPreviewDemo.hidden = true;
+      }
+    }
+  }
+
+  let cachedAdminGames = [];
+  async function loadDemoGameConfig() {
+    if (!demoSelect) return;
+    try {
+      const res = await fetch(`${window.API_BASE_URL || ''}/api/admin/games`, {
+        credentials: 'include',
+        cache: 'no-store'
+      });
+      if (!res.ok) throw new Error('Failed to fetch games');
+      const data = await res.json();
+      const games = Array.isArray(data.games) ? data.games : [];
+      const demoArgId = data.demo_arg_id || null;
+      cachedAdminGames = games;
+
+      demoSelect.innerHTML = '';
+      const noneOption = document.createElement('option');
+      noneOption.value = '';
+      noneOption.textContent = '-- No demo game --';
+      demoSelect.appendChild(noneOption);
+
+      games.forEach(game => {
+        const opt = document.createElement('option');
+        opt.value = String(game.arg_id);
+        const creatorName = game.Creator && game.Creator.username ? `@${game.Creator.username}` : 'unknown';
+        opt.textContent = `${game.title} (${game.status} · ${game.mode} · ${creatorName})`;
+        demoSelect.appendChild(opt);
+      });
+
+      demoSelect.value = demoArgId ? String(demoArgId) : '';
+      updateDemoStatusUI(games, demoArgId);
+    } catch (error) {
+      console.error('Error loading demo game config:', error);
+      if (demoStatusEl) {
+        demoStatusEl.textContent = 'Could not load demo setting';
+        demoStatusEl.classList.remove('is-active');
+      }
+    }
+  }
+
+  async function saveDemoSelection(argId) {
+    if (btnSaveDemo) btnSaveDemo.disabled = true;
+    if (btnClearDemo) btnClearDemo.disabled = true;
+    try {
+      const res = await fetch(`${window.API_BASE_URL || ''}/api/admin/demo-game`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ arg_id: argId })
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(payload.error || 'Failed to update demo game');
+      }
+      const nextId = payload.demo_arg_id || null;
+      if (demoSelect) demoSelect.value = nextId ? String(nextId) : '';
+      updateDemoStatusUI(cachedAdminGames, nextId);
+      if (typeof showToast !== 'undefined') {
+        showToast(nextId ? 'Demo game updated!' : 'Demo game cleared.');
+      }
+    } catch (error) {
+      console.error('Error updating demo game:', error);
+      if (typeof showToast !== 'undefined') showToast(error.message || 'Failed to update demo game.');
+    } finally {
+      if (btnSaveDemo) btnSaveDemo.disabled = false;
+      updateDemoStatusUI(cachedAdminGames, demoSelect && demoSelect.value ? Number(demoSelect.value) : null);
+    }
+  }
+
+  btnSaveDemo?.addEventListener('click', () => {
+    const selectedVal = demoSelect ? demoSelect.value : '';
+    saveDemoSelection(selectedVal ? Number(selectedVal) : null);
+  });
+
+  btnClearDemo?.addEventListener('click', () => {
+    saveDemoSelection(null);
+  });
+
+  loadDemoGameConfig();
+
   // Handle Review Flag clicks (Delegation)
   if (flagsList) {
     flagsList.addEventListener('click', (e) => {
@@ -251,6 +366,7 @@ document.addEventListener('DOMContentLoaded', async () => {
               if (typeof showToast !== 'undefined') showToast('Game deleted successfully.');
               closeModal();
               loadFlags();
+              loadDemoGameConfig();
             } else {
               if (typeof showToast !== 'undefined') showToast('Failed to delete game.');
             }

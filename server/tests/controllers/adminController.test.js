@@ -1,13 +1,20 @@
-const { getMetrics, getFlags, resolveFlag, searchUsers, toggleBanUser, deleteGame, deleteComment } = require('../../src/controllers/adminController');
+const { getMetrics, getFlags, resolveFlag, searchUsers, toggleBanUser, deleteGame, deleteComment, listGames, getDemoGame, setDemoGame } = require('../../src/controllers/adminController');
 const { User, Flag, Arg, Comment, GameSession } = require('../../src/models');
+const demoService = require('../../src/services/demoService');
 const { Op } = require('sequelize');
 
 jest.mock('../../src/models', () => ({
   User: { count: jest.fn(), findAll: jest.fn(), findByPk: jest.fn() },
   Flag: { count: jest.fn(), findAll: jest.fn(), findByPk: jest.fn() },
-  Arg: { count: jest.fn(), findByPk: jest.fn() },
+  Arg: { count: jest.fn(), findByPk: jest.fn(), findAll: jest.fn() },
   Comment: { findByPk: jest.fn() },
   GameSession: { count: jest.fn() }
+}));
+
+jest.mock('../../src/services/demoService', () => ({
+  getDemoArgId: jest.fn(),
+  getDemoArg: jest.fn(),
+  setDemoArgId: jest.fn()
 }));
 
 describe('adminController', () => {
@@ -193,6 +200,35 @@ describe('adminController', () => {
       Comment.findByPk.mockRejectedValue(new Error('DB Error'));
       await deleteComment(req, res);
       expect(res.status).toHaveBeenCalledWith(500);
+    });
+  });
+
+  describe('demo game admin endpoints', () => {
+    it('listGames returns non-retired games and current demo_arg_id', async () => {
+      const games = [{ arg_id: 1, title: 'Heritage Trail' }];
+      Arg.findAll.mockResolvedValue(games);
+      demoService.getDemoArgId.mockResolvedValue(1);
+
+      await listGames(req, res);
+
+      expect(res.json).toHaveBeenCalledWith({ games, demo_arg_id: 1 });
+    });
+
+    it('getDemoGame returns configured game', async () => {
+      demoService.getDemoArg.mockResolvedValue({ arg_id: 2, title: 'Demo' });
+      await getDemoGame(req, res);
+      expect(res.json).toHaveBeenCalledWith({ demo_arg_id: 2, game: { arg_id: 2, title: 'Demo' } });
+    });
+
+    it('setDemoGame updates demo game and handles 404/400 errors', async () => {
+      req.body = { arg_id: 2 };
+      demoService.setDemoArgId.mockResolvedValue({ demo_arg_id: 2, game: { arg_id: 2, title: 'Demo' } });
+      await setDemoGame(req, res);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ demo_arg_id: 2 }));
+
+      demoService.setDemoArgId.mockRejectedValue(Object.assign(new Error('Game not found'), { status: 404 }));
+      await setDemoGame(req, res);
+      expect(res.status).toHaveBeenCalledWith(404);
     });
   });
 });

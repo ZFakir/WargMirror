@@ -1,7 +1,37 @@
 const { sequelize, Waypoint, WaypointEdge, Minigame, GameSession, WaypointProgress, MinigameAttempt, LocationEvent, User } = require('../models');
 const badgeService = require('../services/badgeService');
+const demoService = require('../services/demoService');
 
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
+
+/**
+ * Shared answer evaluation for text_answer (plain + MCQ) and qr_barcode.
+ */
+function evaluateSyncMinigameSubmission(game, submission) {
+  const config = game.config_json || {};
+  if (game.game_type === 'text_answer') {
+    if (config.is_mcq) {
+      const submittedIndex = parseInt(submission, 10);
+      const correctText = Array.isArray(config.options)
+        ? String(config.options[config.correct_index] ?? '').toLowerCase().trim()
+        : null;
+      const submittedText = String(submission ?? '').toLowerCase().trim();
+      if ((!isNaN(submittedIndex) && submittedIndex === config.correct_index) ||
+          (correctText && submittedText === correctText)) {
+        return 'pass';
+      }
+      return 'fail';
+    }
+    const correctAns = (config.answer || '').toLowerCase().trim();
+    const userAns = (submission || '').toLowerCase().trim();
+    return (correctAns && userAns === correctAns) ? 'pass' : 'fail';
+  }
+  if (game.game_type === 'qr_barcode') {
+    const correctCode = config.barcode_value || '';
+    return (correctCode && submission === correctCode) ? 'pass' : 'fail';
+  }
+  return 'fail';
+}
 
 // Helper to evaluate branching conditions
 exports.evaluateConditions = async (user_id, rawConditions, transaction = null) => {
@@ -40,6 +70,60 @@ exports.evaluateConditions = async (user_id, rawConditions, transaction = null) 
 
 // Start or resume a game session
 exports.startGameSession = async (req, res) => {
+  if (req.isDemoGuest) {
+    try {
+      const arg_id = req.params.argId;
+      let demoData = demoService.getDemoSession(req, arg_id);
+      const nowIso = new Date().toISOString();
+
+      if (!demoData) {
+        const edges = await WaypointEdge.findAll({ where: { arg_id } });
+        const toNodes = new Set(edges.map(e => e.to_waypoint_id));
+        const allWaypoints = await Waypoint.findAll({ where: { arg_id } });
+        const rootNodes = allWaypoints.filter(w => !toNodes.has(w.waypoint_id));
+        const roots = rootNodes.length > 0 ? rootNodes : allWaypoints;
+
+        const progress = {};
+        allWaypoints.forEach(w => {
+          const isRoot = roots.some(r => r.waypoint_id === w.waypoint_id);
+          progress[String(w.waypoint_id)] = {
+            waypoint_id: w.waypoint_id,
+            status: isRoot ? 'unlocked' : 'locked',
+            unlocked_at: isRoot ? nowIso : null,
+            completed_at: null
+          };
+        });
+
+        demoData = {
+          session: {
+            user_id: null,
+            arg_id: Number(arg_id),
+            status: 'active',
+            started_at: nowIso,
+            completed_at: null,
+            last_active_at: nowIso,
+            total_points_earned: 0,
+            distance_m: 0,
+            is_demo: true
+          },
+          progress,
+          attempts: {},
+          lastLocation: null
+        };
+        demoService.setDemoSession(req, arg_id, demoData);
+      } else if (demoData.session && demoData.session.status === 'abandoned') {
+        demoData.session.status = 'active';
+        demoData.session.last_active_at = nowIso;
+      }
+
+      await demoService.saveReqSession(req);
+      return res.json(demoData.session);
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ error: 'Failed to start demo session' });
+    }
+  }
+
   const transaction = await sequelize.transaction();
   try {
     const user_id = req.user.user_id;
@@ -86,6 +170,72 @@ exports.startGameSession = async (req, res) => {
 // Get the full game state for a player
 exports.getGameState = async (req, res) => {
   try {
+    if (req.isDemoGuest) {
+      const arg_id = req.params.argId;
+      const demoData = demoService.getDemoSession(req, arg_id);
+      if (!demoData) return res.status(404).json({ error: 'Session not found' });
+
+      const waypoints = await Waypoint.findAll({
+        where: { arg_id },
+        include: [{ model: Minigame }]
+      });
+      const edges = await WaypointEdge.findAll({ where: { arg_id } });
+
+      let mutated = false;
+      if (demoData.session.status === 'active' && waypoints.length > 0) {
+        let hasUnlocked = waypoints.some(w => {
+          const prog = demoData.progress[String(w.waypoint_id)];
+          return prog && prog.status === 'unlocked';
+        });
+
+        if (!hasUnlocked) {
+          const toNodes = new Set(edges.map(e => e.to_waypoint_id));
+          const rootNodes = waypoints.filter(w => !toNodes.has(w.waypoint_id));
+          const roots = rootNodes.length > 0 ? rootNodes : waypoints;
+          const nowIso = new Date().toISOString();
+
+          for (const w of roots) {
+            const key = String(w.waypoint_id);
+            const existing = demoData.progress[key];
+            if (existing && (existing.status === 'completed' || existing.status === 'failed')) {
+              continue;
+            }
+            demoData.progress[key] = {
+              waypoint_id: w.waypoint_id,
+              status: 'unlocked',
+              unlocked_at: nowIso,
+              completed_at: null
+            };
+            hasUnlocked = true;
+            mutated = true;
+          }
+
+          const hasFinishedNode = waypoints.some(w => {
+            const prog = demoData.progress[String(w.waypoint_id)];
+            return prog && (prog.status === 'completed' || prog.status === 'failed');
+          });
+          if (!hasUnlocked && hasFinishedNode) {
+            demoData.session.status = 'completed';
+            demoData.session.completed_at = nowIso;
+            mutated = true;
+          }
+        }
+      }
+
+      if (mutated) {
+        await demoService.saveReqSession(req);
+      }
+
+      return res.json({
+        session: demoData.session,
+        waypoints,
+        progress: Object.values(demoData.progress),
+        attempts: Object.values(demoData.attempts || {}),
+        edges,
+        is_demo: true
+      });
+    }
+
     const user_id = req.user.user_id;
     const arg_id = req.params.argId;
 
@@ -164,7 +314,6 @@ exports.getGameState = async (req, res) => {
 // Arrive at a waypoint (Geofence check)
 exports.arriveAtWaypoint = async (req, res) => {
   try {
-    const user_id = req.user.user_id;
     const waypoint_id = req.params.waypointId;
     const { lat, lng, accuracy_m } = req.body;
 
@@ -183,6 +332,35 @@ exports.arriveAtWaypoint = async (req, res) => {
 
     const waypoint = await Waypoint.findByPk(waypoint_id);
     if (!waypoint) return res.status(404).json({ error: 'Waypoint not found' });
+
+    if (req.isDemoGuest) {
+      const [result] = await sequelize.query(`
+        SELECT ST_Distance_Sphere(location, ST_GeomFromText(:point_wkt, 4326)) AS distance
+        FROM waypoints WHERE waypoint_id = :waypoint_id
+      `, {
+        replacements: { waypoint_id, point_wkt: pointWkt },
+        type: sequelize.QueryTypes.SELECT
+      });
+
+      const distance = result ? result.distance : Infinity;
+      const within_radius = distance <= waypoint.validation_radius_m;
+
+      const targetArgId = req.params.argId || waypoint.arg_id;
+      const demoData = targetArgId ? demoService.getDemoSession(req, targetArgId) : null;
+      if (demoData) {
+        demoData.lastLocation = {
+          lat,
+          lng,
+          accuracy_m: accuracy_m || null,
+          recorded_at: new Date().toISOString()
+        };
+        await demoService.saveReqSession(req);
+      }
+
+      return res.json({ within_radius, distance, radius: waypoint.validation_radius_m });
+    }
+
+    const user_id = req.user.user_id;
 
     // Log location event
     await LocationEvent.create({
@@ -212,6 +390,112 @@ exports.arriveAtWaypoint = async (req, res) => {
 
 // Submit a minigame
 exports.submitMinigame = async (req, res) => {
+  if (req.isDemoGuest) {
+    try {
+      const { game_id, submission } = req.body;
+      const game = await Minigame.findByPk(game_id, {
+        include: [{ model: Waypoint }]
+      });
+      if (!game) {
+        return res.status(404).json({ error: 'Minigame not found' });
+      }
+
+      const waypoint_id = game.waypoint_id;
+      const arg_id = game.Waypoint ? game.Waypoint.arg_id : req.params.argId;
+
+      const demoData = demoService.getDemoSession(req, arg_id);
+      if (!demoData || !demoData.session || demoData.session.status !== 'active') {
+        return res.status(403).json({ error: 'No active session for this WARG. Start the game before submitting.' });
+      }
+
+      const wpProg = demoData.progress[String(waypoint_id)];
+      if (!wpProg || wpProg.status === 'locked') {
+        return res.status(403).json({ error: 'Waypoint is locked. Complete the previous waypoints first.' });
+      }
+
+      let outcome = 'fail';
+      const config = game.config_json || {};
+
+      if (game.game_type === 'gps_proximity') {
+        if (demoData.lastLocation && Number.isFinite(demoData.lastLocation.lat) && Number.isFinite(demoData.lastLocation.lng)) {
+          const pointWkt = `POINT(${demoData.lastLocation.lat} ${demoData.lastLocation.lng})`;
+          const [distResult] = await sequelize.query(`
+            SELECT ST_Distance_Sphere(location, ST_GeomFromText(:point_wkt, 4326)) AS distance
+            FROM waypoints WHERE waypoint_id = :waypoint_id
+          `, {
+            replacements: { waypoint_id, point_wkt: pointWkt },
+            type: sequelize.QueryTypes.SELECT
+          });
+          const distance = distResult ? distResult.distance : null;
+          const radius = game.Waypoint ? game.Waypoint.validation_radius_m : null;
+          if (distance !== null && radius !== null && distance <= radius) {
+            outcome = 'pass';
+          }
+        }
+      } else {
+        outcome = evaluateSyncMinigameSubmission(game, submission);
+      }
+
+      const nowIso = new Date().toISOString();
+      if (!demoData.attempts) demoData.attempts = {};
+      demoData.attempts[String(game_id)] = {
+        user_id: null,
+        game_id,
+        outcome,
+        submission_json: submission,
+        score: outcome === 'pass' ? 1.0 : 0.0,
+        attempted_at: nowIso
+      };
+
+      const can_retry = Boolean(outcome === 'fail' && config.allow_multiple_attempts);
+      const finalStatus = outcome === 'pass' ? 'completed' : 'failed';
+
+      demoData.progress[String(waypoint_id)] = {
+        waypoint_id,
+        status: finalStatus,
+        unlocked_at: wpProg.unlocked_at || nowIso,
+        completed_at: nowIso
+      };
+
+      const unlockedNodes = [];
+      const edges = await WaypointEdge.findAll({ where: { from_waypoint_id: waypoint_id } });
+      for (const edge of edges) {
+        if (demoService.evaluateDemoConditions(demoData, edge.conditions_json)) {
+          const existingSucc = demoData.progress[String(edge.to_waypoint_id)] || {};
+          demoData.progress[String(edge.to_waypoint_id)] = {
+            waypoint_id: edge.to_waypoint_id,
+            status: 'unlocked',
+            unlocked_at: nowIso,
+            completed_at: existingSucc.completed_at || null
+          };
+          unlockedNodes.push(edge.to_waypoint_id);
+        }
+      }
+
+      const argWaypoints = await Waypoint.findAll({ where: { arg_id }, attributes: ['waypoint_id'] });
+      const argWpIds = argWaypoints.map(w => w.waypoint_id);
+      const sessionProgress = argWpIds.map(id => demoData.progress[String(id)]).filter(Boolean);
+      const hasUnlocked = sessionProgress.some(p => p.status === 'unlocked');
+      let session_completed = false;
+
+      if (!hasUnlocked && sessionProgress.length > 0 && sessionProgress.length === argWpIds.length && sessionProgress.every(p => p.status === 'completed' || p.status === 'failed')) {
+        if (!(outcome === 'fail' && can_retry && unlockedNodes.length === 0)) {
+          session_completed = true;
+          demoData.session.status = 'completed';
+          demoData.session.completed_at = nowIso;
+        }
+      }
+
+      demoData.session.last_active_at = nowIso;
+      await demoService.saveReqSession(req);
+
+      return res.json({ outcome, can_retry, unlockedNodes, session_completed, nodeStatus: finalStatus });
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ error: 'Failed to submit minigame' });
+    }
+  }
+
   const transaction = await sequelize.transaction();
   try {
     const user_id = req.user.user_id;
@@ -289,30 +573,8 @@ exports.submitMinigame = async (req, res) => {
           }
         }
       }
-    } else if (game.game_type === 'text_answer') {
-      if (config.is_mcq) {
-        // Accept either the option index or the exact option text.
-        const submittedIndex = parseInt(submission, 10);
-        const correctText = Array.isArray(config.options)
-          ? String(config.options[config.correct_index] ?? '').toLowerCase().trim()
-          : null;
-        const submittedText = String(submission ?? '').toLowerCase().trim();
-        if ((!isNaN(submittedIndex) && submittedIndex === config.correct_index) ||
-            (correctText && submittedText === correctText)) {
-          outcome = 'pass';
-        }
-      } else {
-        const correctAns = (config.answer || '').toLowerCase().trim();
-        const userAns = (submission || '').toLowerCase().trim();
-        // Simple exact match
-        if (correctAns && userAns === correctAns) outcome = 'pass';
-      }
-    } else if (game.game_type === 'qr_barcode') {
-      const correctCode = config.barcode_value || '';
-      if (correctCode && submission === correctCode) outcome = 'pass';
     } else {
-      // Fallback stub for advanced types
-      outcome = 'fail';
+      outcome = evaluateSyncMinigameSubmission(game, submission);
     }
 
     // Upsert MinigameAttempt
@@ -396,8 +658,19 @@ exports.submitMinigame = async (req, res) => {
 // Abandon Session
 exports.abandonSession = async (req, res) => {
   try {
-    const user_id = req.user.user_id;
     const arg_id = req.params.argId;
+
+    if (req.isDemoGuest) {
+      const demoData = demoService.getDemoSession(req, arg_id);
+      if (demoData && demoData.session) {
+        demoData.session.status = 'abandoned';
+        demoData.session.last_active_at = new Date().toISOString();
+        await demoService.saveReqSession(req);
+      }
+      return res.json({ success: true });
+    }
+
+    const user_id = req.user.user_id;
 
     await GameSession.update({ status: 'abandoned' }, {
       where: { user_id, arg_id }
@@ -412,6 +685,31 @@ exports.abandonSession = async (req, res) => {
 
 // Reset Session (Replay ARG)
 exports.resetSession = async (req, res) => {
+  if (req.isDemoGuest) {
+    try {
+      const arg_id = req.params.argId;
+      const demoData = demoService.getDemoSession(req, arg_id);
+      if (!demoData) {
+        return res.status(404).json({ error: 'Session not found' });
+      }
+      const nowIso = new Date().toISOString();
+      demoData.progress = {};
+      demoData.attempts = {};
+      demoData.lastLocation = null;
+      demoData.session.status = 'active';
+      demoData.session.started_at = nowIso;
+      demoData.session.completed_at = null;
+      demoData.session.total_points_earned = 0;
+      demoData.session.distance_m = 0;
+      demoData.session.last_active_at = nowIso;
+      await demoService.saveReqSession(req);
+      return res.json({ success: true });
+    } catch (error) {
+      console.error('Reset Demo Session Error:', error);
+      return res.status(500).json({ error: 'Failed to reset session' });
+    }
+  }
+
   const transaction = await sequelize.transaction();
   try {
     const user_id = req.user.user_id;
@@ -480,6 +778,77 @@ exports.resetSession = async (req, res) => {
 
 // Point Domination: Handle location ping
 exports.dominationPing = async (req, res) => {
+  if (req.isDemoGuest) {
+    try {
+      const waypoint_id = req.params.waypointId;
+      const { lat, lng, game_id } = req.body;
+
+      if (lat === undefined || lng === undefined || !game_id) {
+        return res.status(400).json({ error: 'Missing parameters' });
+      }
+      if (!Number.isFinite(lat) || !Number.isFinite(lng) ||
+          Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+        return res.status(400).json({ error: 'Invalid coordinates' });
+      }
+
+      const pointWkt = `POINT(${lat} ${lng})`;
+      const waypoint = await Waypoint.findByPk(waypoint_id);
+      const minigame = await Minigame.findByPk(game_id);
+      if (!waypoint || !minigame || minigame.game_type !== 'point_domination') {
+        return res.status(400).json({ error: 'Invalid waypoint or minigame' });
+      }
+
+      const [result] = await sequelize.query(`
+        SELECT ST_Distance_Sphere(location, ST_GeomFromText(:point_wkt, 4326)) AS distance
+        FROM waypoints WHERE waypoint_id = :waypoint_id
+      `, {
+        replacements: { waypoint_id, point_wkt: pointWkt },
+        type: sequelize.QueryTypes.SELECT
+      });
+
+      const distance = result ? result.distance : Infinity;
+      const within_radius = distance <= waypoint.validation_radius_m;
+
+      const arg_id = req.params.argId || waypoint.arg_id;
+      const demoData = demoService.getDemoSession(req, arg_id);
+      const existingAttempt = demoData && demoData.attempts ? demoData.attempts[String(game_id)] : null;
+      const submissionData = existingAttempt && existingAttempt.submission_json
+        ? { ...existingAttempt.submission_json }
+        : { cumulative_time_hours: 0, top_score_time_hours: 0, last_ping_at: null };
+
+      const now = new Date();
+      if (within_radius) {
+        if (submissionData.last_ping_at) {
+          const timeDiffMs = now.getTime() - new Date(submissionData.last_ping_at).getTime();
+          if (timeDiffMs > 0 && timeDiffMs < 1000 * 60 * 5) {
+            submissionData.cumulative_time_hours += timeDiffMs / (1000 * 60 * 60);
+          }
+        }
+        submissionData.last_ping_at = now.toISOString();
+      } else {
+        submissionData.last_ping_at = null;
+      }
+
+      if (demoData) {
+        if (!demoData.attempts) demoData.attempts = {};
+        demoData.attempts[String(game_id)] = {
+          user_id: null,
+          game_id,
+          outcome: 'pass',
+          submission_json: submissionData,
+          score: 1.0,
+          attempted_at: now.toISOString()
+        };
+        await demoService.saveReqSession(req);
+      }
+
+      return res.json({ success: true, within_radius, submissionData });
+    } catch (error) {
+      console.error('Demo Ping Error:', error);
+      return res.status(500).json({ error: 'Failed to process domination ping' });
+    }
+  }
+
   const transaction = await sequelize.transaction();
   try {
     const user_id = req.user.user_id;
