@@ -2,6 +2,7 @@ const { User } = require('../models');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const { Op } = require('sequelize');
+const { invalidateUser } = require('../utils/cache');
 
 exports.signup = async (req, res) => {
   try {
@@ -12,10 +13,11 @@ exports.signup = async (req, res) => {
     }
 
     // Check if user already exists
-    const existingUser = await User.findOne({ 
-      where: { 
-        [Op.or]: [{ email }, { username }] 
-      } 
+    const existingUser = await User.findOne({
+      where: {
+        [Op.or]: [{ email }, { username }]
+      },
+      attributes: ['user_id', 'email', 'username']
     });
 
     if (existingUser) {
@@ -44,7 +46,7 @@ exports.signup = async (req, res) => {
       if (err) {
         return res.status(500).json({ error: 'Failed to log in after signup.' });
       }
-      const sendSuccess = () => res.status(201).json({ 
+      const sendSuccess = () => res.status(201).json({
         message: 'Signup successful',
         user: {
           user_id: newUser.user_id,
@@ -76,17 +78,17 @@ exports.signup = async (req, res) => {
 exports.checkUserExists = async (req, res) => {
   try {
     const { email, username } = req.query;
-    
+
     if (email) {
-      const user = await User.findOne({ where: { email } });
+      const user = await User.findOne({ where: { email }, attributes: ['user_id'] });
       if (user) return res.json({ exists: true, field: 'email' });
     }
-    
+
     if (username) {
-      const user = await User.findOne({ where: { username } });
+      const user = await User.findOne({ where: { username }, attributes: ['user_id'] });
       if (user) return res.json({ exists: true, field: 'username' });
     }
-    
+
     res.json({ exists: false });
   } catch (error) {
     console.error('CheckUserExists Error:', error);
@@ -97,7 +99,7 @@ exports.checkUserExists = async (req, res) => {
 exports.updateAccount = async (req, res) => {
   try {
     const { email, password, current_password } = req.body;
-    
+
     if (!req.isAuthenticated || !req.isAuthenticated()) {
       return res.status(401).json({ error: 'Not authenticated' });
     }
@@ -109,7 +111,7 @@ exports.updateAccount = async (req, res) => {
     const updates = {};
     if (email && email !== req.user.email) {
       // Check if new email is in use
-      const existingUser = await User.findOne({ where: { email } });
+      const existingUser = await User.findOne({ where: { email }, attributes: ['user_id'] });
       if (existingUser) {
         return res.status(400).json({ error: 'Email already in use.' });
       }
@@ -128,6 +130,7 @@ exports.updateAccount = async (req, res) => {
 
     if (Object.keys(updates).length > 0) {
       await User.update(updates, { where: { user_id: req.user.user_id } });
+      invalidateUser(req.user.user_id);
     }
 
     res.json({ message: 'Account updated successfully' });
@@ -142,9 +145,11 @@ exports.deleteAccount = async (req, res) => {
     if (!req.isAuthenticated || !req.isAuthenticated()) {
       return res.status(401).json({ error: 'Not authenticated' });
     }
-    
-    await User.destroy({ where: { user_id: req.user.user_id } });
-    
+
+    const userId = req.user.user_id;
+    await User.destroy({ where: { user_id: userId } });
+    invalidateUser(userId);
+
     req.logout((err) => {
       if (err) {
         console.error('Logout error during deletion:', err);
@@ -169,7 +174,7 @@ exports.forgotPassword = async (req, res) => {
       return res.status(400).json({ error: 'Email is required.' });
     }
 
-    const user = await User.findOne({ where: { email } });
+    const user = await User.findOne({ where: { email }, attributes: ['user_id', 'auth_provider'] });
 
     // Only local accounts have a password to reset.
     if (user && user.auth_provider === 'local') {
@@ -212,7 +217,8 @@ exports.resetPassword = async (req, res) => {
       where: {
         password_reset_token: tokenHash,
         password_reset_expires: { [Op.gt]: new Date() }
-      }
+      },
+      attributes: ['user_id']
     });
 
     if (!user) {
@@ -230,6 +236,7 @@ exports.resetPassword = async (req, res) => {
       },
       { where: { user_id: user.user_id } }
     );
+    invalidateUser(user.user_id);
 
     res.json({ message: 'Password reset successful. You can now log in.' });
   } catch (error) {

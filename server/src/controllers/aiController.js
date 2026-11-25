@@ -9,6 +9,18 @@ if (!AI_KEY) {
   AI_KEY = 'dev-secret-key';
 }
 
+function buildAiFetchOptions(formData) {
+  const options = {
+    method: 'POST',
+    headers: { 'X-API-Key': AI_KEY },
+    body: formData
+  };
+  if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') {
+    options.signal = AbortSignal.timeout(25000);
+  }
+  return options;
+}
+
 const evaluateShape = async (req, res) => {
   try {
     if (!req.files || !req.files.image || !req.files.target_mask) {
@@ -22,11 +34,7 @@ const evaluateShape = async (req, res) => {
     formData.append('image', new Blob([imageFile.buffer], { type: imageFile.mimetype }), imageFile.originalname);
     formData.append('target_mask', new Blob([targetMaskFile.buffer], { type: targetMaskFile.mimetype }), targetMaskFile.originalname);
 
-    const response = await fetch(`${AI_SERVICE_URL}/api/v1/sam-extract`, {
-      method: 'POST',
-      headers: { 'X-API-Key': AI_KEY },
-      body: formData
-    });
+    const response = await fetch(`${AI_SERVICE_URL}/api/v1/sam-extract`, buildAiFetchOptions(formData));
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -54,11 +62,7 @@ const evaluateColour = async (req, res) => {
     formData.append('image', new Blob([imageFile.buffer], { type: imageFile.mimetype }), imageFile.originalname);
     formData.append('reference_image', new Blob([referenceImageFile.buffer], { type: referenceImageFile.mimetype }), referenceImageFile.originalname);
 
-    const response = await fetch(`${AI_SERVICE_URL}/api/v1/hsv-match`, {
-      method: 'POST',
-      headers: { 'X-API-Key': AI_KEY },
-      body: formData
-    });
+    const response = await fetch(`${AI_SERVICE_URL}/api/v1/hsv-match`, buildAiFetchOptions(formData));
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -86,11 +90,7 @@ const evaluateTexture = async (req, res) => {
     formData.append('image', new Blob([imageFile.buffer], { type: imageFile.mimetype }), imageFile.originalname);
     formData.append('reference_image', new Blob([referenceImageFile.buffer], { type: referenceImageFile.mimetype }), referenceImageFile.originalname);
 
-    const response = await fetch(`${AI_SERVICE_URL}/api/v1/texture-match`, {
-      method: 'POST',
-      headers: { 'X-API-Key': AI_KEY },
-      body: formData
-    });
+    const response = await fetch(`${AI_SERVICE_URL}/api/v1/texture-match`, buildAiFetchOptions(formData));
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -118,11 +118,7 @@ const evaluateSift = async (req, res) => {
     formData.append('image', new Blob([imageFile.buffer], { type: imageFile.mimetype }), imageFile.originalname);
     formData.append('archival_image', new Blob([archivalImageFile.buffer], { type: archivalImageFile.mimetype }), archivalImageFile.originalname);
 
-    const response = await fetch(`${AI_SERVICE_URL}/api/v1/sift-match`, {
-      method: 'POST',
-      headers: { 'X-API-Key': AI_KEY },
-      body: formData
-    });
+    const response = await fetch(`${AI_SERVICE_URL}/api/v1/sift-match`, buildAiFetchOptions(formData));
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -148,11 +144,7 @@ const evaluateSymmetry = async (req, res) => {
     const formData = new FormData();
     formData.append('image', new Blob([imageFile.buffer], { type: imageFile.mimetype }), imageFile.originalname);
 
-    const response = await fetch(`${AI_SERVICE_URL}/api/v1/symmetry`, {
-      method: 'POST',
-      headers: { 'X-API-Key': AI_KEY },
-      body: formData
-    });
+    const response = await fetch(`${AI_SERVICE_URL}/api/v1/symmetry`, buildAiFetchOptions(formData));
 
     if (!response.ok) {
       const errorText = await response.text();

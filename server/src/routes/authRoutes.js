@@ -3,6 +3,7 @@ const express = require('express');
 const passport = require('passport');
 const router = express.Router();
 const authController = require('../controllers/authController');
+const { userSessionCache } = require('../utils/cache');
 
 // Short-lived, single-use OAuth handoff codes for cross-origin redirects.
 // Because session cookies are Partitioned (CHIPS), a cookie set during the
@@ -271,14 +272,19 @@ router.post('/logout', (req, res) => {
 
 // Get the currently authenticated user
 router.get('/me', async (req, res) => {
+  res.set('Cache-Control', 'private, no-store');
   if (req.isAuthenticated()) {
     try {
       const { GameSession } = require('../models');
-      const gamesCompleted = await GameSession.count({
-        where: { user_id: req.user.user_id, status: 'completed' },
-        distinct: true,
-        col: 'arg_id'
-      });
+      const gamesCompleted = await userSessionCache.getOrSet(
+        `user_completed:${req.user.user_id}`,
+        30000,
+        () => GameSession.count({
+          where: { user_id: req.user.user_id, status: 'completed' },
+          distinct: true,
+          col: 'arg_id'
+        })
+      );
       return res.json({
         user_id: req.user.user_id,
         username: req.user.username,

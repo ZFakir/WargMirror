@@ -1,3 +1,4 @@
+const { literal } = require('sequelize');
 const { GameSession, Arg } = require('../models');
 
 exports.getActiveSessions = async (req, res) => {
@@ -8,9 +9,15 @@ exports.getActiveSessions = async (req, res) => {
     }
     const sessions = await GameSession.findAll({
       where: { user_id: req.user.user_id },
-      include: [{ model: Arg, attributes: ['title', 'caption', 'cover_image'] }],
+      include: [{
+        model: Arg,
+        attributes: ['title', 'caption', [literal('`Arg`.`cover_image` IS NOT NULL'), 'cover_image']]
+      }],
       order: [['last_active_at', 'DESC']]
     });
+    if (typeof res.set === 'function') {
+      res.set('Cache-Control', 'private, max-age=10');
+    }
     res.json(sessions);
   } catch (error) {
     console.error(error);

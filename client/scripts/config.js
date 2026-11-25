@@ -1,19 +1,21 @@
 // Global config — switches between local dev and production automatically
-const API_BASE_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+const isLocalHost = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+const API_BASE_URL = isLocalHost
   ? 'http://localhost:3000'
   : 'https://wargmirror.onrender.com';
-// This file holds global configuration for the frontend
-
-// Define the base URL for the backend API
-window.API_BASE_URL = 'https://wargmirror.onrender.com';
-
-if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-  window.API_BASE_URL = 'http://localhost:3000';
-}
 
 // Make it globally available (also as API_BASE for backwards compatibility)
 window.API_BASE_URL = API_BASE_URL;
 window.API_BASE = API_BASE_URL;
+
+// Warm DNS + TCP + TLS connection to the production backend early
+if (!isLocalHost && document.head && !document.querySelector('link[rel="preconnect"][href="' + API_BASE_URL + '"]')) {
+  const preconnect = document.createElement('link');
+  preconnect.rel = 'preconnect';
+  preconnect.href = API_BASE_URL;
+  preconnect.crossOrigin = 'use-credentials';
+  document.head.appendChild(preconnect);
+}
 
 // Register Service Worker for offline capabilities
 if ('serviceWorker' in navigator) {
@@ -62,13 +64,34 @@ document.addEventListener('keydown', e => {
 
 // --- Backend keep-alive ---
 // The backend (Render free tier) spins down after ~15 min idle and the
-// database sleeps too, making the first request very slow. Ping /health
-// shortly after load (to wake a sleeping backend) and then every 10 min
-// to keep it warm. Failures are silent by design — this is best-effort.
+// database sleeps too. Only ping /health if no recent ping or API activity
+// occurred within the last 8 minutes, and skip hidden background tabs.
 (function pingBackendHealth() {
+  const KEEP_ALIVE_COOLDOWN_MS = 8 * 60 * 1000;
+
+  const shouldPing = () => {
+    if (document.visibilityState === 'hidden') return false;
+    const now = Date.now();
+    if (window._lastApiActivityAt && (now - window._lastApiActivityAt) < KEEP_ALIVE_COOLDOWN_MS) {
+      return false;
+    }
+    try {
+      const lastPing = parseInt(sessionStorage.getItem('warg_last_health_ping') || '0', 10);
+      if (lastPing && (now - lastPing) < KEEP_ALIVE_COOLDOWN_MS) {
+        return false;
+      }
+    } catch { /* ignore storage restrictions */ }
+    return true;
+  };
+
   const ping = () => {
+    if (!shouldPing()) return;
+    try {
+      sessionStorage.setItem('warg_last_health_ping', String(Date.now()));
+    } catch { /* ignore */ }
     fetch(window.API_BASE_URL + '/health', { credentials: 'include' }).catch(() => {});
   };
+
   setTimeout(ping, 3000);
   setInterval(ping, 10 * 60 * 1000);
 })();

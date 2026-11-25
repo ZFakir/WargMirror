@@ -3,18 +3,23 @@ const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const LocalStrategy = require('passport-local').Strategy;
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
+const { userSessionCache } = require('../utils/cache');
+
+const DESERIALIZE_EXCLUDE = ['session_token', 'avatar', 'password_reset_token', 'password_reset_expires'];
 
 // Serialize user ID into the session
 passport.serializeUser((user, done) => {
   done(null, user.user_id);
 });
 
-// Deserialize user from the session by ID
+// Deserialize user from the session by ID (cached briefly, without BLOB/reset fields)
 passport.deserializeUser(async (id, done) => {
   try {
-    const user = await User.findByPk(id, {
-      attributes: { exclude: ['session_token'] }
-    });
+    const user = await userSessionCache.getOrSet(String(id), 30 * 1000, () =>
+      User.findByPk(id, {
+        attributes: { exclude: DESERIALIZE_EXCLUDE }
+      })
+    );
     done(null, user);
   } catch (err) {
     done(err, null);
@@ -99,4 +104,3 @@ passport.use(new LocalStrategy(
 ));
 
 module.exports = passport;
-

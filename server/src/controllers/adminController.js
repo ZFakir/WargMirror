@@ -1,6 +1,13 @@
 const { User, Flag, Arg, Comment, GameSession } = require('../models');
 const { Op } = require('sequelize');
 const badgeService = require('../services/badgeService');
+const {
+  invalidateArgs,
+  invalidateArg,
+  invalidateCoverImage,
+  invalidateUser,
+  invalidateBadgeCooldown
+} = require('../utils/cache');
 
 // Fields safe to return to the admin client — never leak password_hash,
 // session_token or google_uid in a response body.
@@ -60,13 +67,14 @@ exports.resolveFlag = async (req, res) => {
     if (!flag) {
       return res.status(404).json({ error: 'Flag not found' });
     }
-    
+
     flag.status = 'resolved';
     flag.resolved_by = req.user.user_id;
     flag.resolved_at = new Date();
     await flag.save();
 
     if (flag.reporter_id) {
+      invalidateBadgeCooldown(flag.reporter_id);
       badgeService.evaluateAndAwardBadges(flag.reporter_id).catch(() => {});
     }
 
@@ -108,7 +116,7 @@ exports.searchUsers = async (req, res) => {
 exports.toggleBanUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const user = await User.findByPk(id);
+    const user = await User.findByPk(id, { attributes: [...ADMIN_USER_FIELDS] });
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
@@ -117,6 +125,7 @@ exports.toggleBanUser = async (req, res) => {
     // system no longer sets automatically — bans must never touch it.
     user.is_suspended = !user.is_suspended;
     await user.save();
+    invalidateUser(id);
 
     const safeUser = {};
     for (const field of ADMIN_USER_FIELDS) {
@@ -133,13 +142,16 @@ exports.toggleBanUser = async (req, res) => {
 exports.deleteGame = async (req, res) => {
   try {
     const { id } = req.params;
-    const arg = await Arg.findByPk(id);
-    
+    const arg = await Arg.findByPk(id, { attributes: ['arg_id'] });
+
     if (!arg) {
       return res.status(404).json({ error: 'Game not found' });
     }
 
     await arg.destroy();
+    invalidateArgs();
+    invalidateArg(id);
+    invalidateCoverImage(id);
     res.json({ message: 'Game deleted successfully' });
   } catch (error) {
     console.error('Error deleting game:', error);

@@ -1,31 +1,48 @@
+const { literal, Op } = require('sequelize');
 const { User, Arg, FriendRequest, GameSession, Badge } = require('../models');
-const { Op } = require('sequelize');
 const badgeService = require('../services/badgeService');
+const {
+  isBadgeEvalFresh,
+  markBadgeEval,
+  invalidateBadgeCooldown
+} = require('../utils/cache');
 
-// Profile fields that must never be exposed to other clients.
-const PRIVATE_USER_ATTRIBUTES = ['google_uid', 'session_token', 'password_hash', 'email'];
+// Profile fields that must never be exposed to other clients (avatar is a MEDIUMBLOB not used by the UI).
+const PRIVATE_USER_ATTRIBUTES = ['google_uid', 'session_token', 'password_hash', 'email', 'avatar', 'password_reset_token', 'password_reset_expires'];
+const COVER_EXISTS_ATTR = [literal('`Arg`.`cover_image` IS NOT NULL'), 'cover_image'];
 
 exports.getUserProfile = async (req, res) => {
   try {
-    try {
-      await badgeService.evaluateAndAwardBadges(req.params.id);
-    } catch (badgeErr) {
-      console.warn('Badge evaluation error on profile fetch:', badgeErr.message);
+    const targetId = req.params.id;
+    if (!isBadgeEvalFresh(targetId)) {
+      try {
+        await badgeService.evaluateAndAwardBadges(targetId);
+        markBadgeEval(targetId);
+      } catch (badgeErr) {
+        console.warn('Badge evaluation error on profile fetch:', badgeErr.message);
+      }
     }
 
-    const user = await User.findByPk(req.params.id, {
-      attributes: { exclude: PRIVATE_USER_ATTRIBUTES },
-      include: [{ model: Badge, attributes: ['badge_id', 'name', 'description', 'icon_svg'], through: { attributes: ['awarded_at'] } }]
-    });
+    const [user, gamesCompleted] = await Promise.all([
+      User.findByPk(targetId, {
+        attributes: { exclude: PRIVATE_USER_ATTRIBUTES },
+        include: [{ model: Badge, attributes: ['badge_id', 'name', 'description', 'icon_svg'], through: { attributes: ['awarded_at'] } }]
+      }),
+      GameSession.count({
+        where: { user_id: targetId, status: 'completed' },
+        distinct: true,
+        col: 'arg_id'
+      })
+    ]);
+
     if (!user) return res.status(404).json({ error: 'User not found' });
 
-    const gamesCompleted = await GameSession.count({
-      where: { user_id: req.params.id, status: 'completed' },
-      distinct: true,
-      col: 'arg_id'
-    });
     const userJSON = user.toJSON();
     userJSON.games_completed = gamesCompleted;
+
+    if (typeof res.set === 'function') {
+      res.set('Cache-Control', 'private, max-age=15');
+    }
 
     res.json(userJSON);
   } catch (error) {
@@ -38,8 +55,12 @@ exports.getUserLibrary = async (req, res) => {
   try {
     const args = await Arg.findAll({
       where: { creator_id: req.params.id },
-      include: [{ model: User, as: 'Creator', attributes: ['username', 'avatar'] }]
+      attributes: { exclude: ['cover_image'], include: [COVER_EXISTS_ATTR] },
+      include: [{ model: User, as: 'Creator', attributes: ['username'] }]
     });
+    if (typeof res.set === 'function') {
+      res.set('Cache-Control', 'private, max-age=15');
+    }
     res.json(args);
   } catch (error) {
     console.error(error);
@@ -68,7 +89,7 @@ exports.getFriends = async (req, res) => {
 
     const friends = await User.findAll({
       where: { user_id: friendIds },
-      attributes: ['user_id', 'username', 'avatar'],
+      attributes: ['user_id', 'username'],
       include: [{
         model: GameSession,
         where: { status: 'active' },
@@ -76,6 +97,10 @@ exports.getFriends = async (req, res) => {
         include: [{ model: Arg, attributes: ['title'] }]
       }]
     });
+
+    if (typeof res.set === 'function') {
+      res.set('Cache-Control', 'private, max-age=15');
+    }
 
     res.json(friends);
   } catch (error) {
@@ -96,7 +121,8 @@ exports.searchUsers = async (req, res) => {
           [Op.like]: `%${q}%`
         }
       },
-      attributes: ['user_id', 'username', 'avatar']
+      attributes: ['user_id', 'username'],
+      limit: 25
     });
     res.json(users);
   } catch (error) {
@@ -170,21 +196,20 @@ exports.getFriendRequests = async (req, res) => {
     const senderIds = requests.map(r => r.sender_id);
     const senders = await User.findAll({
       where: { user_id: senderIds },
-      attributes: ['user_id', 'username', 'avatar']
+      attributes: ['user_id', 'username']
     });
 
+    const senderById = new Map(senders.map(s => [s.user_id, s]));
+
     // Map sender info to requests
-    const formattedRequests = requests.map(req => {
-      const sender = senders.find(s => s.user_id === req.sender_id);
-      return {
-        request_id: req.request_id,
-        sender_id: req.sender_id,
-        receiver_id: req.receiver_id,
-        status: req.status,
-        sent_at: req.sent_at,
-        sender: sender
-      };
-    });
+    const formattedRequests = requests.map(reqItem => ({
+      request_id: reqItem.request_id,
+      sender_id: reqItem.sender_id,
+      receiver_id: reqItem.receiver_id,
+      status: reqItem.status,
+      sent_at: reqItem.sent_at,
+      sender: senderById.get(reqItem.sender_id)
+    }));
 
     res.json(formattedRequests);
   } catch (error) {
@@ -216,6 +241,8 @@ exports.respondToFriendRequest = async (req, res) => {
     await request.save();
 
     if (status === 'accepted') {
+      invalidateBadgeCooldown(request.sender_id);
+      invalidateBadgeCooldown(request.receiver_id);
       badgeService.evaluateAndAwardBadges(request.sender_id).catch(() => {});
       badgeService.evaluateAndAwardBadges(request.receiver_id).catch(() => {});
     }

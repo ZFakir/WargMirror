@@ -1,5 +1,6 @@
 const { UserFeedback } = require('../models');
 const badgeService = require('../services/badgeService');
+const { invalidateBadgeCooldown } = require('../utils/cache');
 
 exports.submitFeedback = async (req, res) => {
   try {
@@ -35,6 +36,7 @@ exports.submitFeedback = async (req, res) => {
     const newFeedback = await UserFeedback.create(feedbackData);
 
     if (req.user && req.user.user_id) {
+      invalidateBadgeCooldown(req.user.user_id);
       badgeService.evaluateAndAwardBadges(req.user.user_id).catch(() => {});
     }
 

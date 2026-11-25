@@ -1,10 +1,12 @@
 const express = require('express');
 const cors = require('cors');
 const session = require('express-session');
+const path = require('path');
 require('dotenv').config();
 
 const passport = require('./config/passport');
 const { requireAuth, requireAdmin } = require('./middleware/authMiddleware');
+const compressionMiddleware = require('./middleware/compression');
 const argRoutes = require('./routes/argRoutes');
 const userRoutes = require('./routes/userRoutes');
 const sessionRoutes = require('./routes/sessionRoutes');
@@ -27,6 +29,8 @@ const adminRoutes = require('./routes/adminRoutes');
 function createApp() {
   const app = express();
 
+  app.set('etag', 'weak');
+
   const corsOriginCheck = function (origin, callback) {
     const allowedOrigins = process.env.CLIENT_URL
       ? process.env.CLIENT_URL.split(',').map((url) => url.trim().replace(/\/$/, ''))
@@ -43,6 +47,7 @@ function createApp() {
   };
 
   app.use(cors({ origin: corsOriginCheck, credentials: true }));
+  app.use(compressionMiddleware);
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
@@ -82,7 +87,11 @@ function createApp() {
       database: dbUrl.pathname.slice(1), // remove leading "/"
       ssl: { rejectUnauthorized: false },
       createDatabaseTable: true,
-      expiration: 86400000 // 24 hours
+      expiration: 86400000, // 24 hours
+      connectionLimit: 2,
+      clearExpired: true,
+      checkExpirationInterval: 15 * 60 * 1000,
+      endConnectionOnClose: true
     });
 
     sessionStore.on('error', (error) => {
@@ -115,6 +124,7 @@ function createApp() {
       db = 'down';
     }
     // Always 200: Render-style health checks treat non-2xx as a failed deploy.
+    res.set('Cache-Control', 'no-store');
     res.status(200).json({ status: 'ok', db });
   });
 
@@ -139,12 +149,26 @@ function createApp() {
   app.use('/api/game', requireAuth, gameRoutes);
   app.use('/api/admin', requireAuth, requireAdmin, adminRoutes);
 
-  const path = require('path');
-  const staticOptions = { extensions: ['html', 'htm'] };
-  
+  const staticOptions = {
+    extensions: ['html', 'htm'],
+    etag: true,
+    lastModified: true,
+    setHeaders: (res, filePath) => {
+      const ext = path.extname(filePath).toLowerCase();
+      const base = path.basename(filePath).toLowerCase();
+      if (base === 'sw.js' || ext === '.html' || ext === '.htm') {
+        res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+      } else if (['.svg', '.png', '.jpg', '.jpeg', '.webp', '.ico'].includes(ext)) {
+        res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
+      } else if (['.css', '.js'].includes(ext)) {
+        res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=86400');
+      }
+    }
+  };
+
   // Serve static files from the client directory at the root (e.g. /login)
   app.use(express.static(path.join(__dirname, '../../client'), staticOptions));
-  
+
   // Also serve them under /client for backwards compatibility (e.g. /client/login)
   app.use('/client', express.static(path.join(__dirname, '../../client'), staticOptions));
 

@@ -1,7 +1,11 @@
-const { sequelize, Waypoint, WaypointEdge, Minigame, GameSession, WaypointProgress, MinigameAttempt, LocationEvent, User } = require('../models');
+const { sequelize, Waypoint, WaypointEdge, Minigame, GameSession, WaypointProgress, MinigameAttempt, LocationEvent, Arg, ArgVote } = require('../models');
 const badgeService = require('../services/badgeService');
-
-const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
+const {
+  dominationScoresCache,
+  invalidateDomination,
+  invalidateBadgeCooldown
+} = require('../utils/cache');
+const { stripHeavyMinigameFields } = require('../utils/sanitize');
 
 // Helper to evaluate branching conditions
 exports.evaluateConditions = async (user_id, rawConditions, transaction = null) => {
@@ -13,7 +17,7 @@ exports.evaluateConditions = async (user_id, rawConditions, transaction = null) 
   if (!conditions || !Array.isArray(conditions) || conditions.length === 0) {
     return true; // Unconditional edge
   }
-  
+
   // Group outcomes by game_id to treat multiple outcomes for the same game as OR
   const groupedConditions = {};
   for (const cond of conditions) {
@@ -23,19 +27,19 @@ exports.evaluateConditions = async (user_id, rawConditions, transaction = null) 
     groupedConditions[cond.game_id].push(cond.outcome);
   }
 
-  for (const [game_id, allowedOutcomes] of Object.entries(groupedConditions)) {
-    const findOpts = {
-      where: { user_id, game_id },
-      order: [['attempted_at', 'DESC']]
-    };
-    if (transaction) findOpts.transaction = transaction;
-    const attempt = await MinigameAttempt.findOne(findOpts);
-    
-    if (!attempt || !allowedOutcomes.includes(attempt.outcome)) {
-      return false; // Condition not met
-    }
-  }
-  return true;
+  const results = await Promise.all(
+    Object.entries(groupedConditions).map(async ([game_id, allowedOutcomes]) => {
+      const findOpts = {
+        where: { user_id, game_id },
+        order: [['attempted_at', 'DESC']]
+      };
+      if (transaction) findOpts.transaction = transaction;
+      const attempt = await MinigameAttempt.findOne(findOpts);
+      return Boolean(attempt && allowedOutcomes.includes(attempt.outcome));
+    })
+  );
+
+  return results.every(Boolean);
 };
 
 // Start or resume a game session
@@ -46,22 +50,25 @@ exports.startGameSession = async (req, res) => {
     const arg_id = req.params.argId;
 
     let session = await GameSession.findOne({ where: { user_id, arg_id }, transaction });
-    
+
     if (!session) {
-      // Create new session
-      session = await GameSession.create({ user_id, arg_id, status: 'active' }, { transaction });
-      
+      // Create new session and fetch graph structure in parallel
+      const [createdSession, edges, allWaypoints] = await Promise.all([
+        GameSession.create({ user_id, arg_id, status: 'active' }, { transaction }),
+        WaypointEdge.findAll({ where: { arg_id }, transaction }),
+        Waypoint.findAll({ where: { arg_id }, transaction })
+      ]);
+      session = createdSession;
+
       // Initialize WaypointProgress
-      const edges = await WaypointEdge.findAll({ where: { arg_id }, transaction });
       const toNodes = new Set(edges.map(e => e.to_waypoint_id));
-      
-      const allWaypoints = await Waypoint.findAll({ where: { arg_id }, transaction });
       const rootNodes = allWaypoints.filter(w => !toNodes.has(w.waypoint_id));
       // If there are no edges, all waypoints are roots
       const roots = rootNodes.length > 0 ? rootNodes : allWaypoints;
-      
+      const rootIds = new Set(roots.map(r => r.waypoint_id));
+
       const progressPromises = allWaypoints.map(w => {
-        const isRoot = roots.some(r => r.waypoint_id === w.waypoint_id);
+        const isRoot = rootIds.has(w.waypoint_id);
         return WaypointProgress.create({
           user_id,
           waypoint_id: w.waypoint_id,
@@ -73,7 +80,7 @@ exports.startGameSession = async (req, res) => {
     } else if (session.status === 'abandoned') {
       await session.update({ status: 'active' }, { transaction });
     }
-    
+
     await transaction.commit();
     res.json(session);
   } catch (error) {
@@ -88,45 +95,62 @@ exports.getGameState = async (req, res) => {
   try {
     const user_id = req.user.user_id;
     const arg_id = req.params.argId;
+    const includeArg = req.query && req.query.includeArg === '1';
 
-    const session = await GameSession.findOne({ where: { user_id, arg_id } });
+    const [session, waypoints, edges] = await Promise.all([
+      GameSession.findOne({ where: { user_id, arg_id } }),
+      Waypoint.findAll({
+        where: { arg_id },
+        include: [{ model: Minigame }]
+      }),
+      WaypointEdge.findAll({ where: { arg_id } })
+    ]);
+
     if (!session) return res.status(404).json({ error: 'Session not found' });
 
-    // We need Waypoints to join progress
-    const waypoints = await Waypoint.findAll({ 
-      where: { arg_id },
-      include: [
-        { model: Minigame }
-      ]
-    });
-    
     const waypointIds = waypoints.map(w => w.waypoint_id);
-
-    const progress = await WaypointProgress.findAll({
-      where: { user_id, waypoint_id: waypointIds }
-    });
-    
-    const attempts = await MinigameAttempt.findAll({
-      where: { user_id }
+    const gameIds = [];
+    waypoints.forEach(w => {
+      (w.Minigames || []).forEach(mg => {
+        if (mg && mg.game_id) gameIds.push(mg.game_id);
+      });
     });
 
-    const edges = await WaypointEdge.findAll({ where: { arg_id } });
+    const attemptWhere = gameIds.length > 0 ? { user_id, game_id: gameIds } : { user_id };
+
+    const secondaryQueries = [
+      WaypointProgress.findAll({ where: { user_id, waypoint_id: waypointIds } }),
+      MinigameAttempt.findAll({ where: attemptWhere })
+    ];
+
+    if (includeArg && Arg && typeof Arg.findByPk === 'function') {
+      secondaryQueries.push(
+        Arg.findByPk(arg_id, { attributes: ['arg_id', 'title', 'like_count', 'dislike_count', 'mode', 'status'] }),
+        ArgVote && typeof ArgVote.findOne === 'function'
+          ? ArgVote.findOne({ where: { arg_id, user_id }, attributes: ['vote'], raw: true })
+          : Promise.resolve(null)
+      );
+    }
+
+    const secondaryResults = await Promise.all(secondaryQueries);
+    const progress = secondaryResults[0];
+    const attempts = secondaryResults[1];
 
     // Dynamic Start Node Allocation / Lockout Prevention
     if (session.status === 'active' && waypoints.length > 0) {
       let hasUnlocked = progress.some(p => p.status === 'unlocked');
-      
+
       if (!hasUnlocked) {
         const toNodes = new Set(edges.map(e => e.to_waypoint_id));
         const rootNodes = waypoints.filter(w => !toNodes.has(w.waypoint_id));
         const roots = rootNodes.length > 0 ? rootNodes : waypoints;
-        
+
         const newProgressPromises = roots.map(async w => {
           const existing = progress.find(p => p.waypoint_id === w.waypoint_id);
           if (existing && (existing.status === 'completed' || existing.status === 'failed')) {
             return;
           }
-          
+
           if (existing) {
             existing.status = 'unlocked';
             existing.unlocked_at = new Date();
@@ -154,7 +178,18 @@ exports.getGameState = async (req, res) => {
       }
     }
 
-    res.json({ session, waypoints, progress, attempts, edges });
+    const cleanWaypoints = stripHeavyMinigameFields(waypoints);
+    const payload = { session, waypoints: cleanWaypoints, progress, attempts, edges };
+
+    if (includeArg && secondaryResults[2]) {
+      const argJSON = typeof secondaryResults[2].toJSON === 'function'
+        ? secondaryResults[2].toJSON()
+        : { ...secondaryResults[2] };
+      argJSON.user_vote = secondaryResults[3] ? secondaryResults[3].vote : null;
+      payload.arg = argJSON;
+    }
+
+    res.json(payload);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to fetch game state' });
@@ -184,15 +219,7 @@ exports.arriveAtWaypoint = async (req, res) => {
     const waypoint = await Waypoint.findByPk(waypoint_id);
     if (!waypoint) return res.status(404).json({ error: 'Waypoint not found' });
 
-    // Log location event
-    await LocationEvent.create({
-      user_id,
-      location: sequelize.fn('ST_GeomFromText', pointWkt, 4326),
-      accuracy_m: accuracy_m || null
-    });
-
-    // Run spatial query for distance
-    const [result] = await sequelize.query(`
+    const distanceQuery = sequelize.query(`
       SELECT ST_Distance_Sphere(location, ST_GeomFromText(:point_wkt, 4326)) AS distance
       FROM waypoints WHERE waypoint_id = :waypoint_id
     `, {
@@ -200,6 +227,22 @@ exports.arriveAtWaypoint = async (req, res) => {
       type: sequelize.QueryTypes.SELECT
     });
 
+    let distanceRows;
+    if (req.locationEventLogged) {
+      distanceRows = await distanceQuery;
+    } else {
+      const [, rows] = await Promise.all([
+        LocationEvent.create({
+          user_id,
+          location: sequelize.fn('ST_GeomFromText', pointWkt, 4326),
+          accuracy_m: accuracy_m || null
+        }),
+        distanceQuery
+      ]);
+      distanceRows = rows;
+    }
+
+    const result = distanceRows[0];
     const distance = result ? result.distance : Infinity;
     const within_radius = distance <= waypoint.validation_radius_m;
 
@@ -217,13 +260,13 @@ exports.submitMinigame = async (req, res) => {
     const user_id = req.user.user_id;
     const { game_id, submission, geofence_override } = req.body;
 
-    const game = await Minigame.findByPk(game_id, { 
+    const game = await Minigame.findByPk(game_id, {
       include: [{ model: Waypoint }],
-      transaction 
+      transaction
     });
     if (!game) {
-       await transaction.rollback();
-       return res.status(404).json({ error: 'Minigame not found' });
+      await transaction.rollback();
+      return res.status(404).json({ error: 'Minigame not found' });
     }
 
     const waypoint_id = game.waypoint_id;
@@ -231,10 +274,11 @@ exports.submitMinigame = async (req, res) => {
 
     // ── Security: submissions require an active session for this WARG ──
     // Without this a raw API call could complete waypoints without ever playing.
-    const activeSession = await GameSession.findOne({
-      where: { user_id, arg_id, status: 'active' },
-      transaction
-    });
+    const [activeSession, waypointProgress] = await Promise.all([
+      GameSession.findOne({ where: { user_id, arg_id, status: 'active' }, transaction }),
+      WaypointProgress.findOne({ where: { user_id, waypoint_id }, transaction })
+    ]);
+
     if (!activeSession) {
       await transaction.rollback();
       return res.status(403).json({ error: 'No active session for this WARG. Start the game before submitting.' });
@@ -242,10 +286,6 @@ exports.submitMinigame = async (req, res) => {
 
     // ── Security: the waypoint must have been unlocked through progression ──
     // (Root waypoints are unlocked by startGameSession; successors by passing edges.)
-    const waypointProgress = await WaypointProgress.findOne({
-      where: { user_id, waypoint_id },
-      transaction
-    });
     if (!waypointProgress || waypointProgress.status === 'locked') {
       await transaction.rollback();
       return res.status(403).json({ error: 'Waypoint is locked. Complete the previous waypoints first.' });
@@ -253,7 +293,7 @@ exports.submitMinigame = async (req, res) => {
 
     // Validate submission based on game type
     let outcome = 'fail';
-    let config = game.config_json || {};
+    const config = game.config_json || {};
 
     if (game.game_type === 'gps_proximity') {
       // Defense-in-depth: confirm the player's last trusted location is inside the
@@ -315,32 +355,30 @@ exports.submitMinigame = async (req, res) => {
       outcome = 'fail';
     }
 
-    // Upsert MinigameAttempt
-    await MinigameAttempt.upsert({
-      user_id,
-      game_id,
-      outcome,
-      submission_json: submission,
-      score: outcome === 'pass' ? 1.0 : 0.0,
-      attempted_at: new Date()
-    }, { transaction });
-
     const can_retry = Boolean(outcome === 'fail' && config.allow_multiple_attempts);
-    let unlockedNodes = [];
-
+    const unlockedNodes = [];
     const finalStatus = outcome === 'pass' ? 'completed' : 'failed';
 
-    // Always update waypoint progress regardless of pass or fail
-    await WaypointProgress.upsert({
-      user_id,
-      waypoint_id,
-      status: finalStatus,
-      completed_at: new Date()
-    }, { transaction });
+    // Upsert attempt, update waypoint progress, and fetch outgoing edges in parallel
+    const [, , edges] = await Promise.all([
+      MinigameAttempt.upsert({
+        user_id,
+        game_id,
+        outcome,
+        submission_json: submission,
+        score: outcome === 'pass' ? 1.0 : 0.0,
+        attempted_at: new Date()
+      }, { transaction }),
+      WaypointProgress.upsert({
+        user_id,
+        waypoint_id,
+        status: finalStatus,
+        completed_at: new Date()
+      }, { transaction }),
+      WaypointEdge.findAll({ where: { from_waypoint_id: waypoint_id }, transaction })
+    ]);
 
     // Evaluate successors. Branching logic handles whether pass or fail triggers specific edges.
-    const edges = await WaypointEdge.findAll({ where: { from_waypoint_id: waypoint_id }, transaction });
-    
     for (const edge of edges) {
       const canUnlock = await exports.evaluateConditions(user_id, edge.conditions_json, transaction);
       if (canUnlock) {
@@ -355,20 +393,16 @@ exports.submitMinigame = async (req, res) => {
     }
 
     // Check if session is completed
-    // Find all waypoints that are 'unlocked' but not 'completed'
-    const activeProgress = await WaypointProgress.findAll({
-      where: { user_id },
-      transaction
-    });
-    
-    // Filter active progress to just this ARG's waypoints
-    const argWaypoints = await Waypoint.findAll({ where: { arg_id }, attributes: ['waypoint_id'], transaction });
+    const [activeProgress, argWaypoints] = await Promise.all([
+      WaypointProgress.findAll({ where: { user_id }, transaction }),
+      Waypoint.findAll({ where: { arg_id }, attributes: ['waypoint_id'], transaction })
+    ]);
+
     const argWpIds = argWaypoints.map(w => w.waypoint_id);
-    
     const sessionProgress = activeProgress.filter(p => argWpIds.includes(p.waypoint_id));
     const hasUnlocked = sessionProgress.some(p => p.status === 'unlocked');
     let session_completed = false;
-    
+
     if (!hasUnlocked && sessionProgress.length > 0 && sessionProgress.length === argWpIds.length && sessionProgress.every(p => p.status === 'completed' || p.status === 'failed')) {
       if (!(outcome === 'fail' && can_retry && unlockedNodes.length === 0)) {
         session_completed = true;
@@ -383,6 +417,7 @@ exports.submitMinigame = async (req, res) => {
     // planned around PvP games, which are not implemented yet, so the
     // total_points / total_points_earned columns stay untouched.
     await transaction.commit();
+    invalidateBadgeCooldown(user_id);
     badgeService.evaluateAndAwardBadges(user_id).catch(() => {});
 
     res.json({ outcome, can_retry, unlockedNodes, session_completed, nodeStatus: finalStatus });
@@ -433,7 +468,7 @@ exports.resetSession = async (req, res) => {
       attributes: ['waypoint_id'],
       transaction
     });
-    
+
     const waypointIds = waypoints.map(w => w.waypoint_id);
 
     if (waypointIds.length > 0) {
@@ -444,19 +479,21 @@ exports.resetSession = async (req, res) => {
       });
       const minigameIds = minigames.map(m => m.game_id);
 
-      // 2. Delete Minigame Attempts
-      if (minigameIds.length > 0) {
-        await MinigameAttempt.destroy({
-          where: { user_id, game_id: minigameIds },
+      const deleteOps = [
+        WaypointProgress.destroy({
+          where: { user_id, waypoint_id: waypointIds },
           transaction
-        });
+        })
+      ];
+      if (minigameIds.length > 0) {
+        deleteOps.push(
+          MinigameAttempt.destroy({
+            where: { user_id, game_id: minigameIds },
+            transaction
+          })
+        );
       }
-
-      // 3. Delete Waypoint Progress
-      await WaypointProgress.destroy({
-        where: { user_id, waypoint_id: waypointIds },
-        transaction
-      });
+      await Promise.all(deleteOps);
     }
 
     // 4. Reset Game Session
@@ -501,37 +538,45 @@ exports.dominationPing = async (req, res) => {
 
     const pointWkt = `POINT(${lat} ${lng})`;
 
-    const waypoint = await Waypoint.findByPk(waypoint_id, { transaction });
-    const minigame = await Minigame.findByPk(game_id, { transaction });
+    const [waypoint, minigame] = await Promise.all([
+      Waypoint.findByPk(waypoint_id, { transaction }),
+      Minigame.findByPk(game_id, { transaction })
+    ]);
 
     if (!waypoint || !minigame || minigame.game_type !== 'point_domination') {
       await transaction.rollback();
       return res.status(400).json({ error: 'Invalid waypoint or minigame' });
     }
 
-    // Log location event (optional)
-    await LocationEvent.create({
-      user_id,
-      location: sequelize.fn('ST_GeomFromText', pointWkt, 4326),
-      accuracy_m: accuracy_m || null
-    }, { transaction });
+    const parallelOps = [
+      sequelize.query(`
+        SELECT ST_Distance_Sphere(location, ST_GeomFromText(:point_wkt, 4326)) AS distance
+        FROM waypoints WHERE waypoint_id = :waypoint_id
+      `, {
+        replacements: { waypoint_id, point_wkt: pointWkt },
+        type: sequelize.QueryTypes.SELECT,
+        transaction
+      }),
+      MinigameAttempt.findOne({ where: { user_id, game_id }, transaction }),
+      MinigameAttempt.findAll({ where: { game_id }, transaction })
+    ];
 
-    // Distance check — pointWkt is built only from validated numbers and bound
-    // as a replacement, so the raw coordinate strings never reach SQL text.
-    const [result] = await sequelize.query(`
-      SELECT ST_Distance_Sphere(location, ST_GeomFromText(:point_wkt, 4326)) AS distance
-      FROM waypoints WHERE waypoint_id = :waypoint_id
-    `, {
-      replacements: { waypoint_id, point_wkt: pointWkt },
-      type: sequelize.QueryTypes.SELECT,
-      transaction
-    });
+    if (!req.locationEventLogged) {
+      parallelOps.push(
+        LocationEvent.create({
+          user_id,
+          location: sequelize.fn('ST_GeomFromText', pointWkt, 4326),
+          accuracy_m: accuracy_m || null
+        }, { transaction })
+      );
+    }
 
+    const [distRows, attempt, allAttempts] = await Promise.all(parallelOps);
+    const result = distRows[0];
     const distance = result ? result.distance : Infinity;
     const within_radius = distance <= waypoint.validation_radius_m;
 
-    let attempt = await MinigameAttempt.findOne({ where: { user_id, game_id }, transaction });
-    let submissionData = attempt && attempt.submission_json ? attempt.submission_json : {
+    const submissionData = attempt && attempt.submission_json ? attempt.submission_json : {
       cumulative_time_hours: 0,
       top_score_time_hours: 0,
       last_ping_at: null
@@ -540,14 +585,14 @@ exports.dominationPing = async (req, res) => {
     // Check for Wipe based on reset_interval_hours
     const resetIntervalHours = minigame.config_json?.reset_interval_hours || 0;
     const now = new Date();
-    
+
     if (resetIntervalHours > 0 && attempt && attempt.attempted_at) {
       const createdTime = new Date(minigame.created_at).getTime();
       const intervalMs = resetIntervalHours * 60 * 60 * 1000;
-      
+
       const currentWipeStart = createdTime + Math.floor((now.getTime() - createdTime) / intervalMs) * intervalMs;
       const attemptTime = new Date(attempt.attempted_at).getTime();
-      
+
       if (attemptTime < currentWipeStart) {
         // Wipe occurred
         submissionData.cumulative_time_hours = 0;
@@ -571,7 +616,6 @@ exports.dominationPing = async (req, res) => {
     }
 
     // Determine Top Scorer
-    const allAttempts = await MinigameAttempt.findAll({ where: { game_id }, transaction });
     let topScorerId = null;
     let maxScore = -1;
 
@@ -606,6 +650,7 @@ exports.dominationPing = async (req, res) => {
     }
 
     await transaction.commit();
+    invalidateDomination(game_id);
     res.json({ success: true, within_radius, submissionData });
   } catch (error) {
     await transaction.rollback();
@@ -622,48 +667,56 @@ exports.getDominationScores = async (req, res) => {
 
     if (!game_id) return res.status(400).json({ error: 'game_id required' });
 
-    const minigame = await Minigame.findByPk(game_id);
-    if (!minigame) return res.status(404).json({ error: 'Game not found' });
+    const cached = await dominationScoresCache.getOrSet(String(game_id), 15 * 1000, async () => {
+      const minigame = await Minigame.findByPk(game_id);
+      if (!minigame) return null;
 
-    const attempts = await MinigameAttempt.findAll({
-      where: { game_id },
-      include: [{ model: User, attributes: ['username'] }]
+      const attempts = await MinigameAttempt.findAll({
+        where: { game_id },
+        include: [{ model: UserPlaceholderModel(), attributes: ['username'] }]
+      });
+
+      const resetIntervalHours = minigame.config_json?.reset_interval_hours || 0;
+      const now = new Date();
+
+      let nextWipeInHours = null;
+      let currentWipeStartMs = 0;
+
+      if (resetIntervalHours > 0) {
+        const createdTime = new Date(minigame.created_at).getTime();
+        const intervalMs = resetIntervalHours * 60 * 60 * 1000;
+        currentWipeStartMs = createdTime + Math.floor((now.getTime() - createdTime) / intervalMs) * intervalMs;
+        const nextWipeMs = currentWipeStartMs + intervalMs;
+        nextWipeInHours = (nextWipeMs - now.getTime()) / (1000 * 60 * 60);
+      }
+
+      const activeScores = attempts
+        .map(att => {
+          const submissionData = att.submission_json || { cumulative_time_hours: 0 };
+          let score = submissionData.cumulative_time_hours || 0;
+          if (resetIntervalHours > 0) {
+            const attemptTimeMs = new Date(att.attempted_at).getTime();
+            if (attemptTimeMs < currentWipeStartMs) {
+              score = 0;
+            }
+          }
+          return {
+            user_id: att.user_id,
+            username: att.User ? att.User.username : 'Unknown',
+            score
+          };
+        })
+        .filter(s => s.score > 0)
+        .sort((a, b) => b.score - a.score);
+
+      return { activeScores, nextWipeInHours };
     });
 
-    const resetIntervalHours = minigame.config_json?.reset_interval_hours || 0;
-    const now = new Date();
-    
-    let nextWipeInHours = null;
-    let currentWipeStartMs = 0;
-    
-    if (resetIntervalHours > 0) {
-      const createdTime = new Date(minigame.created_at).getTime();
-      const intervalMs = resetIntervalHours * 60 * 60 * 1000;
-      currentWipeStartMs = createdTime + Math.floor((now.getTime() - createdTime) / intervalMs) * intervalMs;
-      const nextWipeMs = currentWipeStartMs + intervalMs;
-      nextWipeInHours = (nextWipeMs - now.getTime()) / (1000 * 60 * 60);
-    }
+    if (!cached) return res.status(404).json({ error: 'Game not found' });
 
-    const activeScores = attempts
-      .map(att => {
-        let submissionData = att.submission_json || { cumulative_time_hours: 0 };
-        if (resetIntervalHours > 0) {
-          const attemptTimeMs = new Date(att.attempted_at).getTime();
-          if (attemptTimeMs < currentWipeStartMs) {
-            submissionData.cumulative_time_hours = 0;
-          }
-        }
-        return {
-          user_id: att.user_id,
-          username: att.User ? att.User.username : 'Unknown',
-          score: submissionData.cumulative_time_hours || 0
-        };
-      })
-      .filter(s => s.score > 0)
-      .sort((a, b) => b.score - a.score);
-
+    const { activeScores, nextWipeInHours } = cached;
     const top3 = activeScores.slice(0, 3);
-    
+
     let currentUserScore = null;
     if (user_id) {
       const userRank = activeScores.findIndex(s => s.user_id === parseInt(user_id, 10));
@@ -675,9 +728,17 @@ exports.getDominationScores = async (req, res) => {
       }
     }
 
+    if (typeof res.set === 'function') {
+      res.set('Cache-Control', 'private, max-age=10');
+    }
+
     res.json({ top3, nextWipeInHours, currentUserScore });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to fetch scores' });
   }
 };
+
+function UserPlaceholderModel() {
+  return require('../models').User;
+}

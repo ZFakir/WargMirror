@@ -48,7 +48,8 @@ CREATE TABLE IF NOT EXISTS users (
     UNIQUE KEY uq_users_username (username),
     UNIQUE KEY uq_users_email    (email),
     INDEX idx_users_role         (role),
-    INDEX idx_users_trust        (trust_score)
+    INDEX idx_users_trust        (trust_score),
+    INDEX idx_users_reset_token  (password_reset_token)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
@@ -85,6 +86,8 @@ CREATE TABLE IF NOT EXISTS friend_requests (
     PRIMARY KEY (request_id),
     UNIQUE KEY uq_friend_pair (sender_id, receiver_id),
     INDEX idx_fr_receiver (receiver_id),
+    INDEX idx_fr_receiver_status (receiver_id, status),
+    INDEX idx_fr_sender_status (sender_id, status),
     CONSTRAINT fk_fr_sender   FOREIGN KEY (sender_id)
         REFERENCES users (user_id) ON DELETE CASCADE,
     CONSTRAINT fk_fr_receiver FOREIGN KEY (receiver_id)
@@ -154,6 +157,7 @@ CREATE TABLE IF NOT EXISTS args (
     INDEX idx_arg_genre    (genre),
     INDEX idx_arg_likes    (like_count),
     INDEX idx_arg_pub_date (published_at),
+    INDEX idx_arg_status_created (status, created_at),
     CONSTRAINT fk_arg_creator FOREIGN KEY (creator_id)
         REFERENCES users (user_id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -305,6 +309,8 @@ CREATE TABLE IF NOT EXISTS game_sessions (
 
     PRIMARY KEY (user_id, arg_id),
     INDEX idx_gs_status (status),
+    INDEX idx_gs_user_status_active (user_id, status, last_active_at),
+    INDEX idx_gs_arg_status_comp (arg_id, status, completed_at),
     CONSTRAINT fk_gs_user FOREIGN KEY (user_id)
         REFERENCES users (user_id) ON DELETE CASCADE,
     CONSTRAINT fk_gs_arg  FOREIGN KEY (arg_id)
@@ -325,6 +331,7 @@ CREATE TABLE IF NOT EXISTS waypoint_progress (
 
     PRIMARY KEY (user_id, waypoint_id),
     INDEX idx_wp_prog_waypoint (waypoint_id),
+    INDEX idx_wpp_user_status_comp (user_id, status, completed_at),
     CONSTRAINT fk_wpp_user FOREIGN KEY (user_id)
         REFERENCES users (user_id) ON DELETE CASCADE,
     CONSTRAINT fk_wpp_waypoint FOREIGN KEY (waypoint_id)
@@ -346,6 +353,7 @@ CREATE TABLE IF NOT EXISTS minigame_attempts (
 
     PRIMARY KEY (user_id, game_id),
     INDEX idx_ma_game (game_id),
+    INDEX idx_ma_user_time (user_id, attempted_at),
     CONSTRAINT fk_ma_user FOREIGN KEY (user_id)
         REFERENCES users (user_id) ON DELETE CASCADE,
     CONSTRAINT fk_ma_game FOREIGN KEY (game_id)
@@ -374,6 +382,7 @@ CREATE TABLE IF NOT EXISTS location_events (
     PRIMARY KEY (event_id),
     INDEX idx_le_user    (user_id),
     INDEX idx_le_time    (recorded_at),
+    INDEX idx_le_user_susp_time (user_id, is_suspicious, recorded_at),
     SPATIAL INDEX spx_le_loc (location),
     CONSTRAINT fk_le_user    FOREIGN KEY (user_id)
         REFERENCES users (user_id) ON DELETE CASCADE
@@ -413,6 +422,7 @@ CREATE TABLE IF NOT EXISTS arg_votes (
     PRIMARY KEY (vote_id),
     UNIQUE KEY uq_arg_vote (arg_id, user_id),
     INDEX idx_av_user (user_id),
+    INDEX idx_av_arg_vote (arg_id, vote),
     CONSTRAINT fk_av_arg  FOREIGN KEY (arg_id)
         REFERENCES args (arg_id) ON DELETE CASCADE,
     CONSTRAINT fk_av_user FOREIGN KEY (user_id)
@@ -455,6 +465,7 @@ CREATE TABLE IF NOT EXISTS comments (
     INDEX idx_comment_arg    (arg_id),
     INDEX idx_comment_user   (user_id),
     INDEX idx_comment_parent (parent_id),
+    INDEX idx_comment_arg_created (arg_id, created_at),
     CONSTRAINT fk_comment_arg    FOREIGN KEY (arg_id)
         REFERENCES args (arg_id) ON DELETE CASCADE,
     CONSTRAINT fk_comment_user   FOREIGN KEY (user_id)
@@ -492,6 +503,8 @@ CREATE TABLE IF NOT EXISTS flags (
     INDEX idx_flag_arg      (arg_id),
     INDEX idx_flag_reporter (reporter_id),
     INDEX idx_flag_status   (status),
+    INDEX idx_flag_arg_created (arg_id, created_at),
+    INDEX idx_flag_reporter_status (reporter_id, status),
     CONSTRAINT fk_flag_arg      FOREIGN KEY (arg_id)
         REFERENCES args (arg_id) ON DELETE CASCADE,
     CONSTRAINT fk_flag_reporter FOREIGN KEY (reporter_id)

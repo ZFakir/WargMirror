@@ -101,6 +101,13 @@ export class PublishModal {
         });
         
         if (!res.ok) throw new Error('Failed to update status');
+        if (window.api && typeof window.api.clearGameCache === 'function') {
+          await window.api.clearGameCache(this.gameId);
+        }
+
+        if (window.api && window.api.clearGameCache) {
+          await window.api.clearGameCache(this.gameId);
+        }
         
         // Show success message inside the modal body
         const bodyEl = this.overlay.querySelector('.publish-modal__body');

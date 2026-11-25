@@ -154,8 +154,11 @@ document.addEventListener('DOMContentLoaded', () => {
         throw new Error('Failed to start session');
       }
 
-      // Get full state
-      const stateRes = await fetch(`${API_BASE}/api/game/${argId}/state`, { credentials: 'include' });
+      // Fetch game state and ARG metadata in parallel
+      const [stateRes, argRes] = await Promise.all([
+        fetch(`${API_BASE}/api/game/${argId}/state`, { credentials: 'include' }),
+        fetch(`${API_BASE}/api/args/${argId}`, { credentials: 'include' }).catch(() => null)
+      ]);
       if (!stateRes.ok) throw new Error('Failed to load game state');
 
       startSensors();
@@ -197,7 +200,7 @@ document.addEventListener('DOMContentLoaded', () => {
         nodes.filter(n => n.status === 'unlocked' || n.status === 'in_progress').forEach(node => {
           if (node.minigames) {
             node.minigames.forEach(mg => {
-              const typesWithRef = ['shape_match', 'colour_match', 'texture_match', 'sift_match'];
+              const typesWithRef = ['shape_match', 'colour_match', 'texture_match', 'sift_match', 'plaque_scan'];
               if (mg.game_id && typesWithRef.includes(mg.game_type) && mg.config_json && mg.config_json.reference_image_url) {
                 prefetchPromises.push(
                   // Use the API helper which SW will intercept and cache
@@ -219,10 +222,8 @@ document.addEventListener('DOMContentLoaded', () => {
         doPrefetch();
       }
 
-      // Wait for an ARG fetch just to get title
       let argData = {};
-      const argRes = await fetch(`${API_BASE}/api/args/${argId}`, { credentials: 'include' });
-      if (argRes.ok) {
+      if (argRes && argRes.ok) {
         argData = await argRes.json();
         document.title = argData.title ? `WARG – ${argData.title}` : 'WARG – Discover Games';
       }

@@ -1,8 +1,9 @@
 /**
  * WARG Platform — Shared API Client
  * ==================================
- * Provides typed helpers for every backend endpoint and a normaliser
- * that maps API response shapes to the GameCard-compatible format.
+ * Provides typed helpers for every backend endpoint, in-flight GET deduplication,
+ * short-TTL memory caching, and a normaliser that maps API response shapes to
+ * the GameCard-compatible format.
  *
  * Usage (plain-script — no import needed, loaded before page scripts):
  *   const args = await api.getArgs();
@@ -20,6 +21,60 @@ if (!window.API_BASE_URL) {
 var API_BASE = window.API_BASE_URL;
 
 var api = (function () {
+  var _memCache = new Map();
+  var _inflight = new Map();
+
+  function _touchActivity() {
+    window._lastApiActivityAt = Date.now();
+  }
+
+  function _invalidate(keyOrPrefix) {
+    if (!keyOrPrefix) return;
+    for (const k of _memCache.keys()) {
+      if (k === keyOrPrefix || k.startsWith(keyOrPrefix)) {
+        _memCache.delete(k);
+      }
+    }
+  }
+
+  function _clearMemCache() {
+    _memCache.clear();
+  }
+
+  async function _cachedGet(key, ttlMs, fetcher, options) {
+    const opts = options || {};
+    const cacheNull = Boolean(opts.cacheNull);
+
+    if (ttlMs > 0) {
+      const cached = _memCache.get(key);
+      if (cached && cached.expiresAt > Date.now()) {
+        return cached.value;
+      }
+      if (cached) {
+        _memCache.delete(key);
+      }
+    }
+
+    if (_inflight.has(key)) {
+      return _inflight.get(key);
+    }
+
+    const promise = (async () => {
+      const result = await fetcher();
+      _touchActivity();
+      if (ttlMs > 0 && (result !== null && result !== undefined || cacheNull)) {
+        _memCache.set(key, { value: result, expiresAt: Date.now() + ttlMs });
+      }
+      return result;
+    })();
+
+    _inflight.set(key, promise);
+    try {
+      return await promise;
+    } finally {
+      _inflight.delete(key);
+    }
+  }
 
   var _oauthExchangePromise = (function initOAuthExchange() {
     var hash = window.location.hash || '';
@@ -53,6 +108,7 @@ var api = (function () {
   /* ── Generic fetch wrapper ──────────────────────────────── */
   async function _get(path) {
     await _oauthExchangePromise;
+    _touchActivity();
     const res = await fetch(API_BASE + path, { credentials: 'include' });
     if (!res.ok) {
       throw Object.assign(new Error('API error'), { status: res.status, path });
@@ -62,6 +118,7 @@ var api = (function () {
 
   async function _post(path, body) {
     await _oauthExchangePromise;
+    _touchActivity();
     const res = await fetch(API_BASE + path, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -76,6 +133,7 @@ var api = (function () {
 
   async function _delete(path) {
     await _oauthExchangePromise;
+    _touchActivity();
     const res = await fetch(API_BASE + path, {
       method: 'DELETE',
       credentials: 'include'
@@ -89,15 +147,6 @@ var api = (function () {
   /* ── Data normaliser ────────────────────────────────────── */
   /**
    * Maps an API Arg object → GameCard-compatible shape.
-   *
-   * API shape:
-   *   { arg_id, title, mode, caption, cover_image, like_count, dislike_count,
-   *     rating_sum, rating_count, status, play_count, created_at, updated_at,
-   *     Creator: { username, avatar } }
-   *
-   * GameCard shape:
-   *   { id, title, mode, caption, emoji, image, progress, progressLabel,
-   *     author: { name, initials }, likes, dislikes, rating, featured }
    */
   function normaliseArg(arg) {
     var creator = arg.Creator || {};
@@ -117,7 +166,8 @@ var api = (function () {
       ? Math.round((arg.rating_sum / ratingCount) * 10) / 10
       : 0;
 
-    // cover_image from the DB is a BLOB — the API sends it as a Buffer/null.
+    // cover_image from the DB is now projected as boolean/null — the API sends
+    // true/1 when present; image binary is served via /cover-image with ETag.
     var image = null;
     if (arg.cover_image) {
       image = API_BASE + '/api/args/' + arg.arg_id + '/cover-image';
@@ -150,15 +200,18 @@ var api = (function () {
 
   /**
    * Returns the currently authenticated user, or null for guests.
-   * Never throws — a 401 is silently swallowed.
+   * Deduplicates concurrent calls and caches authenticated users briefly
+   * (never caches null/401 so login/route mocks stay accurate).
    */
   async function getCurrentUser() {
-    try {
-      return await _get('/auth/me');
-    } catch (err) {
-      if (err.status === 401) return null;
-      throw err;
-    }
+    return _cachedGet('auth:me', 15000, async () => {
+      try {
+        return await _get('/auth/me');
+      } catch (err) {
+        if (err.status === 401) return null;
+        throw err;
+      }
+    }, { cacheNull: false });
   }
 
   /**
@@ -179,7 +232,7 @@ var api = (function () {
    * Public endpoint — works for guests.
    */
   async function getArgs() {
-    const args = await _get('/api/args');
+    const args = await _cachedGet('args:list', 15000, () => _get('/api/args'));
     return args.map(normaliseArg);
   }
 
@@ -187,21 +240,23 @@ var api = (function () {
    * Returns all available badges in the system.
    */
   async function getAllBadges() {
-    return _get('/api/badges');
+    return _cachedGet('badges:all', 300000, () => _get('/api/badges'));
   }
 
   /**
    * Triggers badge evaluation and synchronization for the current user.
    */
   async function syncBadges() {
-    return _post('/api/badges/sync');
+    const res = await _post('/api/badges/sync');
+    _invalidate('profile:');
+    return res;
   }
 
   /**
    * Returns a single ARG (with Waypoints) normalised for GameCard.
    */
   async function getArgById(id) {
-    const arg = await _get('/api/args/' + id);
+    const arg = await _cachedGet('arg:' + id, 15000, () => _get('/api/args/' + id));
     return normaliseArg(arg);
   }
 
@@ -210,7 +265,7 @@ var api = (function () {
    * Requires authentication (caller must check for 401).
    */
   async function getUserProfile(userId) {
-    return _get('/api/users/' + userId);
+    return _cachedGet('profile:' + userId, 0, () => _get('/api/users/' + userId));
   }
 
   /**
@@ -218,7 +273,7 @@ var api = (function () {
    * Requires authentication.
    */
   async function getUserLibrary(userId) {
-    const args = await _get('/api/users/' + userId + '/library');
+    const args = await _cachedGet('library:' + userId, 0, () => _get('/api/users/' + userId + '/library'));
     return args.map(normaliseArg);
   }
 
@@ -227,7 +282,7 @@ var api = (function () {
    * Requires authentication.
    */
   async function getActiveSessions(userId) {
-    return _get('/api/sessions/' + userId);
+    return _cachedGet('sessions:' + userId, 0, () => _get('/api/sessions/' + userId));
   }
 
   /**
@@ -235,11 +290,13 @@ var api = (function () {
    * Requires authentication.
    */
   async function getFriends(userId) {
-    return _get('/api/users/' + userId + '/friends');
+    return _cachedGet('friends:' + userId, 0, () => _get('/api/users/' + userId + '/friends'));
   }
 
   async function removeFriend(userId, friendId) {
-    return _delete('/api/users/' + userId + '/friends/' + friendId);
+    const res = await _delete('/api/users/' + userId + '/friends/' + friendId);
+    _invalidate('friends:');
+    return res;
   }
 
   async function searchUsers(query) {
@@ -247,14 +304,17 @@ var api = (function () {
   }
 
   async function sendFriendRequest(senderId, receiverId) {
-    return _post('/api/users/' + senderId + '/friends/request', { receiverId });
+    const res = await _post('/api/users/' + senderId + '/friends/request', { receiverId });
+    _invalidate('friend_reqs:');
+    return res;
   }
 
   async function getFriendRequests(userId) {
-    return _get('/api/users/' + userId + '/friends/requests');
+    return _cachedGet('friend_reqs:' + userId, 0, () => _get('/api/users/' + userId + '/friends/requests'));
   }
 
   async function respondToFriendRequest(requestId, status) {
+    _touchActivity();
     const res = await fetch(API_BASE + '/api/users/friends/requests/' + requestId, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -264,12 +324,17 @@ var api = (function () {
     if (!res.ok) {
       throw Object.assign(new Error('API error'), { status: res.status, path: '/api/users/friends/requests/' + requestId });
     }
+    _invalidate('friends:');
+    _invalidate('friend_reqs:');
     return res.json();
   }
 
   /* ── Game Actions ───────────────────────────────────────── */
   async function voteArg(argId, voteType) {
-    return _post('/api/args/' + argId + '/vote', { vote: voteType });
+    const res = await _post('/api/args/' + argId + '/vote', { vote: voteType });
+    _invalidate('args:list');
+    _invalidate('arg:' + argId);
+    return res;
   }
 
   async function flagArg(argId, reason, description) {
@@ -284,37 +349,39 @@ var api = (function () {
     if (!me) {
       throw Object.assign(new Error('API error'), { status: 401, path: '/auth/me' });
     }
-    return _delete('/api/sessions/' + me.user_id + '/arg/' + argId);
+    const res = await _delete('/api/sessions/' + me.user_id + '/arg/' + argId);
+    _invalidate('sessions:');
+    return res;
   }
 
   /**
    * Resets a completed Game Session
    */
   async function resetGameSession(argId) {
-    return _post('/api/game/' + argId + '/reset', {});
+    const res = await _post('/api/game/' + argId + '/reset', {});
+    _invalidate('sessions:');
+    _invalidate('profile:');
+    return res;
   }
 
   async function getMinigameReference(gameId) {
     const url = API_BASE + '/api/minigames/' + gameId + '/reference/image';
     const req = new Request(url, { credentials: 'include' });
-    
-    let res;
-    try {
+
+    let res = null;
+    // Check Cache Storage first so prefetched reference images resolve instantly
+    if ('caches' in window) {
+      res = await caches.match(req, { ignoreSearch: true, ignoreVary: true }).catch(() => null);
+    }
+
+    if (!res) {
+      _touchActivity();
       res = await fetch(req);
       if (!res.ok) throw new Error('Failed to fetch reference');
-      
-      // Explicitly cache it for offline use (protects against SW bypass)
+
       if ('caches' in window) {
-         const resClone = res.clone();
-         caches.open('warg-dynamic-cache').then(cache => cache.put(req, resClone)).catch(console.error);
-      }
-    } catch (err) {
-      // If we are offline or fetch fails, manually fallback to cache!
-      if ('caches' in window) {
-         res = await caches.match(req, { ignoreSearch: true, ignoreVary: true });
-         if (!res) throw err;
-      } else {
-         throw err;
+        const resClone = res.clone();
+        caches.open('warg-media-v1').then(cache => cache.put(req, resClone)).catch(console.error);
       }
     }
 
@@ -348,6 +415,7 @@ var api = (function () {
     formData.append('image', imageBlob, 'attempt.jpg');
 
     try {
+      _touchActivity();
       const res = await fetch(apiUrl, {
         method: 'POST',
         body: formData,
@@ -367,6 +435,7 @@ var api = (function () {
   }
 
   async function uploadMinigameReference(gameId, imageBlob) {
+    _touchActivity();
     const formData = new FormData();
     formData.append('image', imageBlob, 'reference.jpg');
 
@@ -379,9 +448,20 @@ var api = (function () {
       const errText = await res.text();
       throw new Error(errText || 'Failed to upload reference');
     }
+    _invalidate('args:list');
+    if ('caches' in window) {
+      try {
+        const refUrl = new URL(API_BASE + '/api/minigames/' + gameId + '/reference/image').href;
+        const cacheNames = await caches.keys();
+        for (const name of cacheNames) {
+          const cache = await caches.open(name);
+          await cache.delete(refUrl, { ignoreSearch: true });
+        }
+      } catch { /* ignore */ }
+    }
     return res.json();
   }
-  
+
   async function submitFeedback(feedbackData) {
     return _post('/api/feedback', feedbackData);
   }
@@ -391,22 +471,30 @@ var api = (function () {
    * Useful when a developer updates a game and needs to bust the Stale-While-Revalidate cache.
    */
   async function clearGameCache(gameId) {
+    _invalidate('args:list');
+    _invalidate('library:');
+    if (gameId) {
+      _invalidate('arg:' + gameId);
+    }
+
     if (!('caches' in window)) return;
     try {
       const cacheNames = await caches.keys();
       for (const name of cacheNames) {
         const cache = await caches.open(name);
-        
-        // Clear specific ARG
+
+        // Clear specific ARG and its cover image
         if (gameId) {
           const gameUrl = new URL(API_BASE + '/api/args/' + gameId);
           await cache.delete(gameUrl.href, { ignoreSearch: true });
+          const coverUrl = new URL(API_BASE + '/api/args/' + gameId + '/cover-image');
+          await cache.delete(coverUrl.href, { ignoreSearch: true });
         }
-        
+
         // Clear lists
         const argsUrl = new URL(API_BASE + '/api/args');
         await cache.delete(argsUrl.href, { ignoreSearch: true });
-        
+
         const minigamesUrl = new URL(API_BASE + '/api/minigames');
         await cache.delete(minigamesUrl.href, { ignoreSearch: true });
       }
@@ -417,12 +505,14 @@ var api = (function () {
   }
 
   async function logout() {
+    _clearMemCache();
     return fetch(API_BASE + '/auth/logout', { method: 'POST', credentials: 'include' });
   }
 
   async function updateAccount(data) {
     // Parse { error } so the settings page can show real messages
     // (e.g. "Current password is incorrect.").
+    _touchActivity();
     const res = await fetch(API_BASE + '/auth/account', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -431,16 +521,19 @@ var api = (function () {
     });
     const body = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(body.error || 'Failed to update account.');
+    _clearMemCache();
     return body;
   }
 
   async function deleteAccount() {
+    _clearMemCache();
     return _delete('/auth/account');
   }
 
   // Password reset — parse the server's { error } message so the page can
   // show the real reason (e.g. "Invalid or expired reset token.").
   async function forgotPassword(email) {
+    _touchActivity();
     const res = await fetch(API_BASE + '/auth/forgot', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -453,6 +546,7 @@ var api = (function () {
   }
 
   async function resetPassword(token, password) {
+    _touchActivity();
     const res = await fetch(API_BASE + '/auth/reset', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

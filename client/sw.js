@@ -4,7 +4,10 @@ importScripts('scripts/db.js');
 // Bump this version whenever cached assets change. Browsers only detect a
 // service-worker update when sw.js itself differs, and activate() deletes
 // older caches — without a bump, returning users keep stale JS/CSS forever.
-const CACHE_NAME = 'warg-cache-v13';
+const CACHE_NAME = 'warg-cache-v14';
+const MEDIA_CACHE_NAME = 'warg-media-v1';
+const MAX_MEDIA_CACHE_ENTRIES = 200;
+
 const STATIC_ASSETS = [
   './',
   'index.html',
@@ -41,11 +44,12 @@ self.addEventListener('install', event => {
 });
 
 self.addEventListener('activate', event => {
+  const keepCaches = new Set([CACHE_NAME, MEDIA_CACHE_NAME]);
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(
         cacheNames
-          .filter(name => name !== CACHE_NAME)
+          .filter(name => !keepCaches.has(name))
           .map(name => caches.delete(name))
       );
     })
@@ -53,19 +57,32 @@ self.addEventListener('activate', event => {
   self.clients.claim();
 });
 
-// Strategy 1: Network First (Current implementation)
-async function networkFirstStrategy(request) {
+async function trimCache(cacheName, maxEntries) {
+  try {
+    const cache = await caches.open(cacheName);
+    const keys = await cache.keys();
+    if (keys.length > maxEntries) {
+      const excess = keys.length - maxEntries;
+      for (let i = 0; i < excess; i++) {
+        await cache.delete(keys[i]);
+      }
+    }
+  } catch { /* ignore */ }
+}
+
+// Strategy 1: Network First (fresh data with offline cache fallback)
+async function networkFirstStrategy(request, cacheName = CACHE_NAME) {
   try {
     const response = await fetch(request);
     if (response.ok) {
-      const cache = await caches.open(CACHE_NAME);
+      const cache = await caches.open(cacheName);
       cache.put(request, response.clone());
     }
     return response;
   } catch (err) {
     console.warn('Network fetch failed, falling back to cache:', err);
     let cachedResponse = await caches.match(request, { ignoreVary: true });
-    
+
     // Fallback for HTML pages with query params
     if (!cachedResponse) {
       const reqUrl = new URL(request.url);
@@ -73,48 +90,54 @@ async function networkFirstStrategy(request) {
         cachedResponse = await caches.match(request, { ignoreVary: true, ignoreSearch: true });
       }
     }
-    
+
     return cachedResponse || Response.error();
   }
 }
 
-// Strategy 2: Stale-While-Revalidate (Fast UI, background update)
-async function staleWhileRevalidateStrategy(request) {
-  const cache = await caches.open(CACHE_NAME);
+// Strategy 2: Stale-While-Revalidate (Fast UI + background refresh)
+async function staleWhileRevalidateStrategy(request, cacheName = CACHE_NAME) {
+  const cache = await caches.open(cacheName);
   const cachedResponse = await cache.match(request, { ignoreVary: true });
-  
-  const fetchPromise = fetch(request).then(networkResponse => {
-    if (networkResponse.ok) {
-      cache.put(request, networkResponse.clone());
-    }
-    return networkResponse;
-  }).catch(err => console.warn('SWR network failure', err));
 
-  // Return cache immediately if available, otherwise wait for network
+  const fetchPromise = fetch(request)
+    .then(networkResponse => {
+      if (networkResponse.ok) {
+        cache.put(request, networkResponse.clone());
+      }
+      return networkResponse;
+    })
+    .catch(err => {
+      console.warn('SWR network failure', err);
+      return Response.error();
+    });
+
+  // Return cache immediately if available, otherwise wait for network (or error response)
   return cachedResponse || fetchPromise;
 }
 
-// Strategy 3: Cache First (Instant load for static files)
-async function cacheFirstStrategy(request) {
-  const cache = await caches.open(CACHE_NAME);
+// Strategy 3: Cache First (Instant load for static media & map tiles)
+async function cacheFirstStrategy(request, cacheName = MEDIA_CACHE_NAME) {
+  const cache = await caches.open(cacheName);
   let cachedResponse = await cache.match(request, { ignoreVary: true });
-  
+
   // Fallback for HTML query params
   if (!cachedResponse && request.mode === 'navigate') {
     cachedResponse = await cache.match(request, { ignoreVary: true, ignoreSearch: true });
   }
 
   if (cachedResponse) {
-    if (request.url.includes('tile.openstreetmap') || request.url.includes('arcgisonline')) {
-      console.log('🗺️ [SW] Map Tile CACHE HIT:', request.url);
-    }
     return cachedResponse;
   }
 
   try {
     const networkResponse = await fetch(request);
     if (networkResponse.ok) {
-      cache.put(request, networkResponse.clone());
+      cache.put(request, networkResponse.clone()).then(() => {
+        if (cacheName === MEDIA_CACHE_NAME) {
+          trimCache(MEDIA_CACHE_NAME, MAX_MEDIA_CACHE_ENTRIES);
+        }
+      });
     }
     return networkResponse;
   } catch (err) {
@@ -132,40 +155,53 @@ self.addEventListener('fetch', event => {
   // Bypass SW for all authentication and session endpoints — never cache or intercept auth state
   if (url.pathname.startsWith('/auth/')) return;
 
-  // 1. NETWORK-FIRST: Highly dynamic routes (Sessions, user profile)
-  const networkFirstRoutes = ['/api/sessions', '/api/users/profile', '/api/users/search'];
-  if (networkFirstRoutes.some(path => url.pathname.startsWith(path))) {
-    event.respondWith(networkFirstStrategy(event.request));
-    return;
-  }
-
-  // 2. STALE-WHILE-REVALIDATE: Catalogue, Game Data, Library
-  const swrRoutes = ['/api/args', '/api/minigames', '/api/users/']; 
-  
-  if (swrRoutes.some(path => url.pathname.startsWith(path)) || url.pathname.includes('/library')) {
-    event.respondWith(staleWhileRevalidateStrategy(event.request));
-    return;
-  }
-
-  // 3. CACHE-FIRST: Remote static assets (Map Tiles, Avatars)
+  // 1. CACHE-FIRST (Media Bucket): ARG cover images, minigame reference images, map tiles, avatars
   if (
-    url.hostname.includes('tile.openstreetmap.org') || // Map tiles
-    url.hostname.includes('server.arcgisonline.com') || // Satellite map tiles
-    url.hostname.includes('dicebear.com') // Avatars
+    /^\/api\/args\/\d+\/cover-image/.test(url.pathname) ||
+    /^\/api\/minigames\/\d+\/reference\/image/.test(url.pathname) ||
+    url.hostname.includes('tile.openstreetmap.org') ||
+    url.hostname.includes('server.arcgisonline.com') ||
+    url.hostname.includes('dicebear.com')
   ) {
-    event.respondWith(cacheFirstStrategy(event.request));
+    event.respondWith(cacheFirstStrategy(event.request, MEDIA_CACHE_NAME));
     return;
   }
 
-  // 4. NETWORK-FIRST: Local application files (HTML, CSS, JS, assets)
-  // Ensures code changes reflect immediately on page reload while offline fallback persists
-  if (url.hostname === location.hostname) {
-    event.respondWith(networkFirstStrategy(event.request));
+  // 2. NETWORK-FIRST: Highly dynamic routes (Sessions, user profile/search, live game state, comments, admin)
+  const networkFirstRoutes = [
+    '/api/sessions',
+    '/api/users/profile',
+    '/api/users/search',
+    '/api/game/',
+    '/api/comments/',
+    '/api/admin/'
+  ];
+  if (networkFirstRoutes.some(path => url.pathname.startsWith(path))) {
+    event.respondWith(networkFirstStrategy(event.request, CACHE_NAME));
     return;
   }
-  
+
+  // 3. STALE-WHILE-REVALIDATE: Catalogue, Game Data, Badges, Library
+  const swrRoutes = ['/api/args', '/api/minigames', '/api/badges', '/api/users/'];
+  if (swrRoutes.some(path => url.pathname.startsWith(path)) || url.pathname.includes('/library')) {
+    event.respondWith(staleWhileRevalidateStrategy(event.request, CACHE_NAME));
+    return;
+  }
+
+  // 4. SAME-ORIGIN STATIC ASSETS: Stale-While-Revalidate for CSS/JS/images/fonts
+  //    NETWORK-FIRST for HTML navigations so deploys take effect immediately.
+  if (url.hostname === location.hostname) {
+    const isStaticAsset = /\.(css|js|mjs|svg|png|jpg|jpeg|webp|ico|woff2?)$/i.test(url.pathname);
+    if (isStaticAsset) {
+      event.respondWith(staleWhileRevalidateStrategy(event.request, CACHE_NAME));
+    } else {
+      event.respondWith(networkFirstStrategy(event.request, CACHE_NAME));
+    }
+    return;
+  }
+
   // Default to Network First for anything else
-  event.respondWith(networkFirstStrategy(event.request));
+  event.respondWith(networkFirstStrategy(event.request, CACHE_NAME));
 });
 
 // Background Sync
@@ -186,9 +222,9 @@ async function syncAttempts() {
     console.error('Offline DB wrapper not found in SW');
     return;
   }
-  
+
   const attempts = await self.offlineDB.getPendingAttempts();
-  
+
   for (const attempt of attempts) {
     try {
       const formData = new FormData();
@@ -204,7 +240,7 @@ async function syncAttempts() {
         const result = await response.json();
         await self.offlineDB.clearPendingAttempt(attempt.id);
         console.log(`Successfully synced attempt ${attempt.id}`);
-        
+
         // Notify open windows/clients via BroadcastChannel (bypass control state issues)
         const bc = new BroadcastChannel('warg_sync_channel');
         bc.postMessage({
@@ -224,8 +260,8 @@ async function syncAttempts() {
         }
       } else {
         console.error(`Failed to sync attempt ${attempt.id}: Server returned ${response.status}`);
-        
-        // Let's clear the pending attempt if it's a 500 error so it doesn't infinitely loop forever
+
+        // Let's clear the pending attempt if it's a 4xx/5xx error so it doesn't infinitely loop forever
         if (response.status >= 400) {
           await self.offlineDB.clearPendingAttempt(attempt.id);
         }
@@ -238,7 +274,7 @@ async function syncAttempts() {
           error: `Server returned ${response.status}`
         });
         bc.close();
-        
+
         const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
         if (clients.length === 0 && response.status >= 400) {
           self.registration.showNotification('WARG Offline Sync', {

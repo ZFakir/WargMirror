@@ -44,15 +44,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     topbarAvatar.alt = currentUser.username + ' avatar';
   }
 
-  // ── Fetch full profile for stats ──
-  let profile = null;
-  try {
-    profile = await api.getUserProfile(currentUser.user_id);
-  } catch (err) {
-    console.error('[Profile] Failed to fetch profile:', err);
-  }
-
-  // ── Name & title ──
+  // ── Name & title (render immediately from session user) ──
   const profileName = document.getElementById('profile-name');
   if (profileName) profileName.textContent = currentUser.username;
 
@@ -62,83 +54,93 @@ document.addEventListener('DOMContentLoaded', async () => {
     profileTitle.textContent = role.charAt(0).toUpperCase() + role.slice(1);
   }
 
-  if (!profile) return;
+  // ── Fetch profile, all badges, and user library concurrently ──
+  const [profileRes, badgesRes, libraryRes] = await Promise.allSettled([
+    api.getUserProfile(currentUser.user_id),
+    api.getAllBadges(),
+    api.getUserLibrary(currentUser.user_id)
+  ]);
 
-  // ── Stats ──
-  const statPoints = document.getElementById('stat-total-points');
-  if (statPoints) statPoints.textContent = (profile.total_points || 0).toLocaleString();
-
-  const statGamesCompleted = document.getElementById('stat-games-completed');
-  if (statGamesCompleted) statGamesCompleted.textContent = (profile.games_completed || 0).toLocaleString();
-
-  const statDistance = document.getElementById('stat-distance-walked');
-  if (statDistance) {
-    const unit = localStorage.getItem('warg_units') || 'metric';
-    if (unit === 'imperial') {
-      const miles = ((profile.distance_walked_m || 0) * 0.000621371).toFixed(1);
-      statDistance.textContent = miles + ' mi';
-    } else {
-      const km = ((profile.distance_walked_m || 0) / 1000).toFixed(1);
-      statDistance.textContent = km + ' km';
-    }
+  const profile = profileRes.status === 'fulfilled' ? profileRes.value : null;
+  if (profileRes.status === 'rejected') {
+    console.error('[Profile] Failed to fetch profile:', profileRes.reason);
   }
 
-  // ── Badges ──
-  const badgesGrid = document.getElementById('profile-badges-grid');
-  if (badgesGrid) {
-    try {
-      const allBadges = await api.getAllBadges();
-      const earnedBadges = profile.Badges || [];
-      const earnedBadgeIds = new Set(earnedBadges.map(b => b.badge_id));
-      
-      if (allBadges.length === 0) {
-        badgesGrid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:var(--color-text-muted);padding:var(--space-4)">No badges available in the system.</p>';
-      } else {
-        badgesGrid.innerHTML = allBadges.map(badge => {
-          const isEarned = earnedBadgeIds.has(badge.badge_id);
-          const earnedData = isEarned ? earnedBadges.find(b => b.badge_id === badge.badge_id) : null;
-          
-          let formattedDate = badge.description || 'Complete tasks to earn this badge.';
-          if (isEarned) {
-            const dateObj = new Date(earnedData.UserBadge ? earnedData.UserBadge.awarded_at : earnedData.created_at);
-            formattedDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-          }
-          
-          // SVG Icon (fallback to default star if missing)
-          const badgeIcon = badge.icon_svg || `<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
+  if (profile) {
+    // ── Stats ──
+    const statPoints = document.getElementById('stat-total-points');
+    if (statPoints) statPoints.textContent = (profile.total_points || 0).toLocaleString();
 
-          return `
-            <div class="badge-item ${isEarned ? 'earned' : 'unearned'}" title="${badge.name}">
-              <div class="badge-icon">
-                ${badgeIcon}
-              </div>
-              <p class="badge-name">${badge.name}</p>
-              <p class="badge-date">${formattedDate}</p>
-            </div>
-          `;
-        }).join('');
+    const statGamesCompleted = document.getElementById('stat-games-completed');
+    if (statGamesCompleted) statGamesCompleted.textContent = (profile.games_completed || 0).toLocaleString();
+
+    const statDistance = document.getElementById('stat-distance-walked');
+    if (statDistance) {
+      const unit = localStorage.getItem('warg_units') || 'metric';
+      if (unit === 'imperial') {
+        const miles = ((profile.distance_walked_m || 0) * 0.000621371).toFixed(1);
+        statDistance.textContent = miles + ' mi';
+      } else {
+        const km = ((profile.distance_walked_m || 0) / 1000).toFixed(1);
+        statDistance.textContent = km + ' km';
       }
-    } catch (err) {
-      console.error('Error fetching badges', err);
-      badgesGrid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:var(--color-text-muted);padding:var(--space-4)">Failed to load badges.</p>';
+    }
+
+    // ── Badges ──
+    const badgesGrid = document.getElementById('profile-badges-grid');
+    if (badgesGrid) {
+      if (badgesRes.status === 'fulfilled') {
+        const allBadges = badgesRes.value || [];
+        const earnedBadges = profile.Badges || [];
+        const earnedBadgeIds = new Set(earnedBadges.map(b => b.badge_id));
+
+        if (allBadges.length === 0) {
+          badgesGrid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:var(--color-text-muted);padding:var(--space-4)">No badges available in the system.</p>';
+        } else {
+          badgesGrid.innerHTML = allBadges.map(badge => {
+            const isEarned = earnedBadgeIds.has(badge.badge_id);
+            const earnedData = isEarned ? earnedBadges.find(b => b.badge_id === badge.badge_id) : null;
+
+            let formattedDate = badge.description || 'Complete tasks to earn this badge.';
+            if (isEarned) {
+              const dateObj = new Date(earnedData.UserBadge ? earnedData.UserBadge.awarded_at : earnedData.created_at);
+              formattedDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            }
+
+            // SVG Icon (fallback to default star if missing)
+            const badgeIcon = badge.icon_svg || `<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
+
+            return `
+              <div class="badge-item ${isEarned ? 'earned' : 'unearned'}" title="${badge.name}">
+                <div class="badge-icon">
+                  ${badgeIcon}
+                </div>
+                <p class="badge-name">${badge.name}</p>
+                <p class="badge-date">${formattedDate}</p>
+              </div>
+            `;
+          }).join('');
+        }
+      } else {
+        console.error('Error fetching badges', badgesRes.reason);
+        badgesGrid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:var(--color-text-muted);padding:var(--space-4)">Failed to load badges.</p>';
+      }
     }
   }
 
   // ── My Library ──
   const libraryGrid = document.getElementById('profile-library-grid');
   if (libraryGrid && typeof GameCard !== 'undefined') {
-    try {
-      const args = await api.getUserLibrary(currentUser.user_id);
-      
+    if (libraryRes.status === 'fulfilled') {
+      const args = libraryRes.value || [];
       if (args.length === 0) {
         libraryGrid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:var(--color-text-muted);padding:var(--space-4)">Your library is empty.</p>';
       } else {
-        GameCard.renderRow(args, libraryGrid, { hideProgress: false });
+        GameCard.renderRow('profile-library-grid', args, { hideProgress: false });
       }
-    } catch (err) {
-      console.error('Failed to load user library:', err);
+    } else {
+      console.error('Failed to load user library:', libraryRes.reason);
       libraryGrid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:var(--color-text-muted);padding:var(--space-4)">Failed to load library.</p>';
     }
   }
 });
-
