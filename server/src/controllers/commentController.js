@@ -13,6 +13,9 @@ exports.getCommentsForArg = async (req, res) => {
       ],
       order: [['created_at', 'ASC']]
     });
+    if (typeof res.set === 'function') {
+      res.set('Cache-Control', 'public, max-age=15, stale-while-revalidate=60');
+    }
     res.json(comments);
   } catch (error) {
     console.error('Error fetching comments:', error);
@@ -28,7 +31,7 @@ exports.postComment = async (req, res) => {
 
     const { argId } = req.params;
     const { body, parent_id, is_spoiler } = req.body;
-    
+
     if (!body || !body.trim()) {
       return res.status(400).json({ error: 'Comment body cannot be empty.' });
     }

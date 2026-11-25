@@ -171,20 +171,25 @@ const searchResultsContainer = document.getElementById('friend-search-results-co
 const searchResultsList = document.getElementById('friend-search-results-list');
 
 let searchTimeout;
+let searchSeq = 0;
+let cachedCurrentUser = null;
 friendsSearchInput?.addEventListener('input', () => {
   const query = friendsSearchInput.value.trim();
-  
+
   clearTimeout(searchTimeout);
   if (!query) {
+    searchSeq++;
     friendsDefaultView.style.display = 'block';
     searchResultsContainer.style.display = 'none';
     return;
   }
 
+  const seq = ++searchSeq;
   searchTimeout = setTimeout(async () => {
     try {
       const users = await api.searchUsers(query);
-      renderUserSearchResults(users);
+      if (seq !== searchSeq) return;
+      await renderUserSearchResults(users);
       friendsDefaultView.style.display = 'none';
       searchResultsContainer.style.display = 'block';
     } catch (err) {
@@ -269,6 +274,33 @@ function renderRightPanelSkeletons() {
   }
 }
 
+async function refreshFriendsAndRequests(userId) {
+  try {
+    const [friendsRes, requestsRes] = await Promise.allSettled([
+      api.getFriends(userId),
+      api.getFriendRequests(userId)
+    ]);
+    if (friendsRes.status === 'fulfilled') {
+      renderFriends(friendsRes.value);
+    } else {
+      throw friendsRes.reason;
+    }
+    if (requestsRes.status === 'fulfilled') {
+      renderPendingRequests(requestsRes.value);
+    }
+  } catch (err) {
+    console.error('Failed to fetch friends/requests', err);
+    const onlineFallback = document.getElementById('online-friends-list');
+    const offlineFallback = document.getElementById('offline-friends-list');
+    if (onlineFallback && onlineFallback.querySelector('.friend-item--skeleton')) {
+      onlineFallback.innerHTML = '<li style="padding:1rem;color:var(--text-muted);font-size:var(--font-size-sm);text-align:center;">Could not load friends</li>';
+    }
+    if (offlineFallback && offlineFallback.querySelector('.friend-item--skeleton')) {
+      offlineFallback.innerHTML = '';
+    }
+  }
+}
+
 async function initHomeData() {
   if (typeof api === 'undefined') {
     console.error('API not loaded'); return;
@@ -280,14 +312,53 @@ async function initHomeData() {
   if (document.getElementById('row-creators')) GameCard.renderSkeletons('row-creators', 4);
   renderRightPanelSkeletons();
 
-  // Fetch ARGs (public) and current user (optional) in parallel
-  var results = await Promise.allSettled([
-    api.getArgs(),
-    api.getCurrentUser()
-  ]);
+  // Kick off public ARGs and optional user session in parallel without blocking public rows on user sub-queries
+  const argsPromise = api.getArgs().then(function (args) {
+    // ── New & Trending — published in last week, sorted by likes ──
+    var oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
-  var args = results[0].status === 'fulfilled' ? results[0].value : [];
-  var currentUser = results[1].status === 'fulfilled' ? results[1].value : null;
+    var trendingArgs = args.filter(function (a) {
+      return new Date(a._raw.created_at) >= oneWeekAgo;
+    }).sort(function (a, b) {
+      return (b.likes || 0) - (a.likes || 0);
+    }).slice(0, 10);
+    if (document.getElementById('row-new')) {
+      if (trendingArgs.length === 0) {
+        showRowEmpty('row-new', 'No new games yet.');
+      } else {
+        GameCard.renderRow('row-new', trendingArgs);
+      }
+    }
+
+    // ── From Creators — sorted by play_count desc ──
+    var creatorsArgs = args.slice().sort(function (a, b) {
+      return (b._raw.play_count || 0) - (a._raw.play_count || 0);
+    }).slice(0, 10);
+    if (document.getElementById('row-creators')) {
+      if (creatorsArgs.length === 0) {
+        showRowEmpty('row-creators', 'No games available yet.');
+      } else {
+        GameCard.renderRow('row-creators', creatorsArgs);
+      }
+    }
+
+    initCardScrolls();
+    return args;
+  });
+
+  const userPromise = api.getCurrentUser();
+  const [argsResult, userResult] = await Promise.allSettled([argsPromise, userPromise]);
+
+  var args = argsResult.status === 'fulfilled' ? argsResult.value : [];
+  var currentUser = userResult.status === 'fulfilled' ? userResult.value : null;
+  cachedCurrentUser = currentUser;
+
+  // If getArgs() failed, render empty states for public rows
+  if (argsResult.status === 'rejected') {
+    if (document.getElementById('row-new')) showRowEmpty('row-new', 'No new games yet.');
+    if (document.getElementById('row-creators')) showRowEmpty('row-creators', 'No games available yet.');
+  }
 
   // ── Update topbar avatar & user-gated UI ──
   if (currentUser) {
@@ -301,24 +372,30 @@ async function initHomeData() {
       }
     }
 
-    // Fetch user profile for stats
-    try {
-      var profile = await api.getUserProfile(currentUser.user_id);
-      
+    // Fetch profile, friends, friend requests, and active sessions concurrently
+    const [profileRes, friendsRes, requestsRes, sessionsRes] = await Promise.allSettled([
+      api.getUserProfile(currentUser.user_id),
+      api.getFriends(currentUser.user_id),
+      api.getFriendRequests(currentUser.user_id),
+      api.getActiveSessions(currentUser.user_id)
+    ]);
+
+    if (profileRes.status === 'fulfilled') {
+      var profile = profileRes.value;
       var statPlayed = document.querySelector('#right-panel .activity-card__stats .stat-block:nth-child(1) .stat-block__value');
-      if (statPlayed) statPlayed.textContent = profile.games_played || 0; // Using view field if available
-      
+      if (statPlayed) statPlayed.textContent = profile.games_played || 0;
+
       var statPoints = document.querySelector('#right-panel .activity-card__stats .stat-block:nth-child(2) .stat-block__value');
       if (statPoints) statPoints.textContent = (profile.total_points || 0).toLocaleString();
-      
+
       var statCompleted = document.getElementById('sidebar-stat-completed') ||
                           document.querySelector('#right-panel .activity-card__stats .stat-block:nth-child(3) .stat-block__value');
       if (statCompleted) statCompleted.textContent = profile.games_completed || 0;
-      
+
       var statBadges = document.getElementById('sidebar-stat-badges') ||
                        document.querySelector('#right-panel .activity-card__stats .stat-block:nth-child(4) .stat-block__value');
       if (statBadges) statBadges.textContent = (profile.Badges || []).length;
-    } catch {
+    } else {
       var fallbackPlayed = document.querySelector('#right-panel .activity-card__stats .stat-block:nth-child(1) .stat-block__value');
       if (fallbackPlayed && fallbackPlayed.querySelector('.skeleton-line')) fallbackPlayed.textContent = '0';
       var fallbackPoints = document.querySelector('#right-panel .activity-card__stats .stat-block:nth-child(2) .stat-block__value');
@@ -329,15 +406,10 @@ async function initHomeData() {
       if (fallbackBadges && fallbackBadges.querySelector('.skeleton-line')) fallbackBadges.textContent = '0';
     }
 
-    // Fetch and render friends & requests
-    try {
-      var friends = await api.getFriends(currentUser.user_id);
-      renderFriends(friends);
-      
-      var requests = await api.getFriendRequests(currentUser.user_id);
-      renderPendingRequests(requests);
-    } catch (err) {
-      console.error('Failed to fetch friends/requests', err);
+    if (friendsRes.status === 'fulfilled') {
+      renderFriends(friendsRes.value);
+    } else {
+      console.error('Failed to fetch friends', friendsRes.reason);
       var onlineFallback = document.getElementById('online-friends-list');
       var offlineFallback = document.getElementById('offline-friends-list');
       if (onlineFallback && onlineFallback.querySelector('.friend-item--skeleton')) {
@@ -348,21 +420,22 @@ async function initHomeData() {
       }
     }
 
-    // Fetch active sessions for "Recently Played"
+    if (requestsRes.status === 'fulfilled') {
+      renderPendingRequests(requestsRes.value);
+    }
+
+    // Populate "Recently Played" from active sessions
     var sessionArgIds = new Set();
-    try {
-      var sessions = await api.getActiveSessions(currentUser.user_id);
-      sessions.forEach(function (s) {
+    if (sessionsRes.status === 'fulfilled') {
+      sessionsRes.value.forEach(function (s) {
         if (s.arg_id) sessionArgIds.add(String(s.arg_id));
       });
-    } catch { /* fallback handled below */ }
+    }
 
-    // Recently Played = ARGs with an active session, no fallback
     var recentArgs = sessionArgIds.size > 0
       ? args.filter(function (a) { return sessionArgIds.has(a.id); })
       : [];
 
-    // Filter out locally dismissed ARGs
     var dismissed = [];
     try { dismissed = JSON.parse(localStorage.getItem('warg_dismissed_recent') || '[]'); } catch { /* ignore */ }
     recentArgs = recentArgs.filter(function (a) { return dismissed.indexOf(a.id) === -1; });
@@ -390,52 +463,10 @@ async function initHomeData() {
     if (offlineList) offlineList.innerHTML = '';
 
     // Guest recently played: none
-    var newestArgs = [];
-
-    // Filter out locally dismissed ARGs
-    var guestDismissed = [];
-    try { guestDismissed = JSON.parse(localStorage.getItem('warg_dismissed_recent') || '[]'); } catch { /* ignore */ }
-    newestArgs = newestArgs.filter(function (a) { return guestDismissed.indexOf(a.id) === -1; });
-
     if (document.getElementById('row-recent')) {
-      if (newestArgs.length === 0) {
-        showRowEmpty('row-recent', 'Log in to track your recent games.');
-      } else {
-        GameCard.renderRow('row-recent', newestArgs, { showRemove: true });
-      }
+      showRowEmpty('row-recent', 'Log in to track your recent games.');
     }
   }
-
-  // ── New & Trending — published in last week, sorted by likes ──
-  var oneWeekAgo = new Date();
-  oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-
-  var trendingArgs = args.filter(function (a) {
-    return new Date(a._raw.created_at) >= oneWeekAgo;
-  }).sort(function (a, b) {
-    return (b.likes || 0) - (a.likes || 0);
-  }).slice(0, 10);
-  if (document.getElementById('row-new')) {
-    if (trendingArgs.length === 0) {
-      showRowEmpty('row-new', 'No new games yet.');
-    } else {
-      GameCard.renderRow('row-new', trendingArgs);
-    }
-  }
-
-  // ── From Creators — sorted by play_count desc ──
-  var creatorsArgs = args.slice().sort(function (a, b) {
-    return (b._raw.play_count || 0) - (a._raw.play_count || 0);
-  }).slice(0, 10);
-  if (document.getElementById('row-creators')) {
-    if (creatorsArgs.length === 0) {
-      showRowEmpty('row-creators', 'No games available yet.');
-    } else {
-      GameCard.renderRow('row-creators', creatorsArgs);
-    }
-  }
-  // Init horizontal scroll for cards
-  initCardScrolls();
 }
 
 /* ── Drag-to-scroll for card rows ── */
@@ -545,7 +576,7 @@ async function renderUserSearchResults(users) {
     return;
   }
   
-  const currentUser = await api.getCurrentUser();
+  const currentUser = cachedCurrentUser || await api.getCurrentUser();
 
   users.forEach(user => {
     // Basic prevent self-add
@@ -629,8 +660,11 @@ function renderPendingRequests(requests) {
       btn.textContent = '...';
       try {
         await api.respondToFriendRequest(req.request_id, 'accepted');
-        // Refresh everything
-        initHomeData();
+        if (cachedCurrentUser) {
+          await refreshFriendsAndRequests(cachedCurrentUser.user_id);
+        } else {
+          initHomeData();
+        }
       } catch (err) {
         console.error('Failed to accept friend request:', err);
         btn.disabled = false;
@@ -639,7 +673,7 @@ function renderPendingRequests(requests) {
         showToast('Failed to accept');
       }
     });
-    
+
     li.querySelector('.btn-decline').addEventListener('click', async (e) => {
       const btn = e.target;
       const acceptBtn = li.querySelector('.btn-accept');
@@ -648,7 +682,11 @@ function renderPendingRequests(requests) {
       btn.textContent = '...';
       try {
         await api.respondToFriendRequest(req.request_id, 'declined');
-        initHomeData();
+        if (cachedCurrentUser) {
+          await refreshFriendsAndRequests(cachedCurrentUser.user_id);
+        } else {
+          initHomeData();
+        }
       } catch (err) {
         console.error('Failed to decline friend request:', err);
         btn.disabled = false;
@@ -855,11 +893,15 @@ document.addEventListener('DOMContentLoaded', () => {
     btnRemoveFriend.textContent = 'Removing...';
 
     try {
-      const currentUser = await api.getCurrentUser();
+      const currentUser = cachedCurrentUser || await api.getCurrentUser();
       await api.removeFriend(currentUser.user_id, currentProfileFriendId);
       showToast('Friend removed');
       closeFriendProfileModal();
-      if (typeof initHomeData === 'function') initHomeData(); // Refresh friends list
+      if (currentUser && typeof refreshFriendsAndRequests === 'function') {
+        await refreshFriendsAndRequests(currentUser.user_id);
+      } else if (typeof initHomeData === 'function') {
+        initHomeData();
+      }
     } catch (error) {
       console.error('Failed to remove friend:', error);
       showToast('Failed to remove friend');

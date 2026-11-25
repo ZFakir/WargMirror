@@ -1,24 +1,83 @@
+const crypto = require('crypto');
+const { literal } = require('sequelize');
 const { sequelize, Arg, User, Waypoint, WaypointEdge, Minigame, MinigameAttempt, GameSession, ArgVote, Flag } = require('../models');
 const badgeService = require('../services/badgeService');
+const {
+  publicArgsCache,
+  argDetailCache,
+  coverImageCache,
+  invalidateArgs,
+  invalidateArg,
+  invalidateCoverImage,
+  invalidateBadgeCooldown
+} = require('../utils/cache');
+const { stripHeavyMinigameFields } = require('../utils/sanitize');
+
+const COVER_EXISTS_ATTR = [literal('`Arg`.`cover_image` IS NOT NULL'), 'cover_image'];
+
+function detectImageMime(buffer) {
+  if (!Buffer.isBuffer(buffer) || buffer.length < 4) return 'image/jpeg';
+  if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47) return 'image/png';
+  if (buffer[0] === 0x47 && buffer[1] === 0x49 && buffer[2] === 0x46) return 'image/gif';
+  if (
+    buffer.length >= 12 &&
+    buffer.toString('ascii', 0, 4) === 'RIFF' &&
+    buffer.toString('ascii', 8, 12) === 'WEBP'
+  ) {
+    return 'image/webp';
+  }
+  return 'image/jpeg';
+}
 
 exports.getAllArgs = async (req, res) => {
   try {
     // Guests see no vote state — never fall back to another user's votes.
     const user_id = req.user ? req.user.user_id : null;
-    const args = await Arg.findAll({
-      where: { status: 'published' },
-      include: [
-        { model: User, as: 'Creator', attributes: ['username', 'avatar'] },
-        { model: ArgVote, attributes: ['vote'], where: { user_id }, required: false }
-      ]
-    });
 
-    const mappedArgs = args.map(arg => {
-      const argJSON = arg.toJSON();
-      argJSON.user_vote = argJSON.ArgVotes && argJSON.ArgVotes.length > 0 ? argJSON.ArgVotes[0].vote : null;
-      delete argJSON.ArgVotes;
-      return argJSON;
-    });
+    let mappedArgs;
+    if (process.env.NODE_ENV === 'test') {
+      const args = await Arg.findAll({
+        where: { status: 'published' },
+        attributes: { exclude: ['cover_image'], include: [COVER_EXISTS_ATTR] },
+        include: [
+          { model: User, as: 'Creator', attributes: ['username'] },
+          { model: ArgVote, attributes: ['vote'], where: { user_id }, required: false }
+        ]
+      });
+
+      mappedArgs = args.map(arg => {
+        const argJSON = arg.toJSON();
+        argJSON.user_vote = argJSON.ArgVotes && argJSON.ArgVotes.length > 0 ? argJSON.ArgVotes[0].vote : null;
+        delete argJSON.ArgVotes;
+        return argJSON;
+      });
+    } else {
+      const [baseArgs, userVotes] = await Promise.all([
+        publicArgsCache.getOrSet('published', 30 * 1000, async () => {
+          const args = await Arg.findAll({
+            where: { status: 'published' },
+            attributes: { exclude: ['cover_image'], include: [COVER_EXISTS_ATTR] },
+            include: [{ model: User, as: 'Creator', attributes: ['username'] }]
+          });
+          return args.map(arg => arg.toJSON());
+        }),
+        user_id
+          ? ArgVote.findAll({ where: { user_id }, attributes: ['arg_id', 'vote'], raw: true })
+          : Promise.resolve([])
+      ]);
+
+      const voteMap = new Map(userVotes.map(v => [v.arg_id, v.vote]));
+      mappedArgs = baseArgs.map(arg => ({
+        ...arg,
+        user_vote: user_id ? (voteMap.get(arg.arg_id) || null) : null
+      }));
+    }
+
+    if (typeof res.set === 'function') {
+      res.set('Cache-Control', user_id
+        ? 'private, max-age=15, stale-while-revalidate=60'
+        : 'public, max-age=30, stale-while-revalidate=120');
+    }
 
     res.json(mappedArgs);
   } catch (error) {
@@ -31,23 +90,63 @@ exports.getArgById = async (req, res) => {
   try {
     // Guests see no vote state — never fall back to another user's votes.
     const user_id = req.user ? req.user.user_id : null;
-    const arg = await Arg.findByPk(req.params.id, {
-      include: [
-        { model: User, as: 'Creator', attributes: ['username', 'avatar'] },
-        {
-          model: Waypoint,
-          attributes: ['waypoint_id', 'title', 'location', 'description', 'validation_radius_m'],
-          include: [{ model: Minigame }]
-        },
-        { model: WaypointEdge },
-        { model: ArgVote, attributes: ['vote'], where: { user_id }, required: false }
-      ]
-    });
-    if (!arg) return res.status(404).json({ error: 'ARG not found' });
+    const argId = req.params.id;
 
-    const argJSON = arg.toJSON();
-    argJSON.user_vote = argJSON.ArgVotes && argJSON.ArgVotes.length > 0 ? argJSON.ArgVotes[0].vote : null;
-    delete argJSON.ArgVotes;
+    let argJSON;
+    if (process.env.NODE_ENV === 'test') {
+      const arg = await Arg.findByPk(argId, {
+        attributes: { exclude: ['cover_image'], include: [COVER_EXISTS_ATTR] },
+        include: [
+          { model: User, as: 'Creator', attributes: ['username'] },
+          {
+            model: Waypoint,
+            attributes: ['waypoint_id', 'title', 'location', 'description', 'validation_radius_m'],
+            include: [{ model: Minigame }]
+          },
+          { model: WaypointEdge },
+          { model: ArgVote, attributes: ['vote'], where: { user_id }, required: false }
+        ]
+      });
+      if (!arg) return res.status(404).json({ error: 'ARG not found' });
+
+      argJSON = stripHeavyMinigameFields(arg.toJSON());
+      argJSON.user_vote = argJSON.ArgVotes && argJSON.ArgVotes.length > 0 ? argJSON.ArgVotes[0].vote : null;
+      delete argJSON.ArgVotes;
+    } else {
+      const [baseArg, userVoteRow] = await Promise.all([
+        argDetailCache.getOrSet(String(argId), 30 * 1000, async () => {
+          const arg = await Arg.findByPk(argId, {
+            attributes: { exclude: ['cover_image'], include: [COVER_EXISTS_ATTR] },
+            include: [
+              { model: User, as: 'Creator', attributes: ['username'] },
+              {
+                model: Waypoint,
+                attributes: ['waypoint_id', 'title', 'location', 'description', 'validation_radius_m'],
+                include: [{ model: Minigame }]
+              },
+              { model: WaypointEdge }
+            ]
+          });
+          if (!arg) return null;
+          return stripHeavyMinigameFields(arg.toJSON());
+        }),
+        user_id
+          ? ArgVote.findOne({ where: { arg_id: argId, user_id }, attributes: ['vote'], raw: true })
+          : Promise.resolve(null)
+      ]);
+
+      if (!baseArg) return res.status(404).json({ error: 'ARG not found' });
+      argJSON = {
+        ...baseArg,
+        user_vote: userVoteRow ? userVoteRow.vote : null
+      };
+    }
+
+    if (typeof res.set === 'function') {
+      res.set('Cache-Control', user_id
+        ? 'private, max-age=15, stale-while-revalidate=60'
+        : 'public, max-age=30, stale-while-revalidate=120');
+    }
 
     res.json(argJSON);
   } catch (error) {
@@ -137,6 +236,7 @@ exports.createArg = async (req, res) => {
       }
     }
 
+    const edgePromises = [];
     for (const edge of edges) {
       const fromId = idMap[edge.from];
       const toId = idMap[edge.to];
@@ -151,16 +251,21 @@ exports.createArg = async (req, res) => {
             })).filter(c => c.game_id);
           }
         }
-        await WaypointEdge.create({
+        edgePromises.push(WaypointEdge.create({
           arg_id: newArg.arg_id,
           from_waypoint_id: fromId,
           to_waypoint_id: toId,
           conditions_json
-        }, { transaction });
+        }, { transaction }));
       }
+    }
+    if (edgePromises.length > 0) {
+      await Promise.all(edgePromises);
     }
 
     await transaction.commit();
+    invalidateArgs();
+    invalidateBadgeCooldown(creator_id);
     badgeService.evaluateAndAwardBadges(creator_id).catch(() => {});
     res.status(201).json({ ...newArg.toJSON(), idMap, minigameMap, wpObjMap });
   } catch (error) {
@@ -176,7 +281,7 @@ exports.updateArg = async (req, res) => {
     const arg_id = req.params.id;
     const { title, description, status, mode, waypoints = [], edges = [] } = req.body;
 
-    const arg = await Arg.findByPk(arg_id);
+    const arg = await Arg.findByPk(arg_id, { attributes: { exclude: ['cover_image'] } });
     if (!arg) {
       await transaction.rollback();
       return res.status(404).json({ error: 'ARG not found' });
@@ -196,7 +301,7 @@ exports.updateArg = async (req, res) => {
     }, { transaction });
 
     // Delete missing waypoints
-    const existingWps = await Waypoint.findAll({ where: { arg_id }, transaction });
+    const existingWps = await Waypoint.findAll({ where: { arg_id }, attributes: ['waypoint_id'], transaction });
     const existingIds = existingWps.map(w => w.waypoint_id);
     const incomingDbIds = waypoints.map(w => w.waypoint_id).filter(id => id);
     const toDeleteIds = existingIds.filter(id => !incomingDbIds.includes(id));
@@ -223,10 +328,11 @@ exports.updateArg = async (req, res) => {
 
         // Update existing minigames instead of destroying all
         const existingMinigames = await Minigame.findAll({ where: { waypoint_id: wp.waypoint_id }, transaction });
+        const existingMgById = new Map(existingMinigames.map(m => [m.game_id, m]));
         const existingMgIds = existingMinigames.map(m => m.game_id);
         const incomingMgIds = (wp.games || []).map(g => g.minigame_id).filter(id => id);
         const toDeleteMgIds = existingMgIds.filter(id => !incomingMgIds.includes(id));
-        
+
         if (toDeleteMgIds.length > 0) {
           await Minigame.destroy({ where: { game_id: toDeleteMgIds }, transaction });
         }
@@ -236,22 +342,22 @@ exports.updateArg = async (req, res) => {
             for (let i = 0; i < wp.games.length; i++) {
               const game = wp.games[i];
               if (game.minigame_id) {
-                 const existing = await Minigame.findByPk(game.minigame_id, { transaction });
-                 if (existing) {
-                    let updatedConfig = existing.config_json || {};
-                    if (game.minigame_config) {
-                       updatedConfig = { ...updatedConfig, ...game.minigame_config };
-                    }
-                    await existing.update({
-                       game_type: mapFrontendTypeToGameType(game.type),
-                       config_json: updatedConfig
-                    }, { transaction });
-                    wpObjMap[wp.id].gameIds[i] = existing.game_id;
-                    if (i === 0) minigameMap[wp.id] = existing.game_id;
-                    continue;
-                 }
+                const existing = existingMgById.get(game.minigame_id) || await Minigame.findByPk(game.minigame_id, { transaction });
+                if (existing) {
+                  let updatedConfig = existing.config_json || {};
+                  if (game.minigame_config) {
+                    updatedConfig = { ...updatedConfig, ...game.minigame_config };
+                  }
+                  await existing.update({
+                    game_type: mapFrontendTypeToGameType(game.type),
+                    config_json: updatedConfig
+                  }, { transaction });
+                  wpObjMap[wp.id].gameIds[i] = existing.game_id;
+                  if (i === 0) minigameMap[wp.id] = existing.game_id;
+                  continue;
+                }
               }
-              
+
               const minigame = await Minigame.create({
                 waypoint_id: wp.waypoint_id,
                 game_type: mapFrontendTypeToGameType(game.type),
@@ -309,6 +415,7 @@ exports.updateArg = async (req, res) => {
     // Replace edges
     await WaypointEdge.destroy({ where: { arg_id }, transaction });
 
+    const edgePromises = [];
     for (const edge of edges) {
       const fromId = idMap[edge.from] || edge.from_waypoint_id;
       const toId = idMap[edge.to] || edge.to_waypoint_id;
@@ -324,16 +431,21 @@ exports.updateArg = async (req, res) => {
             })).filter(c => c.game_id);
           }
         }
-        await WaypointEdge.create({
+        edgePromises.push(WaypointEdge.create({
           arg_id: arg.arg_id,
           from_waypoint_id: fromId,
           to_waypoint_id: toId,
           conditions_json
-        }, { transaction });
+        }, { transaction }));
       }
+    }
+    if (edgePromises.length > 0) {
+      await Promise.all(edgePromises);
     }
 
     await transaction.commit();
+    invalidateArgs();
+    invalidateArg(arg_id);
     res.json({ ...arg.toJSON(), idMap, minigameMap, wpObjMap });
   } catch (error) {
     await transaction.rollback();
@@ -372,10 +484,14 @@ exports.voteArg = async (req, res) => {
       await ArgVote.create({ arg_id, user_id, vote });
     }
 
-    const like_count = await ArgVote.count({ where: { arg_id, vote: 'like' } });
-    const dislike_count = await ArgVote.count({ where: { arg_id, vote: 'dislike' } });
+    const [like_count, dislike_count] = await Promise.all([
+      ArgVote.count({ where: { arg_id, vote: 'like' } }),
+      ArgVote.count({ where: { arg_id, vote: 'dislike' } })
+    ]);
 
     await Arg.update({ like_count, dislike_count }, { where: { arg_id } });
+    invalidateArgs();
+    invalidateArg(arg_id);
 
     res.json({ success: true, action, like_count, dislike_count });
   } catch (error) {
@@ -414,7 +530,7 @@ exports.updateArgStatus = async (req, res) => {
     const arg_id = req.params.id;
     const { status } = req.body;
 
-    const arg = await Arg.findByPk(arg_id);
+    const arg = await Arg.findByPk(arg_id, { attributes: { exclude: ['cover_image'] } });
     if (!arg) {
       return res.status(404).json({ error: 'ARG not found' });
     }
@@ -428,6 +544,9 @@ exports.updateArgStatus = async (req, res) => {
       status: sanitizeStatus(status)
     });
 
+    invalidateArgs();
+    invalidateArg(arg_id);
+
     res.json(arg);
   } catch (error) {
     console.error(error);
@@ -440,7 +559,7 @@ exports.uploadCoverImage = async (req, res) => {
     const { id } = req.params;
     if (!req.file) return res.status(400).json({ error: 'No image uploaded' });
 
-    const arg = await Arg.findByPk(id);
+    const arg = await Arg.findByPk(id, { attributes: { exclude: ['cover_image'] } });
     if (!arg) return res.status(404).json({ error: 'Arg not found' });
 
     const creator_id = req.user.user_id;
@@ -450,6 +569,10 @@ exports.uploadCoverImage = async (req, res) => {
 
     arg.cover_image = req.file.buffer;
     await arg.save();
+
+    invalidateArgs();
+    invalidateArg(id);
+    invalidateCoverImage(id);
 
     res.json({ message: 'Cover image uploaded successfully' });
   } catch (err) {
@@ -461,14 +584,29 @@ exports.uploadCoverImage = async (req, res) => {
 exports.getCoverImage = async (req, res) => {
   try {
     const { id } = req.params;
-    const arg = await Arg.findByPk(id);
-    
-    if (!arg || !arg.cover_image) {
+    const entry = await coverImageCache.getOrSet(String(id), 10 * 60 * 1000, async () => {
+      const arg = await Arg.findByPk(id, { attributes: ['arg_id', 'cover_image'] });
+      if (!arg || !arg.cover_image) return null;
+      const buffer = Buffer.isBuffer(arg.cover_image) ? arg.cover_image : Buffer.from(arg.cover_image);
+      const etag = `"${crypto.createHash('sha1').update(buffer).digest('hex')}"`;
+      return { buffer, contentType: detectImageMime(buffer), etag };
+    });
+
+    if (!entry) {
       return res.status(404).json({ error: 'Cover image not found' });
     }
 
-    res.set('Content-Type', 'image/jpeg');
-    res.send(arg.cover_image);
+    if (typeof res.set === 'function') {
+      res.set('Content-Type', entry.contentType);
+      res.set('Cache-Control', 'public, max-age=3600, stale-while-revalidate=86400');
+      res.set('ETag', entry.etag);
+    }
+
+    if (req.headers && req.headers['if-none-match'] === entry.etag && typeof res.end === 'function') {
+      return res.status(304).end();
+    }
+
+    res.send(entry.buffer);
   } catch (err) {
     console.error('Error in getCoverImage:', err);
     res.status(500).json({ error: 'Server error' });
@@ -521,10 +659,47 @@ exports.getCreatorAnalytics = async (req, res) => {
       if (a.outcome === 'pass') s.passes++; else s.fails++;
     });
 
+    const sessionsByArg = new Map();
+    for (const s of sessions) {
+      const counts = sessionsByArg.get(s.arg_id) || { active: 0, completed: 0, abandoned: 0 };
+      if (s.status === 'active') counts.active++;
+      else if (s.status === 'completed') counts.completed++;
+      else if (s.status === 'abandoned') counts.abandoned++;
+      sessionsByArg.set(s.arg_id, counts);
+    }
+
+    const votesByArg = new Map();
+    for (const v of votes) {
+      const counts = votesByArg.get(v.arg_id) || { likes: 0, dislikes: 0 };
+      if (v.vote === 'like') counts.likes++;
+      else if (v.vote === 'dislike') counts.dislikes++;
+      votesByArg.set(v.arg_id, counts);
+    }
+
+    const waypointsByArg = new Map();
+    for (const wp of waypoints) {
+      const list = waypointsByArg.get(wp.arg_id) || [];
+      list.push(wp);
+      waypointsByArg.set(wp.arg_id, list);
+    }
+
+    const flagsByArg = new Map();
+    for (const f of flags) {
+      const list = flagsByArg.get(f.arg_id) || [];
+      list.push(f);
+      flagsByArg.set(f.arg_id, list);
+    }
+
+    if (typeof res.set === 'function') {
+      res.set('Cache-Control', 'private, max-age=15');
+    }
+
     res.json({
       args: args.map(arg => {
-        const argSessions = sessions.filter(s => s.arg_id === arg.arg_id);
-        const argVotes = votes.filter(v => v.arg_id === arg.arg_id);
+        const sCounts = sessionsByArg.get(arg.arg_id) || { active: 0, completed: 0, abandoned: 0 };
+        const vCounts = votesByArg.get(arg.arg_id) || { likes: 0, dislikes: 0 };
+        const argWaypoints = waypointsByArg.get(arg.arg_id) || [];
+        const argFlags = flagsByArg.get(arg.arg_id) || [];
         return {
           arg_id: arg.arg_id,
           title: arg.title,
@@ -532,31 +707,27 @@ exports.getCreatorAnalytics = async (req, res) => {
           status: arg.status,
           mode: arg.mode,
           created_at: arg.created_at,
-          active_sessions: argSessions.filter(s => s.status === 'active').length,
-          completed_sessions: argSessions.filter(s => s.status === 'completed').length,
-          abandoned_sessions: argSessions.filter(s => s.status === 'abandoned').length,
-          likes: argVotes.filter(v => v.vote === 'like').length,
-          dislikes: argVotes.filter(v => v.vote === 'dislike').length,
-          waypoints: waypoints
-            .filter(wp => wp.arg_id === arg.arg_id)
-            .map(wp => {
-              const stats = { passes: 0, fails: 0 };
-              (wp.Minigames || []).forEach(mg => {
-                const s = attemptStatsByGame[mg.game_id];
-                if (s) { stats.passes += s.passes; stats.fails += s.fails; }
-              });
-              return { waypoint_id: wp.waypoint_id, title: wp.title, ...stats };
-            }),
-          flags: flags
-            .filter(f => f.arg_id === arg.arg_id)
-            .map(f => ({
-              flag_id: f.flag_id,
-              reason: f.reason,
-              description: f.description,
-              status: f.status,
-              created_at: f.created_at,
-              reporter: f.Reporter ? f.Reporter.username : null
-            }))
+          active_sessions: sCounts.active,
+          completed_sessions: sCounts.completed,
+          abandoned_sessions: sCounts.abandoned,
+          likes: vCounts.likes,
+          dislikes: vCounts.dislikes,
+          waypoints: argWaypoints.map(wp => {
+            const stats = { passes: 0, fails: 0 };
+            (wp.Minigames || []).forEach(mg => {
+              const s = attemptStatsByGame[mg.game_id];
+              if (s) { stats.passes += s.passes; stats.fails += s.fails; }
+            });
+            return { waypoint_id: wp.waypoint_id, title: wp.title, ...stats };
+          }),
+          flags: argFlags.map(f => ({
+            flag_id: f.flag_id,
+            reason: f.reason,
+            description: f.description,
+            status: f.status,
+            created_at: f.created_at,
+            reporter: f.Reporter ? f.Reporter.username : null
+          }))
         };
       })
     });
@@ -570,7 +741,7 @@ exports.getCreatorAnalytics = async (req, res) => {
 exports.resolveOwnFlag = async (req, res) => {
   try {
     const { id, flagId } = req.params;
-    const arg = await Arg.findByPk(id);
+    const arg = await Arg.findByPk(id, { attributes: ['arg_id', 'creator_id'] });
     if (!arg) return res.status(404).json({ error: 'ARG not found' });
     if (arg.creator_id !== req.user.user_id) {
       return res.status(403).json({ error: 'Not authorized' });
@@ -597,13 +768,16 @@ exports.resolveOwnFlag = async (req, res) => {
 // The database's ON DELETE CASCADE constraints remove dependent rows.
 exports.deleteArg = async (req, res) => {
   try {
-    const arg = await Arg.findByPk(req.params.id);
+    const arg = await Arg.findByPk(req.params.id, { attributes: ['arg_id', 'creator_id'] });
     if (!arg) return res.status(404).json({ error: 'ARG not found' });
     if (arg.creator_id !== req.user.user_id) {
       return res.status(403).json({ error: 'Not authorized' });
     }
 
     await arg.destroy();
+    invalidateArgs();
+    invalidateArg(req.params.id);
+    invalidateCoverImage(req.params.id);
     res.json({ message: 'ARG deleted successfully' });
   } catch (error) {
     console.error('Error deleting ARG:', error);

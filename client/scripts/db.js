@@ -1,11 +1,15 @@
 // client/scripts/db.js
-// Lightweight IndexedDB wrapper for offline caching
+// Lightweight IndexedDB wrapper for offline caching with connection reuse
 
 const DB_NAME = 'warg-offline-db';
 const DB_VERSION = 1;
 
+let _dbPromise = null;
+
 function openDB() {
-  return new Promise((resolve, reject) => {
+  if (_dbPromise) return _dbPromise;
+
+  _dbPromise = new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
 
     request.onupgradeneeded = (event) => {
@@ -18,9 +22,23 @@ function openDB() {
       }
     };
 
-    request.onsuccess = (event) => resolve(event.target.result);
-    request.onerror = (event) => reject(event.target.error);
+    request.onsuccess = (event) => {
+      const db = event.target.result;
+      db.onclose = () => { _dbPromise = null; };
+      db.onversionchange = () => {
+        db.close();
+        _dbPromise = null;
+      };
+      resolve(db);
+    };
+
+    request.onerror = (event) => {
+      _dbPromise = null;
+      reject(event.target.error);
+    };
   });
+
+  return _dbPromise;
 }
 
 async function savePuzzle(url, data) {

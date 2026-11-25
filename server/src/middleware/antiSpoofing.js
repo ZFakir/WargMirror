@@ -1,4 +1,5 @@
 const { User, LocationEvent, TrustEvent } = require('../models');
+const { invalidateUser } = require('../utils/cache');
 
 // Simple Haversine formula to calculate distance in meters
 function getDistanceFromLatLonInM(lat1, lon1, lat2, lon2) {
@@ -45,7 +46,7 @@ const antiSpoofing = async (req, res, next) => {
     if (buffer && Array.isArray(buffer) && buffer.length >= 5) {
       const latVariance = calculateVariance(buffer.map(c => parseFloat(c.lat)));
       const lngVariance = calculateVariance(buffer.map(c => parseFloat(c.lng)));
-      
+
       const DRIFT_THRESHOLD = 1e-9; // 1e-9
       if (latVariance < DRIFT_THRESHOLD && lngVariance < DRIFT_THRESHOLD) {
         isSuspicious = true;
@@ -54,28 +55,30 @@ const antiSpoofing = async (req, res, next) => {
       }
     }
 
-    // Fetch the last known TRUSTED location event for this user.
-    // Suspicious events are deliberately excluded from the baseline: a spoofed
-    // position must never become the new reference point, otherwise a blocked
-    // request could simply be retried and pass the speed check against itself.
-    const lastEvent = await LocationEvent.findOne({
-      where: { user_id: userId, is_suspicious: false },
-      order: [['recorded_at', 'DESC']]
-    });
+    // Fetch last trusted location event AND user trust fields in parallel (excluding avatar BLOB)
+    const [lastEvent, user] = await Promise.all([
+      LocationEvent.findOne({
+        where: { user_id: userId, is_suspicious: false },
+        order: [['recorded_at', 'DESC']]
+      }),
+      User.findByPk(userId, {
+        attributes: ['user_id', 'trust_score', 'distance_walked_m']
+      })
+    ]);
 
     if (lastEvent && lastEvent.location && lastEvent.location.coordinates) {
       // GeoJSON point in Sequelize: coordinates are [longitude, latitude]
       const lastLng = lastEvent.location.coordinates[0];
       const lastLat = lastEvent.location.coordinates[1];
       const distance = getDistanceFromLatLonInM(lastLat, lastLng, currentLoc.lat, currentLoc.lng);
-      
+
       const timeDiffSeconds = (Date.now() - new Date(lastEvent.recorded_at).getTime()) / 1000;
 
       // 2. Speed Check
       if (timeDiffSeconds > 0) {
         const speed = distance / timeDiffSeconds;
         const MAX_WALKING_SPEED = 4.0; // m/s
-        
+
         if (speed > MAX_WALKING_SPEED) {
           isSuspicious = true;
           flags.push({ reason: 'speed_violation', speed_ms: speed, distance, timeDiffSeconds });
@@ -87,7 +90,7 @@ const antiSpoofing = async (req, res, next) => {
       if (parsedSteps !== undefined && distance > 20) { // Only evaluate for meaningful distances
         // Average step ~0.75m. If distance is more than 2.5x the theoretical max distance from steps, flag it.
         const theoreticalMaxDistance = parsedSteps * 1.5; // generous upper bound
-        
+
         if (parsedSteps === 0 || distance > theoreticalMaxDistance) {
           isSuspicious = true;
           flags.push({ reason: 'pedometer_mismatch', steps: parsedSteps, distance });
@@ -96,25 +99,25 @@ const antiSpoofing = async (req, res, next) => {
       }
     }
 
-    // Update User Trust Score
-    const user = await User.findByPk(userId);
+    const writeOps = [];
+
     if (user) {
       // Ensure score stays between 0 and 100
       let newScore = parseFloat(user.trust_score) + deltaScore;
       newScore = Math.max(0, Math.min(100, newScore));
-      
+
       // The trust score is informational — a signal for admin review. It must
       // never lock a player out: rejecting this one suspicious interaction is
       // the middleware's only automatic action. Account bans are an admin
       // decision (is_suspended), never an automatic one.
       user.trust_score = newScore;
-      
+
       // Accumulate steps as meters if the interaction was legitimate
       if (!isSuspicious && parsedSteps > 0) {
         user.distance_walked_m = (user.distance_walked_m || 0) + parsedSteps;
       }
-      
-      await user.save();
+
+      writeOps.push(user.save());
     }
 
     // Log Location Event
@@ -125,24 +128,41 @@ const antiSpoofing = async (req, res, next) => {
       crs: { type: 'name', properties: { name: 'EPSG:4326' } }
     };
 
-    await LocationEvent.create({
-      user_id: userId,
-      location: locationData,
-      is_suspicious: isSuspicious,
-      flags_json: flags.length > 0 ? flags : null
-    });
+    writeOps.push(
+      LocationEvent.create({
+        user_id: userId,
+        location: locationData,
+        is_suspicious: isSuspicious,
+        flags_json: flags.length > 0 ? flags : null
+      })
+    );
 
-    // Log Trust Event if suspicious or if we want to audit score changes
     if (isSuspicious) {
       for (const flag of flags) {
-        await TrustEvent.create({
-          user_id: userId,
-          event_type: flag.reason,
-          delta_score: (flag.reason === 'drift_anomaly' ? -10.0 : flag.reason === 'speed_violation' ? -15.0 : -20.0),
-          context_json: flag
-        });
+        writeOps.push(
+          TrustEvent.create({
+            user_id: userId,
+            event_type: flag.reason,
+            delta_score: (flag.reason === 'drift_anomaly' ? -10.0 : flag.reason === 'speed_violation' ? -15.0 : -20.0),
+            context_json: flag
+          })
+        );
       }
-      
+    } else if (deltaScore > 0) {
+      writeOps.push(
+        TrustEvent.create({
+          user_id: userId,
+          event_type: 'verified_interaction',
+          delta_score: deltaScore,
+          context_json: { lat: currentLoc.lat, lng: currentLoc.lng }
+        })
+      );
+    }
+
+    await Promise.all(writeOps);
+    invalidateUser(userId);
+
+    if (isSuspicious) {
       // Stop the request here if they are spoofing
       return res.status(403).json({
         error: 'Interaction denied due to suspicious location activity.',
@@ -150,16 +170,7 @@ const antiSpoofing = async (req, res, next) => {
       });
     }
 
-    // Optionally log a positive trust event if no flags and deltaScore > 0
-    if (deltaScore > 0) {
-      await TrustEvent.create({
-        user_id: userId,
-        event_type: 'verified_interaction',
-        delta_score: deltaScore,
-        context_json: { lat: currentLoc.lat, lng: currentLoc.lng }
-      });
-    }
-
+    req.locationEventLogged = true;
     next();
   } catch (error) {
     console.error('Anti-Spoofing Middleware Error:', error);
