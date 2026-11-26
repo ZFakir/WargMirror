@@ -10,10 +10,10 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="styles/tokens.css" />
-  <link rel="stylesheet" href="styles/home.css" />
-  <link rel="stylesheet" href="styles/game.css" />
-  <link rel="stylesheet" href="styles/edit_warg.css" />
+  <link rel="stylesheet" href="styles/tokens.css?v=14" />
+  <link rel="stylesheet" href="styles/home.css?v=14" />
+  <link rel="stylesheet" href="styles/game.css?v=14" />
+  <link rel="stylesheet" href="styles/edit_warg.css?v=14" />
 
 
   <script>
@@ -28,6 +28,7 @@
       }
     })();
   </script>
+</head>
 <body>
 
   <!-- Overlay backdrop for mobile drawers -->
@@ -266,9 +267,12 @@
                   placeholder="Waypoint Title" spellcheck="false" />
                 <textarea class="editor-input editor-input--desc" id="editor-desc" placeholder="Waypoint Description"
                   spellcheck="false" rows="2"></textarea>
-                <div style="margin-top: 12px; display: flex; align-items: center; justify-content: space-between;">
-                  <label for="editor-radius" style="font-size: 13px; color: var(--text-2);">Radius (m):</label>
-                  <input type="number" class="editor-input" id="editor-radius" placeholder="30" min="5" step="1" style="width: 80px; padding: 4px 8px; text-align: right; background: rgba(0,0,0,0.2);" />
+                <div class="editor-radius-row" style="margin-top: 12px; display: flex; flex-direction: column; gap: 4px;">
+                  <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                    <label for="editor-radius" style="font-size: 13px; color: var(--color-text-secondary); font-weight: 500;">Radius (m):</label>
+                    <input type="number" class="editor-input" id="editor-radius" value="30" placeholder="30" min="5" max="1000" step="1" style="width: 92px; padding: 6px 10px; text-align: right; background: rgba(0,0,0,0.25); border: 1px solid var(--color-border); border-radius: var(--radius-sm);" />
+                  </div>
+                  <span style="font-size: 11px; color: var(--color-text-muted);">Geofence trigger radius — type a value or drag the ring handle on the map.</span>
                 </div>
               </div>
 
@@ -456,13 +460,12 @@
         <button class="btn-secondary" id="btn-cancel-barcode">Cancel</button>
         <button class="btn-primary" id="btn-save-barcode">Save Game</button>
       </div>
-      </div>
     </div>
   </div>
 
   <!-- Point Domination Modal -->
   <div class="modal-overlay" id="pd-modal-overlay" aria-hidden="true">
-    <div class="modal">
+    <div class="modal" role="dialog" aria-modal="true">
       <div class="modal__header">
         <h3 class="modal__title">Configure Point Domination</h3>
         <button class="icon-btn" id="btn-close-pd-modal" aria-label="Close modal">
@@ -471,7 +474,11 @@
       </div>
       <div class="modal__body">
         <div style="margin-bottom: 16px;">
-          <label style="display: block; font-size: 14px; font-weight: 500; margin-bottom: 8px; color: var(--text-2);">Reset Interval (Hours)</label>
+          <label for="pd-radius" style="display: block; font-size: 14px; font-weight: 500; margin-bottom: 8px; color: var(--color-text-secondary);">Zone Radius (m)</label>
+          <input type="number" id="pd-radius" style="width: 100%; padding: 10px; border-radius: 6px; background: var(--surface); color: var(--text-1); border: 1px solid var(--border);" placeholder="30" min="5" max="1000" step="1" />
+        </div>
+        <div style="margin-bottom: 16px;">
+          <label for="pd-reset-interval" style="display: block; font-size: 14px; font-weight: 500; margin-bottom: 8px; color: var(--color-text-secondary);">Reset Interval (Hours)</label>
           <input type="number" id="pd-reset-interval" style="width: 100%; padding: 10px; border-radius: 6px; background: var(--surface); color: var(--text-1); border: 1px solid var(--border);" placeholder="0 for never" min="0" />
         </div>
       </div>
@@ -495,7 +502,11 @@
         </button>
       </div>
       <div class="modal__body">
-        <p style="color: var(--text-2); font-size: 14px;">This game will require the player to physically visit the waypoint's location. The geofence checker will automatically verify their proximity.</p>
+        <p style="color: var(--color-text-secondary); font-size: 14px; margin-bottom: 16px;">This game will require the player to physically visit the waypoint's location. Players outside this radius will be bounced and shown the required radius.</p>
+        <div>
+          <label for="geofence-radius" style="display: block; font-size: 14px; font-weight: 500; margin-bottom: 8px; color: var(--color-text-secondary);">Geofence Radius (m)</label>
+          <input type="number" id="geofence-radius" style="width: 100%; padding: 10px; border-radius: 6px; background: var(--surface); color: var(--text-1); border: 1px solid var(--border);" placeholder="30" min="5" max="1000" step="1" />
+        </div>
       </div>
       <div class="modal__footer" style="display: flex; gap: 12px; justify-content: flex-end;">
         <button class="btn-secondary" id="btn-cancel-geofence">Cancel</button>
@@ -505,10 +516,10 @@
   </div>
 
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" type="text/javascript"></script>
-  <script src="scripts/config.js"></script>
-  <script src="scripts/api.js"></script>
-  <script src="scripts/home.js"></script> <!-- Includes navigation drawer logic -->
-  <script src="scripts/edit_warg.js" type="module"></script>
+  <script src="scripts/config.js?v=14"></script>
+  <script src="scripts/api.js?v=14"></script>
+  <script src="scripts/home.js?v=14"></script> <!-- Includes navigation drawer logic -->
+  <script src="scripts/edit_warg.js?v=14" type="module"></script>
 
 <!-- Feedback Modal -->
 <div class="feedback-modal-overlay" id="feedback-modal" aria-hidden="true">

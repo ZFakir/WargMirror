@@ -104,10 +104,6 @@ export class PublishModal {
         if (window.api && typeof window.api.clearGameCache === 'function') {
           await window.api.clearGameCache(this.gameId);
         }
-
-        if (window.api && window.api.clearGameCache) {
-          await window.api.clearGameCache(this.gameId);
-        }
         
         // Show success message inside the modal body
         const bodyEl = this.overlay.querySelector('.publish-modal__body');
@@ -160,8 +156,20 @@ export class PublishModal {
   open(gameId, gameTitle = 'this game', action = 'publish') {
     this.gameId = gameId;
     this.action = action;
+
+    // Reset modal body and buttons cleanly in case it was previously used
+    const bodyEl = this.overlay.querySelector('.publish-modal__body');
+    if (bodyEl) {
+      bodyEl.innerHTML = `
+        <p>Are you sure you want to ${action === 'unpublish' ? 'unpublish' : 'publish'} <strong id="publish-game-title"></strong>?</p>
+        <p style="color: var(--color-text-secondary); font-size: var(--font-size-caption);"></p>
+      `;
+      this.gameTitleEl = bodyEl.querySelector('#publish-game-title');
+    }
     this.gameTitleEl.textContent = gameTitle;
-    
+    this.submitBtn.style.display = '';
+    this.cancelBtn.textContent = 'Cancel';
+
     const titleEl = this.overlay.querySelector('#publish-modal-title');
     const descEl = this.overlay.querySelector('.publish-modal__body p:last-child');
     

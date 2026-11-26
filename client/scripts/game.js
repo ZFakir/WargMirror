@@ -7,7 +7,7 @@
 import playModal from './components/PlayModal.js';
 import { FlagModal } from './components/FlagModal.js';
 import mapModal from './components/MapModal.js';
-import { getMinigameHandler } from './components/minigame-handlers.js';
+import { getMinigameHandler, stopActiveDomination } from './components/minigame-handlers.js';
 import { startSensors, stopSensors, logPosition, getSensorDataAndReset } from './sensors.js';
 
 function setupConnectionBanner() {
@@ -114,9 +114,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Initialize the reusable Flag Modal
   const flagModal = new FlagModal();
   const btnFlagGame = document.getElementById('btn-flag-game');
+  const urlParams = new URLSearchParams(window.location.search);
+  let argId = urlParams.get('id');
+
   if (btnFlagGame) {
     btnFlagGame.addEventListener('click', () => {
-      flagModal.open('Issue with this WARG');
+      flagModal.open(argId, 'Report / Flag WARG');
     });
   }
   
@@ -127,10 +130,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  // Get the ARG ID from the URL parameters (or resolve active demo game when ?demo=1)
-  const urlParams = new URLSearchParams(window.location.search);
-  let argId = urlParams.get('id');
-
   if (!argId && urlParams.get('demo') === '1' && typeof api !== 'undefined' && typeof api.getDemoGame === 'function') {
     const demo = await api.getDemoGame();
     if (demo && demo.id) {
@@ -139,8 +138,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   if (!argId) {
-    alert(urlParams.get('demo') === '1' ? 'No demo game is currently configured.' : 'No WARG ID provided. Redirecting to catalogue.');
-    window.location.href = urlParams.get('demo') === '1' ? 'home.html' : 'catalogue.html';
+    const isDemo = urlParams.get('demo') === '1';
+    const msg = isDemo ? 'No demo game is currently configured.' : 'No WARG ID provided. Redirecting to catalogue.';
+    if (window.showToast) window.showToast(msg);
+    window.location.href = isDemo ? 'home.html' : 'catalogue.html';
     return;
   }
 
@@ -437,12 +438,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     const node = e.detail;
 
     if (node.status === 'locked') {
-      alert("This waypoint is locked. Complete earlier waypoints to unlock it.");
+      if (window.showToast) window.showToast("This waypoint is locked. Complete earlier waypoints to unlock it.");
       return;
     }
 
     if (node.status === 'completed') {
-      alert("You have already completed this waypoint.");
+      if (window.showToast) window.showToast("You have already completed this waypoint.");
       return;
     }
 
@@ -453,7 +454,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     if (node.status === 'failed' && !allowsRetry) {
-      alert("You have already failed this waypoint.");
+      if (window.showToast) window.showToast("You have already failed this waypoint.");
       return;
     }
 
@@ -490,7 +491,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             refData = null;
           }
         }
-        const { CameraCapture } = await import('./components/CameraCapture.js?v=12');
+        const { CameraCapture } = await import('./components/CameraCapture.js?v=14');
 
         const camera = new CameraCapture(container, cvGameType, refData);
 
@@ -713,41 +714,60 @@ document.addEventListener('DOMContentLoaded', async () => {
         playModal.setControls('<p>Error initializing camera minigame.</p>');
       }
     } else {
-      const actionBtn = document.createElement('button');
-      actionBtn.className = 'btn btn--primary';
-      actionBtn.textContent = 'Scan Barcode';
-      playModal.setControls(actionBtn);
-
-      if (node.status === 'locked') {
-        alert("This waypoint is locked. Complete earlier waypoints to unlock it.");
-        return;
-      }
-
-      if (node.status === 'completed') {
-        alert("You have already completed this waypoint.");
-        return;
-      }
-
       // Open play modal immediately to show loading state
-      playModal.open(node.name, "Checking your location...");
-      playModal.clearControls();
+      const showGeofenceLoading = () => {
+        playModal.open(node.name, "Checking your location...");
+        playModal.clearControls();
 
-      const loadingState = document.createElement('div');
-      loadingState.style.textAlign = 'center';
-      loadingState.style.padding = '2rem';
-      loadingState.style.color = 'var(--color-text-muted)';
-      loadingState.innerHTML = `
-        <div class="spinner" style="margin: 0 auto 1rem; width: 40px; height: 40px; border: 4px solid var(--color-bg-elevated); border-top: 4px solid var(--color-brand); border-radius: 50%; animation: spin 1s linear infinite;"></div>
-        <p>Verifying geofence...</p>
-      `;
-      playModal.controlsContainer.appendChild(loadingState);
+        const loadingState = document.createElement('div');
+        loadingState.style.textAlign = 'center';
+        loadingState.style.padding = '2rem';
+        loadingState.style.color = 'var(--color-text-muted)';
+        loadingState.innerHTML = `
+          <div class="spinner" style="margin: 0 auto 1rem; width: 40px; height: 40px; border: 4px solid var(--color-bg-elevated); border-top: 4px solid var(--color-brand); border-radius: 50%; animation: spin 1s linear infinite;"></div>
+          <p>Verifying geofence...</p>
+        `;
+        playModal.controlsContainer.appendChild(loadingState);
+      };
 
-      // Try to get geolocation
-      if (!navigator.geolocation) {
-        alert("Geolocation is not supported by your browser");
-        playModal.close();
-        return;
-      }
+      const checkLocationAndArrive = (forceFresh = false) => {
+        showGeofenceLoading();
+
+        if (!navigator.geolocation) {
+          if (window.showToast) window.showToast("Geolocation is not supported by your browser.");
+          playModal.close();
+          return;
+        }
+
+        if (!forceFresh && window.lastPlayerLocation) {
+          processLocation(window.lastPlayerLocation.latitude, window.lastPlayerLocation.longitude, window.lastPlayerLocation.accuracy);
+          return;
+        }
+
+        const gpsMode = localStorage.getItem('warg_gps_mode') || 'high';
+        navigator.geolocation.getCurrentPosition((position) => {
+          const { latitude, longitude, accuracy } = position.coords;
+          window.lastPlayerLocation = { latitude, longitude, accuracy };
+          mapModal.updatePlayerLocation(latitude, longitude, accuracy);
+          processLocation(latitude, longitude, accuracy);
+        }, (error) => {
+          console.error(error);
+          playModal.setControls(`
+            <div class="geofence-bounce-card">
+              <h3 class="geofence-bounce-card__title">Location Unavailable</h3>
+              <p class="geofence-bounce-card__hint">Enable GPS/Location permission in your browser settings to verify this waypoint's radius.</p>
+              <div class="geofence-bounce-card__actions">
+                <button type="button" class="btn btn--primary" id="btn-retry-gps">Try Again</button>
+              </div>
+            </div>
+          `);
+          document.getElementById('btn-retry-gps')?.addEventListener('click', () => checkLocationAndArrive(true));
+        }, {
+          enableHighAccuracy: gpsMode === 'high',
+          timeout: 10000,
+          maximumAge: gpsMode === 'saver' ? 30000 : 0
+        });
+      };
 
       const processLocation = async (latitude, longitude, accuracy) => {
         try {
@@ -760,11 +780,33 @@ document.addEventListener('DOMContentLoaded', async () => {
             body: JSON.stringify({ lat: latitude, lng: longitude, accuracy_m: accuracy, ...sensorData })
           });
 
+          if (arriveRes.status === 403) {
+            const errBody = await arriveRes.json().catch(() => ({}));
+            playModal.setControls(`
+              <div class="geofence-bounce-card">
+                <h3 class="geofence-bounce-card__title">Location Check Paused</h3>
+                <p class="geofence-bounce-card__hint">${errBody.error || 'Suspicious location jump detected. Move naturally on foot and try again.'}</p>
+                <div class="geofence-bounce-card__actions">
+                  <button type="button" class="btn btn--primary" id="btn-retry-spoof">Check Again</button>
+                </div>
+              </div>
+            `);
+            document.getElementById('btn-retry-spoof')?.addEventListener('click', () => checkLocationAndArrive(true));
+            return;
+          }
+
           if (!arriveRes.ok) throw new Error('Arrive check failed');
           const arriveData = await arriveRes.json();
 
           let geofenceOverride = false;
           if (!arriveData.within_radius) {
+            // Immediately render the bounced node's geofence radius on the map
+            mapModal.showNodeRadius(node.id, arriveData.radius, {
+              highlightBounce: true,
+              distance: arriveData.distance,
+              fitBounds: true
+            });
+
             // Admin-only dev override: lets an admin outside the geofence
             // proceed anyway. The server re-checks the admin role before
             // honouring the flag, and logs every bypass.
@@ -778,16 +820,36 @@ document.addEventListener('DOMContentLoaded', async () => {
                 : Math.round(arriveData.radius) + 'm';
               const override = confirm('You are outside of the geofence (Distance: ' + dist + ', Radius: ' + rad + ').\n\nProceed anyway (Dev Override)?');
               if (!override) {
-                playModal.showFeedback('fail');
-                setTimeout(() => { playModal.close(); }, 2000);
+                playModal.showGeofenceBounce({
+                  nodeName: node.name,
+                  distance: arriveData.distance,
+                  radius: arriveData.radius,
+                  onViewMap: () => mapModal.showNodeRadius(node.id, arriveData.radius, {
+                    highlightBounce: true,
+                    distance: arriveData.distance,
+                    fitBounds: true
+                  }),
+                  onRetry: () => checkLocationAndArrive(true)
+                });
                 return;
               }
               geofenceOverride = true;
             } else {
-              playModal.showFeedback('fail');
-              setTimeout(() => { playModal.close(); }, 2000);
+              playModal.showGeofenceBounce({
+                nodeName: node.name,
+                distance: arriveData.distance,
+                radius: arriveData.radius,
+                onViewMap: () => mapModal.showNodeRadius(node.id, arriveData.radius, {
+                  highlightBounce: true,
+                  distance: arriveData.distance,
+                  fitBounds: true
+                }),
+                onRetry: () => checkLocationAndArrive(true)
+              });
               return;
             }
+          } else {
+            mapModal.clearBounceHighlight(node.id);
           }
 
           const proceedWithGame = () => {
@@ -829,7 +891,9 @@ document.addEventListener('DOMContentLoaded', async () => {
               const configWithMeta = Object.assign({}, minigame.config_json || {}, {
                 game_id: minigame.game_id,
                 arg_id: argId,
-                waypoint_id: node.id
+                waypoint_id: node.id,
+                waypoint_title: node.name,
+                validation_radius_m: node.validation_radius_m
               });
 
               handler.render(gameWrapper, configWithMeta, async (submission) => {
@@ -942,29 +1006,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         } catch (err) {
           console.error(err);
-          alert("Error during geofence check.");
+          if (window.showToast) window.showToast("Error during geofence check.");
           playModal.close();
         }
       };
 
-      if (window.lastPlayerLocation) {
-        processLocation(window.lastPlayerLocation.latitude, window.lastPlayerLocation.longitude, window.lastPlayerLocation.accuracy);
-      } else {
-        const gpsMode = localStorage.getItem('warg_gps_mode') || 'high';
-        navigator.geolocation.getCurrentPosition((position) => {
-          const { latitude, longitude, accuracy } = position.coords;
-          window.lastPlayerLocation = { latitude, longitude, accuracy };
-          processLocation(latitude, longitude, accuracy);
-        }, (error) => {
-          alert("Unable to retrieve your location for geofencing.");
-          console.error(error);
-          playModal.close();
-        }, {
-          enableHighAccuracy: gpsMode === 'high',
-          timeout: 10000,
-          maximumAge: gpsMode === 'saver' ? 30000 : 0
-        });
-      }
+      checkLocationAndArrive(false);
     }
   });
 
@@ -1198,8 +1245,29 @@ document.addEventListener('DOMContentLoaded', async () => {
       postComment(commentInput.value, null, checkIsSpoiler ? checkIsSpoiler.checked : false, btnPostComment);
     });
   }
+  if (commentInput) {
+    commentInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        postComment(commentInput.value, null, checkIsSpoiler ? checkIsSpoiler.checked : false, btnPostComment);
+      }
+    });
+  }
+
+  const feedbackHeader = document.querySelector('.feedback-header');
+  if (feedbackHeader) {
+    feedbackHeader.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        feedbackHeader.click();
+      }
+    });
+  }
 
   loadComments();
 });
 
-window.addEventListener('beforeunload', stopSensors);
+window.addEventListener('beforeunload', () => {
+  stopActiveDomination();
+  stopSensors();
+});

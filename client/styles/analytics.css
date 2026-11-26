@@ -256,7 +256,7 @@
   background: var(--color-bg-overlay);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  z-index: 100;
+  z-index: 10030;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -435,4 +435,16 @@
 
 .action-card--danger:hover .action-card__arrow {
   color: var(--color-danger);
+}
+
+@media (max-width: 640px) {
+  .analytics-header__title {
+    font-size: var(--font-size-h2);
+  }
+  .stats-grid {
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  }
+  .stat-item__value {
+    font-size: var(--font-size-h2);
+  }
 }

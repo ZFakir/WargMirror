@@ -159,6 +159,83 @@ export class PlayModal {
     }, 2000);
   }
 
+  _formatDist(meters) {
+    if (meters === null || meters === undefined || !Number.isFinite(Number(meters))) return '--';
+    const m = Number(meters);
+    const unit = localStorage.getItem('warg_units') || 'metric';
+    if (unit === 'imperial') {
+      const ft = m * 3.28084;
+      return ft >= 1000 ? `${(m * 0.000621371).toFixed(2)} mi` : `${Math.round(ft)} ft`;
+    }
+    return m >= 1000 ? `${(m / 1000).toFixed(2)} km` : `${Math.round(m)}m`;
+  }
+
+  /**
+   * Render clear geofence bounce feedback showing player distance vs required node radius.
+   */
+  showGeofenceBounce({ nodeName = 'this waypoint', distance = 0, radius = 30, onViewMap = null, onRetry = null } = {}) {
+    this.controlsContainer.innerHTML = '';
+
+    const safeRadius = Number(radius) || 30;
+    const safeDist = Number(distance) || 0;
+    const remaining = Math.max(1, safeDist - safeRadius);
+
+    const card = document.createElement('div');
+    card.className = 'geofence-bounce-card';
+
+    const iconWrap = document.createElement('div');
+    iconWrap.className = 'geofence-bounce-card__icon';
+    iconWrap.innerHTML = '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/></svg>';
+
+    const title = document.createElement('h3');
+    title.className = 'geofence-bounce-card__title';
+    title.textContent = 'Outside Waypoint Radius';
+
+    const stats = document.createElement('div');
+    stats.className = 'geofence-bounce-card__stats';
+
+    const distStat = document.createElement('div');
+    distStat.className = 'geofence-bounce-stat';
+    distStat.innerHTML = `<span class="geofence-bounce-stat__label">Your Distance</span><strong class="geofence-bounce-stat__value is-danger">${this._formatDist(safeDist)}</strong>`;
+
+    const radStat = document.createElement('div');
+    radStat.className = 'geofence-bounce-stat';
+    radStat.innerHTML = `<span class="geofence-bounce-stat__label">Node Radius</span><strong class="geofence-bounce-stat__value is-accent">${this._formatDist(safeRadius)}</strong>`;
+
+    stats.append(distStat, radStat);
+
+    const hint = document.createElement('p');
+    hint.className = 'geofence-bounce-card__hint';
+    hint.textContent = `Move ${this._formatDist(remaining)} closer to enter the ${this._formatDist(safeRadius)} radius around "${nodeName}".`;
+
+    const actions = document.createElement('div');
+    actions.className = 'geofence-bounce-card__actions';
+
+    if (typeof onViewMap === 'function') {
+      const mapBtn = document.createElement('button');
+      mapBtn.type = 'button';
+      mapBtn.className = 'btn btn--outline';
+      mapBtn.textContent = 'Show Radius on Map';
+      mapBtn.addEventListener('click', () => {
+        this.close();
+        onViewMap();
+      });
+      actions.appendChild(mapBtn);
+    }
+
+    if (typeof onRetry === 'function') {
+      const retryBtn = document.createElement('button');
+      retryBtn.type = 'button';
+      retryBtn.className = 'btn btn--primary';
+      retryBtn.textContent = 'Check Again';
+      retryBtn.addEventListener('click', () => onRetry());
+      actions.appendChild(retryBtn);
+    }
+
+    card.append(iconWrap, title, stats, hint, actions);
+    this.controlsContainer.appendChild(card);
+  }
+
   /**
    * Returns the canvas element or its context for game rendering
    */

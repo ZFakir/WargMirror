@@ -89,8 +89,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 36px;
+  height: 36px;
   border-radius: var(--radius-sm);
   background: transparent;
   border: none;
@@ -126,8 +126,8 @@
 /* ── Stats Grid ── */
 .profile-stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--space-3);
 }
 
 .stat-card {
@@ -192,8 +192,8 @@
 
 .badges-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: var(--space-5);
+  grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr));
+  gap: var(--space-4);
 }
 
 .badge-item {
@@ -308,11 +308,17 @@
 
 /* ── Responsive ── */
 @media (max-width: 768px) {
+  .profile-banner {
+    height: 140px;
+  }
   .profile-info {
     flex-direction: column;
     align-items: center;
     text-align: center;
-    margin-top: -60px;
+    margin-top: -54px;
+  }
+  .profile-name {
+    font-size: var(--font-size-h2);
   }
   
   .profile-name-row {
@@ -325,5 +331,6 @@
 
   .friend-actions {
     justify-content: center;
+    flex-wrap: wrap;
   }
 }

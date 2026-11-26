@@ -974,18 +974,20 @@ exports.dominationPing = async (req, res) => {
     // Check for Wipe based on reset_interval_hours
     const resetIntervalHours = minigame.config_json?.reset_interval_hours || 0;
     const now = new Date();
+    let currentWipeStartMs = 0;
 
-    if (resetIntervalHours > 0 && attempt && attempt.attempted_at) {
-      const createdTime = new Date(minigame.created_at).getTime();
+    if (resetIntervalHours > 0) {
+      const createdTime = new Date(minigame.created_at || now).getTime();
       const intervalMs = resetIntervalHours * 60 * 60 * 1000;
+      currentWipeStartMs = createdTime + Math.floor((now.getTime() - createdTime) / intervalMs) * intervalMs;
 
-      const currentWipeStart = createdTime + Math.floor((now.getTime() - createdTime) / intervalMs) * intervalMs;
-      const attemptTime = new Date(attempt.attempted_at).getTime();
-
-      if (attemptTime < currentWipeStart) {
-        // Wipe occurred
-        submissionData.cumulative_time_hours = 0;
-        submissionData.top_score_time_hours = 0;
+      if (attempt && attempt.attempted_at) {
+        const attemptTime = new Date(attempt.attempted_at).getTime();
+        if (attemptTime < currentWipeStartMs) {
+          submissionData.cumulative_time_hours = 0;
+          submissionData.top_score_time_hours = 0;
+          submissionData.last_ping_at = null;
+        }
       }
     }
 
@@ -998,35 +1000,50 @@ exports.dominationPing = async (req, res) => {
           hoursDelta = timeDiffMs / (1000 * 60 * 60);
           submissionData.cumulative_time_hours += hoursDelta;
         }
+      } else if ((submissionData.cumulative_time_hours || 0) === 0) {
+        // Credit initial presence (1s) so player immediately appears on leaderboard
+        hoursDelta = 1 / 3600;
+        submissionData.cumulative_time_hours = hoursDelta;
       }
       submissionData.last_ping_at = now.toISOString();
     } else {
       submissionData.last_ping_at = null; // Reset chain
     }
 
-    // Determine Top Scorer
+    // Determine Top Scorer among non-wiped attempts
     let topScorerId = null;
     let maxScore = -1;
 
     for (const att of allAttempts) {
+      if (resetIntervalHours > 0 && att.attempted_at && new Date(att.attempted_at).getTime() < currentWipeStartMs) {
+        continue;
+      }
       const pData = att.submission_json || {};
-      const score = pData.cumulative_time_hours || 0;
+      const score = att.user_id === user_id
+        ? (submissionData.cumulative_time_hours || 0)
+        : (pData.cumulative_time_hours || 0);
       if (score > maxScore) {
         maxScore = score;
         topScorerId = att.user_id;
       }
     }
 
-    if (user_id === topScorerId || submissionData.cumulative_time_hours > maxScore) {
-      submissionData.top_score_time_hours += hoursDelta;
+    const isTopScorer = Boolean(
+      within_radius &&
+      (submissionData.cumulative_time_hours || 0) > 0 &&
+      (user_id === topScorerId || (submissionData.cumulative_time_hours || 0) >= maxScore)
+    );
+
+    if (isTopScorer) {
+      submissionData.top_score_time_hours = (submissionData.top_score_time_hours || 0) + hoursDelta;
     }
 
     if (attempt) {
       attempt.submission_json = submissionData;
       attempt.attempted_at = now;
-      attempt.outcome = 'pass';
+      if (within_radius) attempt.outcome = 'pass';
       await attempt.save({ transaction });
-    } else {
+    } else if (within_radius) {
       await MinigameAttempt.create({
         user_id,
         game_id,
@@ -1039,8 +1056,17 @@ exports.dominationPing = async (req, res) => {
     }
 
     await transaction.commit();
-    invalidateDomination(game_id);
-    res.json({ success: true, within_radius, submissionData });
+    if (attempt || within_radius) {
+      invalidateDomination(game_id);
+    }
+    res.json({
+      success: true,
+      within_radius,
+      distance: Number.isFinite(distance) ? Math.round(distance * 10) / 10 : null,
+      radius: waypoint.validation_radius_m,
+      is_top_scorer: isTopScorer,
+      submissionData
+    });
   } catch (error) {
     await transaction.rollback();
     console.error('Ping Error:', error);

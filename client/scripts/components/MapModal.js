@@ -42,6 +42,39 @@ export class MapModal {
     this.BADGE_LABEL = { solo: 'Solo', coop: 'Co-op', pvp: 'PvP' };
 
     this.clockInterval = null;
+    this._bouncedNodeIds = new Set();
+  }
+
+  _escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  _formatDistance(meters) {
+    if (meters === null || meters === undefined || !Number.isFinite(Number(meters))) return '--';
+    const m = Number(meters);
+    const unit = localStorage.getItem('warg_units') || 'metric';
+    if (unit === 'imperial') {
+      const feet = m * 3.28084;
+      return feet >= 1000 ? `${(m * 0.000621371).toFixed(2)} mi` : `${Math.round(feet)} ft`;
+    }
+    return m >= 1000 ? `${(m / 1000).toFixed(2)} km` : `${Math.round(m)}m`;
+  }
+
+  _formatDuration(hours) {
+    const totalSeconds = Math.max(0, Math.round((Number(hours) || 0) * 3600));
+    if (totalSeconds < 60) return `${totalSeconds}s`;
+    const mins = Math.floor(totalSeconds / 60);
+    const secs = totalSeconds % 60;
+    if (mins < 60) return `${mins}m ${secs}s`;
+    const hrs = Math.floor(mins / 60);
+    const remMins = mins % 60;
+    return `${hrs}h ${remMins}m`;
   }
 
   /**
@@ -79,7 +112,7 @@ export class MapModal {
 
     await Promise.all([
       this.loadCSS('https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css'),
-      this.loadCSS('styles/map-modal.css')
+      this.loadCSS('styles/map-modal.css?v=14')
     ]);
     await this.loadLeafletJS();
 
@@ -153,7 +186,7 @@ export class MapModal {
     // 1. & 2. Inject CSS and wait for them to load
     await Promise.all([
       this.loadCSS('https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css'),
-      this.loadCSS('styles/map-modal.css')
+      this.loadCSS('styles/map-modal.css?v=14')
     ]);
 
     // 3. Inject Leaflet JS if needed, and wait for it
@@ -443,22 +476,31 @@ export class MapModal {
 
       // Handle clicks inside popups
       this.map.on('popupopen', (e) => {
-        const btn = e.popup._contentNode.querySelector('.map-play-btn');
-        if (btn) {
-          const nodeId = btn.getAttribute('data-node-id');
-          const node = this.NODES.find(n => n.id === nodeId);
-          
-          btn.addEventListener('click', () => {
-            if (node) {
-              document.dispatchEvent(new CustomEvent('warg:play-node', { detail: node }));
-              this.map.closePopup();
-            }
+        const contentNode = e.popup._contentNode;
+        const btn = contentNode.querySelector('.map-play-btn');
+        const anyNodeEl = contentNode.querySelector('[data-node-id]');
+        const nodeId = (btn && btn.getAttribute('data-node-id')) || (anyNodeEl && anyNodeEl.getAttribute('data-node-id'));
+        const node = nodeId ? this.NODES.find(n => n.id.toString() === nodeId.toString()) : null;
+
+        if (node && node.status !== 'locked') {
+          this.showNodeRadius(node.id, node.validation_radius_m || 30, {
+            highlightBounce: this._bouncedNodeIds.has(node.id.toString())
           });
+        }
+
+        if (btn && node) {
+          btn.onclick = () => {
+            document.dispatchEvent(new CustomEvent('warg:play-node', { detail: node }));
+            this.map.closePopup();
+          };
 
           // Point Domination: Show Leaderboard in the map popup
-          const minigames = node && (node.games || node.minigames) ? (node.games || node.minigames) : [];
+          const minigames = node.games || node.minigames || [];
           const pdGame = minigames.find(g => g.type === 'point_domination' || g.game_type === 'point_domination');
           if (pdGame) {
+            const existingLb = btn.parentNode.querySelector('.popup-leaderboard-container');
+            if (existingLb) existingLb.remove();
+
             const lbContainer = document.createElement('div');
             lbContainer.className = 'popup-leaderboard-container';
             lbContainer.style.marginTop = '0.5rem';
@@ -469,43 +511,70 @@ export class MapModal {
                 <p style="font-size: 0.75rem; color: var(--color-text-muted); margin-top: 0.25rem;">Loading Leaderboard...</p>
               </div>
             `;
-            
+
             btn.parentNode.insertBefore(lbContainer, btn);
 
             const argId = new URLSearchParams(window.location.search).get('id');
             const apiBase = window.API_BASE || '';
             const gameId = pdGame.id || pdGame.game_id;
-            
+
             if (argId && gameId) {
               fetch(`${apiBase}/api/game/${argId}/waypoint/${node.id}/domination-scores?game_id=${gameId}`, { credentials: 'include' })
                 .then(res => res.ok ? res.json() : Promise.reject('Failed'))
                 .then(data => {
-                  let top3Html;
+                  const box = document.createElement('div');
+                  box.style.cssText = 'background: var(--color-bg-elevated); padding: 0.5rem; border-radius: var(--radius-sm); border: 1px solid var(--color-border);';
+
+                  const heading = document.createElement('h4');
+                  heading.textContent = 'Live Leaderboard';
+                  heading.style.cssText = 'margin: 0 0 0.35rem 0; font-size: 0.75rem; text-transform: uppercase; color: var(--color-brand); text-align: center; border-bottom: 1px solid var(--color-border); padding-bottom: 0.25rem;';
+                  box.appendChild(heading);
+
                   if (data.top3 && data.top3.length > 0) {
-                    top3Html = data.top3.map(u => `
-                      <div style="display: flex; justify-content: space-between; font-size: 0.75rem; border-bottom: 1px solid var(--color-border); padding: 3px 0;">
-                        <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 60%;"><strong>${u.username}</strong></span>
-                        <span style="color: var(--color-brand); font-weight: bold;">${u.score.toFixed(2)}h</span>
-                      </div>
-                    `).join('');
+                    data.top3.forEach((u, idx) => {
+                      const row = document.createElement('div');
+                      row.style.cssText = 'display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; border-bottom: 1px solid var(--color-border); padding: 3px 0; gap: 8px;';
+
+                      const nameSpan = document.createElement('span');
+                      nameSpan.style.cssText = 'overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 65%; font-weight: 600;';
+                      nameSpan.textContent = `#${idx + 1} ${u.username || 'Player'}`;
+
+                      const scoreSpan = document.createElement('span');
+                      scoreSpan.style.cssText = 'color: var(--color-brand); font-weight: 700; font-family: var(--font-mono);';
+                      scoreSpan.textContent = this._formatDuration(u.score);
+
+                      row.append(nameSpan, scoreSpan);
+                      box.appendChild(row);
+                    });
                   } else {
-                    top3Html = '<p style="font-size: 0.75rem; color: var(--color-text-muted); text-align: center; margin: 0.5rem 0;">No dominators yet.</p>';
-                  }
-                  
-                  let wipeHtml = '';
-                  if (data.nextWipeInHours !== null) {
-                    const hrs = Math.floor(data.nextWipeInHours);
-                    const mins = Math.floor((data.nextWipeInHours - hrs) * 60);
-                    wipeHtml = `<p style="font-size: 0.7rem; color: var(--color-text-muted); margin-top: 0.5rem; text-align: center;">Wipes in: ${hrs}h ${mins}m</p>`;
+                    const empty = document.createElement('p');
+                    empty.textContent = 'No dominators yet — step inside to claim!';
+                    empty.style.cssText = 'font-size: 0.75rem; color: var(--color-text-muted); text-align: center; margin: 0.4rem 0;';
+                    box.appendChild(empty);
                   }
 
-                  lbContainer.innerHTML = `
-                    <div style="background: var(--color-bg-elevated); padding: 0.5rem; border-radius: var(--radius-sm);">
-                      <h4 style="margin-bottom: 0.2rem; font-size: 0.75rem; text-transform: uppercase; color: var(--color-brand); text-align: center; border-bottom: 1px solid var(--color-border); padding-bottom: 0.2rem;">Live Leaderboard</h4>
-                      ${top3Html}
-                      ${wipeHtml}
-                    </div>
-                  `;
+                  if (data.currentUserScore) {
+                    const myRow = document.createElement('div');
+                    myRow.style.cssText = 'margin-top: 0.4rem; padding-top: 0.35rem; border-top: 1px dashed var(--color-border); display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--color-accent); font-weight: 600;';
+                    const myRank = document.createElement('span');
+                    myRank.textContent = `Your rank: #${data.currentUserScore.rank}`;
+                    const myTime = document.createElement('span');
+                    myTime.textContent = this._formatDuration(data.currentUserScore.score);
+                    myRow.append(myRank, myTime);
+                    box.appendChild(myRow);
+                  }
+
+                  if (data.nextWipeInHours !== null && data.nextWipeInHours !== undefined) {
+                    const hrs = Math.floor(data.nextWipeInHours);
+                    const mins = Math.max(0, Math.floor((data.nextWipeInHours - hrs) * 60));
+                    const wipeP = document.createElement('p');
+                    wipeP.textContent = hrs > 0 ? `Resets in: ${hrs}h ${mins}m` : `Resets in: ${mins}m`;
+                    wipeP.style.cssText = 'font-size: 0.7rem; color: var(--color-text-muted); margin: 0.4rem 0 0 0; text-align: center;';
+                    box.appendChild(wipeP);
+                  }
+
+                  lbContainer.innerHTML = '';
+                  lbContainer.appendChild(box);
                 })
                 .catch(err => {
                   console.error(err);
@@ -557,34 +626,139 @@ export class MapModal {
     }
   }
 
+  showNodeRadius(nodeId, radiusMeters, options = {}) {
+    if (!this.map || !window.L) return;
+    const node = this.NODES.find(n => n.id.toString() === nodeId.toString());
+    if (!node) return;
+
+    const { highlightBounce = false, distance = null, fitBounds = false } = options;
+    const radius = Number(radiusMeters) || Number(node.validation_radius_m) || 30;
+    const minigames = node.games || node.minigames || [];
+    const hasPD = minigames.some(g => g.type === 'point_domination' || g.game_type === 'point_domination');
+
+    this.radiusCircles = this.radiusCircles || {};
+    let circle = this.radiusCircles[node.id];
+
+    const style = highlightBounce
+      ? {
+          color: '#ff6b6b',
+          fillColor: '#ff6b6b',
+          weight: 2.5,
+          dashArray: '6, 4',
+          opacity: 1,
+          fillOpacity: 0.22
+        }
+      : hasPD
+        ? {
+            color: '#ff4444',
+            fillColor: '#ff4444',
+            weight: 1.5,
+            dashArray: '4, 4',
+            opacity: 1,
+            fillOpacity: 0.1
+          }
+        : {
+            color: '#00d8ff',
+            fillColor: '#00d8ff',
+            weight: 1.5,
+            dashArray: '5, 5',
+            opacity: 0.8,
+            fillOpacity: 0.08
+          };
+
+    if (!circle) {
+      circle = L.circle([node.lat, node.lng], {
+        radius,
+        interactive: false,
+        ...style
+      }).addTo(this.map);
+      this.radiusCircles[node.id] = circle;
+    } else {
+      circle.setRadius(radius);
+      circle.setStyle(style);
+    }
+
+    if (highlightBounce) {
+      this._bouncedNodeIds.add(node.id.toString());
+      const distPart = distance !== null && distance !== undefined
+        ? ` • You are ${this._formatDistance(distance)} away`
+        : '';
+      const tipText = `Required radius: ${this._formatDistance(radius)}${distPart}`;
+      circle.unbindTooltip();
+      circle.bindTooltip(tipText, {
+        permanent: true,
+        direction: 'top',
+        offset: [0, -8],
+        className: 'geofence-bounce-tooltip'
+      }).openTooltip();
+
+      if (fitBounds) {
+        const bounds = circle.getBounds();
+        if (this.playerMarker) {
+          bounds.extend(this.playerMarker.getLatLng());
+        }
+        this.map.fitBounds(bounds, { padding: [48, 48], maxZoom: 18, animate: true });
+      }
+    }
+  }
+
+  clearBounceHighlight(nodeId) {
+    if (!nodeId) return;
+    this._bouncedNodeIds.delete(nodeId.toString());
+    const circle = this.radiusCircles && this.radiusCircles[nodeId];
+    const node = this.NODES.find(n => n.id.toString() === nodeId.toString());
+    if (!circle) return;
+
+    circle.unbindTooltip();
+    const minigames = (node && (node.games || node.minigames)) || [];
+    const hasPD = minigames.some(g => g.type === 'point_domination' || g.game_type === 'point_domination');
+    if (hasPD) {
+      circle.setStyle({
+        color: '#ff4444',
+        fillColor: '#ff4444',
+        weight: 1.5,
+        dashArray: '4, 4',
+        opacity: 1,
+        fillOpacity: 0.1
+      });
+    } else if (this.map) {
+      this.map.removeLayer(circle);
+      delete this.radiusCircles[nodeId];
+    }
+  }
+
   /* ─── Editor Mode API ─── */
 
   updateNodeVisuals(node) {
     if (!this.map) return;
     const games = node.games || node.minigames || node.Minigames || [];
     const hasPD = games.some(g => g.type === 'point_domination' || g.game_type === 'point_domination');
+    const isSelected = this._selectedNodeId === node.id;
     const el = document.getElementById(`em-${node.id}`);
-    
+
     if (el) {
-      if (hasPD) {
-        el.classList.add('pd-node');
-      } else {
-        el.classList.remove('pd-node');
-      }
-      
+      el.classList.toggle('pd-node', hasPD);
       const handleEl = el.querySelector('.mock-waypoint__handle');
       if (handleEl) {
-         handleEl.style.display = hasPD ? 'flex' : 'none';
+        handleEl.style.display = 'flex';
       }
     }
 
     if (this.radiusCircles && this.radiusCircles[node.id]) {
-       const circle = this.radiusCircles[node.id];
-       if (hasPD) {
-         circle.setStyle({ color: '#ff4444', opacity: 1, fillOpacity: 0.1 });
-       } else {
-         circle.setStyle({ color: '#00d8ff', opacity: 0, fillOpacity: 0 });
-       }
+      const circle = this.radiusCircles[node.id];
+      const baseColor = hasPD ? '#ff4444' : '#00d8ff';
+      circle.setRadius(node.validation_radius_m || 30);
+      circle.setStyle({
+        color: baseColor,
+        fillColor: baseColor,
+        weight: isSelected ? 2.5 : 1.5,
+        opacity: isSelected ? 1 : 0.75,
+        fillOpacity: isSelected ? 0.18 : 0.10
+      });
+    }
+
+    if (isSelected && this.radiusHandle) {
+      this._createRadiusHandle(node.id);
     }
   }
 
@@ -603,28 +777,33 @@ export class MapModal {
       className: '',
       html: `<div class="node-marker editor-node ${markerColorClass}" id="em-${node.id}">
                <div class="node-marker__core">+</div>
-               <div class="mock-waypoint__handle" style="display: ${hasPD ? 'flex' : 'none'};"><span></span><span></span><span></span></div>
+               <div class="mock-waypoint__handle" title="Drag to move waypoint"><span></span><span></span><span></span></div>
              </div>`,
       iconSize: [34, 34],
       iconAnchor: [17, 17],
       popupAnchor: [0, -14]
     });
 
-    // Add radius circle
+    // Add radius circle (visible for ALL waypoints so creators see every geofence)
     const radius = node.validation_radius_m || 30;
+    const baseColor = hasPD ? '#ff4444' : '#00d8ff';
     const circle = L.circle([node.lat, node.lng], {
       radius: radius,
-      color: hasPD ? '#ff4444' : '#00d8ff',
+      color: baseColor,
+      fillColor: baseColor,
       weight: 1.5,
-      dashArray: '4, 4',
-      opacity: hasPD ? 1 : 0,
-      fillOpacity: hasPD ? 0.1 : 0,
+      dashArray: '5, 5',
+      opacity: 0.75,
+      fillOpacity: 0.10,
       interactive: false
     }).addTo(this.map);
     this.radiusCircles[node.id] = circle;
 
     // Markers are NOT draggable by default — only the handle enables dragging
     const marker = L.marker([node.lat, node.lng], { icon, draggable: false }).addTo(this.map);
+    if (node.title) {
+      marker.bindTooltip(node.title, { direction: 'top', offset: [0, -18] });
+    }
 
     // marker.on('add') fires synchronously during .addTo() — before we can attach it.
     // Use a microtask so the DOM element is present when we query it.
@@ -649,11 +828,15 @@ export class MapModal {
 
       if (handle) {
         // Handle: enable Leaflet drag for this marker then hand the event to Leaflet
-        L.DomEvent.on(handle, 'mousedown', (e) => {
+        const startDrag = (e) => {
+          L.DomEvent.stopPropagation(e);
           marker.dragging.enable();
           if (this._editorCallbacks.onNodeSelected) this._editorCallbacks.onNodeSelected(node.id);
-          marker.dragging._draggable._onDown(e);
-        });
+          if (marker.dragging._draggable && typeof marker.dragging._draggable._onDown === 'function') {
+            marker.dragging._draggable._onDown(e);
+          }
+        };
+        L.DomEvent.on(handle, 'mousedown touchstart', startDrag);
       }
     }, 0);
 
@@ -708,9 +891,23 @@ export class MapModal {
     this._selectedNodeId = id;
     Object.entries(this.markerLookup).forEach(([nodeId, marker]) => {
       const el = marker.getElement();
-      if (!el) return;
-      const core = el.querySelector('.node-marker');
-      if (core) core.classList.toggle('selected', nodeId === id);
+      const isSelected = nodeId === id;
+      if (el) {
+        const core = el.querySelector('.node-marker');
+        if (core) core.classList.toggle('selected', isSelected);
+      }
+      const circle = this.radiusCircles && this.radiusCircles[nodeId];
+      if (circle) {
+        const isPd = el && el.querySelector('.node-marker')?.classList.contains('pd-node');
+        const baseColor = isPd ? '#ff4444' : '#00d8ff';
+        circle.setStyle({
+          color: baseColor,
+          fillColor: baseColor,
+          weight: isSelected ? 2.5 : 1.5,
+          opacity: isSelected ? 1 : 0.75,
+          fillOpacity: isSelected ? 0.18 : 0.10
+        });
+      }
     });
 
     if (this.radiusHandle) {
@@ -729,6 +926,9 @@ export class MapModal {
     }
     if (this._selectedNodeId === id && this.radiusHandle) {
       this._updateRadiusHandlePosition(id);
+      if (this.radiusHandle.getTooltip()) {
+        this.radiusHandle.setTooltipContent(`${Math.round(radius)}m`);
+      }
     }
   }
 
@@ -756,11 +956,20 @@ export class MapModal {
 
   _createRadiusHandle(id) {
     if (!this.map) return;
+    if (this.radiusHandle) {
+      this.map.removeLayer(this.radiusHandle);
+      this.radiusHandle = null;
+    }
+    const markerEl = this.markerLookup[id]?.getElement();
+    const isPd = markerEl && markerEl.querySelector('.node-marker')?.classList.contains('pd-node');
+    const knobColor = isPd ? '#ff4444' : '#00d8ff';
+    const initialRadius = Math.round(this.radiusCircles[id]?.getRadius() || 30);
+
     const icon = L.divIcon({
       className: '',
-      html: `<div style="width: 12px; height: 12px; background: #00d8ff; border: 2px solid #fff; border-radius: 50%; cursor: ew-resize; box-shadow: 0 0 5px rgba(0,0,0,0.5);"></div>`,
-      iconSize: [12, 12],
-      iconAnchor: [6, 6]
+      html: `<div title="Drag to resize geofence radius" style="width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: ew-resize;"><div style="width: 16px; height: 16px; background: ${knobColor}; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 0 8px rgba(0,0,0,0.65);"></div></div>`,
+      iconSize: [28, 28],
+      iconAnchor: [14, 14]
     });
 
     this.radiusHandle = L.marker([0, 0], {
@@ -769,21 +978,33 @@ export class MapModal {
       zIndexOffset: 2000
     }).addTo(this.map);
 
+    this.radiusHandle.bindTooltip(`${initialRadius}m`, {
+      direction: 'right',
+      offset: [10, 0],
+      permanent: false
+    });
+
     this._updateRadiusHandlePosition(id);
+
+    this.radiusHandle.on('dragstart', () => {
+      this.radiusHandle.openTooltip();
+    });
 
     this.radiusHandle.on('drag', () => {
       const center = this.markerLookup[id].getLatLng();
       const handlePos = this.radiusHandle.getLatLng();
-      const newRadius = center.distanceTo(handlePos);
-      this.radiusCircles[id].setRadius(newRadius);
+      const clampedRadius = Math.max(5, Math.min(1000, Math.round(center.distanceTo(handlePos))));
+      this.radiusCircles[id].setRadius(clampedRadius);
+      this.radiusHandle.setTooltipContent(`${clampedRadius}m`);
 
       if (this._editorCallbacks.onRadiusChanged) {
-        this._editorCallbacks.onRadiusChanged(id, newRadius);
+        this._editorCallbacks.onRadiusChanged(id, clampedRadius);
       }
     });
 
     this.radiusHandle.on('dragend', () => {
       this._updateRadiusHandlePosition(id);
+      this.radiusHandle.closeTooltip();
     });
   }
 
@@ -1148,16 +1369,17 @@ export class MapModal {
     const isFailed = node.status === 'failed';
     const fillStyle = isFailed ? 'background: var(--color-danger, #ef4444); width: 100%;' : `width:${node.progress}%`;
     const labelStyle = isFailed ? 'color: var(--color-danger, #ef4444); font-weight: 700;' : '';
+    const radiusText = this._formatDistance(node.validation_radius_m || 30);
 
     return `
-      <div class="pc">
-        <span class="pc__badge pc__badge--${node.type}">${this.BADGE_LABEL[node.type]}</span>
-        <div class="pc__title">${node.name}</div>
-        <div class="pc__desc">${node.desc}</div>
-        <div class="pc__coords">${node.lat.toFixed(5)}, ${node.lng.toFixed(5)}</div>
+      <div class="pc" data-node-id="${this._escapeHtml(node.id)}">
+        <span class="pc__badge pc__badge--${this._escapeHtml(node.type)}">${this._escapeHtml(this.BADGE_LABEL[node.type] || 'Solo')}</span>
+        <div class="pc__title">${this._escapeHtml(node.name)}</div>
+        <div class="pc__desc">${this._escapeHtml(node.desc)}</div>
+        <div class="pc__coords">${node.lat.toFixed(5)}, ${node.lng.toFixed(5)} • Zone radius: ${this._escapeHtml(radiusText)}</div>
         <div class="pc__row">
           <div class="pc__track"><div class="pc__fill" style="${fillStyle}"></div></div>
-          <div class="pc__label" style="${labelStyle}">${node.progLabel}</div>
+          <div class="pc__label" style="${labelStyle}">${this._escapeHtml(node.progLabel)}</div>
         </div>
         ${btn}
       </div>`;

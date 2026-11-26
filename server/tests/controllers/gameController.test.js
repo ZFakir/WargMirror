@@ -378,7 +378,44 @@ describe('gameController', () => {
       MinigameAttempt.findAll.mockResolvedValue([]);
 
       await dominationPing(req, res);
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true, within_radius: true }));
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+        success: true,
+        within_radius: true,
+        distance: 10,
+        radius: 50
+      }));
+    });
+
+    it('should return distance and radius when player is bounced outside domination zone', async () => {
+      Waypoint.findByPk.mockResolvedValue({ validation_radius_m: 30 });
+      Minigame.findByPk.mockResolvedValue({ game_type: 'point_domination', config_json: {} });
+      sequelize.query.mockResolvedValue([{ distance: 85.4 }]);
+      MinigameAttempt.findOne.mockResolvedValue(null);
+      MinigameAttempt.findAll.mockResolvedValue([]);
+
+      await dominationPing(req, res);
+      expect(MinigameAttempt.create).not.toHaveBeenCalled();
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+        success: true,
+        within_radius: false,
+        distance: 85.4,
+        radius: 30
+      }));
+    });
+
+    it('should credit initial capture time on first in-zone ping', async () => {
+      Waypoint.findByPk.mockResolvedValue({ validation_radius_m: 40 });
+      Minigame.findByPk.mockResolvedValue({ game_type: 'point_domination', config_json: {} });
+      sequelize.query.mockResolvedValue([{ distance: 12 }]);
+      MinigameAttempt.findOne.mockResolvedValue(null);
+      MinigameAttempt.findAll.mockResolvedValue([]);
+      MinigameAttempt.create.mockResolvedValue({});
+
+      await dominationPing(req, res);
+      expect(MinigameAttempt.create).toHaveBeenCalled();
+      const payload = res.json.mock.calls[0][0];
+      expect(payload.within_radius).toBe(true);
+      expect(payload.submissionData.cumulative_time_hours).toBeGreaterThan(0);
     });
 
     it('should handle errors in dominationPing', async () => {

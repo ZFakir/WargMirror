@@ -11,9 +11,9 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="styles/tokens.css" />
-  <link rel="stylesheet" href="styles/home.css" />
-  <link rel="stylesheet" href="styles/game.css?v=12" />
+  <link rel="stylesheet" href="styles/tokens.css?v=14" />
+  <link rel="stylesheet" href="styles/home.css?v=14" />
+  <link rel="stylesheet" href="styles/game.css?v=14" />
 
   <script>
     (function() {
@@ -228,7 +228,7 @@
 
         <!-- Game Feedback & Discussion -->
         <div class="game-feedback-wrapper">
-          <div class="feedback-header" onclick="document.getElementById('feedback-content').classList.toggle('is-hidden'); this.querySelector('.feedback-toggle-icon').classList.toggle('is-rotated');">
+          <div class="feedback-header" role="button" tabindex="0" onclick="document.getElementById('feedback-content').classList.toggle('is-hidden'); this.querySelector('.feedback-toggle-icon').classList.toggle('is-rotated');">
             <h3>Feedback & Discussion</h3>
             <svg class="feedback-toggle-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M6 9l6 6 6-6"/>
@@ -466,8 +466,9 @@
         </div>
       </div>
     </div>
-    <script src="scripts/components/ConfirmModal.js"></script>
-    <script src="scripts/game.js?v=12" type="module"></script>
+  </div>
+  <script src="scripts/components/ConfirmModal.js?v=14"></script>
+  <script src="scripts/game.js?v=14" type="module"></script>
 
 <!-- Feedback Modal -->
 <div class="feedback-modal-overlay" id="feedback-modal" aria-hidden="true">

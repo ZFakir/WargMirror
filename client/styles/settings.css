@@ -79,6 +79,7 @@
 
 .settings-input {
   width: 100%;
+  min-height: var(--touch-target);
   padding: var(--space-2) var(--space-3);
   background: var(--color-bg-surface);
   border: 1px solid var(--color-border);
@@ -97,7 +98,8 @@
 .settings-select {
   appearance: none;
   width: 100%;
-  padding: var(--space-2) var(--space-3);
+  min-height: var(--touch-target);
+  padding: var(--space-2) calc(var(--space-3) + 18px) var(--space-2) var(--space-3);
   background: var(--color-bg-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
@@ -241,4 +243,21 @@ input:checked + .slider:before {
 
 .btn-danger:hover {
   background: rgba(255, 77, 79, 0.2);
+}
+
+@media (max-width: 640px) {
+  .settings-section {
+    padding: var(--space-3);
+    margin-bottom: var(--space-4);
+  }
+  .settings-toggle {
+    gap: var(--space-3);
+  }
+  .settings-actions {
+    flex-direction: column-reverse;
+  }
+  .settings-actions button {
+    width: 100%;
+    min-height: var(--touch-target);
+  }
 }

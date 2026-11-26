@@ -5,7 +5,7 @@
 .flag-modal-overlay {
   position: fixed;
   inset: 0;
-  z-index: 1000;
+  z-index: 10030;
   background-color: rgba(0, 0, 0, 0.85);
   backdrop-filter: blur(8px);
   display: flex;
@@ -101,6 +101,7 @@
 }
 
 .flag-modal input,
+.flag-modal select,
 .flag-modal textarea {
   background: var(--color-bg-card);
   border: 1px solid var(--color-border);

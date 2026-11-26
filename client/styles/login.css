@@ -301,4 +301,13 @@
     color: var(--color-brand);
     text-decoration: underline;
   }
+
+  @media (max-width: 480px) {
+    .login-container {
+      padding: var(--space-3);
+    }
+    .login-card {
+      padding: var(--space-4) var(--space-3);
+    }
+  }
 }
