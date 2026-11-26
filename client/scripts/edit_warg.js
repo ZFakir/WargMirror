@@ -308,10 +308,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     onRadiusChanged(id, newRadius) {
       const node = nodes.find(n => n.id === id);
       if (node) {
-        node.validation_radius_m = Math.round(newRadius);
+        const clamped = Math.max(5, Math.min(1000, Math.round(newRadius)));
+        node.validation_radius_m = clamped;
         if (selectedId === id && typeof editorRadius !== 'undefined' && editorRadius) {
-          editorRadius.value = node.validation_radius_m;
+          editorRadius.value = clamped;
         }
+        isDirty = true;
       }
     }
   });
@@ -405,10 +407,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (node) {
         if (editorTitle) editorTitle.value = node.title;
         if (editorDesc) editorDesc.value = node.description;
-        const hasPD = node.games && node.games.some(g => g.type === 'point_domination');
         if (typeof editorRadius !== 'undefined' && editorRadius) {
           editorRadius.value = node.validation_radius_m || 30;
-          editorRadius.parentElement.style.display = hasPD ? 'flex' : 'none';
+          const radiusRow = editorRadius.closest('.editor-radius-row') || editorRadius.parentElement;
+          if (radiusRow) radiusRow.style.display = 'flex';
         }
         if (mapModal) {
           mapModal.updateNodeVisuals(node);
@@ -424,6 +426,12 @@ document.addEventListener('DOMContentLoaded', async () => {
               const unlimitedChecked = config.allow_multiple_attempts ? 'checked' : '';
               const isCVGame = ['shape_match', 'colour_match', 'texture_match', 'sift_match', 'plaque_scan'].includes(game.type);
               const isPDGame = game.type === 'point_domination' || game.gamemode === 'Point Domination';
+              const hasEditorModal =
+                game.gamemode === 'QnA / MCQ' ||
+                game.gamemode === 'Barcode Game' ||
+                game.gamemode === 'Geofence Check' ||
+                game.type === 'gps' ||
+                isPDGame;
 
               html += `
                 <div class="sub-card" style="position: relative; flex-direction: column; align-items: stretch;" tabindex="0">
@@ -452,7 +460,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </button>
                   `) : ''}
                   <div style="display: flex; gap: 8px; margin-top: 12px;">
-                    <button class="btn-secondary btn-edit-game" data-index="${index}" style="flex: 1; padding: 6px; font-size: 12px;">Edit</button>
+                    ${hasEditorModal ? `<button class="btn-secondary btn-edit-game" data-index="${index}" style="flex: 1; padding: 6px; font-size: 12px;">Edit</button>` : ''}
                     <button class="btn-danger btn-delete-game" data-index="${index}" style="flex: 1; padding: 6px; font-size: 12px;">Delete</button>
                   </div>
                 </div>
@@ -563,7 +571,7 @@ document.addEventListener('DOMContentLoaded', async () => {
               editBtns.forEach(btn => {
                 btn.addEventListener('click', (e) => {
                   e.stopPropagation();
-                  const index = btn.getAttribute('data-index');
+                  const index = parseInt(btn.getAttribute('data-index'), 10);
                   const game = node.games[index];
                   if (game.gamemode === 'QnA / MCQ') {
                     openQnaModal(game.minigame_config, index);
@@ -571,10 +579,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     openBarcodeModal(game.minigame_config, index);
                   } else if (game.type === 'point_domination') {
                     openPdModal(game.minigame_config, index);
-                  } else if (game.gamemode === 'Geofence Check') {
+                  } else if (game.gamemode === 'Geofence Check' || game.type === 'gps') {
                     openGeofenceModal(game.minigame_config, index);
-                  } else {
-                    openAlertModal('Editor for this game type is coming soon.');
                   }
                 });
               });
@@ -709,14 +715,36 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     if (editorRadius) {
+      const clampRadius = (val) => {
+        const parsed = parseInt(val, 10);
+        if (isNaN(parsed)) return 30;
+        return Math.max(5, Math.min(1000, parsed));
+      };
+
       editorRadius.addEventListener('input', () => {
         if (selectedType === 'node' && selectedId) {
           const node = nodes.find(n => n.id === selectedId);
           if (node) {
-            let r = parseInt(editorRadius.value, 10);
-            if (isNaN(r) || r < 1) r = 30;
-            node.validation_radius_m = r;
-            mapModal.updateNodeRadius(selectedId, r);
+            const parsed = parseInt(editorRadius.value, 10);
+            if (!isNaN(parsed) && parsed >= 5) {
+              const clamped = Math.min(1000, parsed);
+              node.validation_radius_m = clamped;
+              mapModal.updateNodeRadius(selectedId, clamped);
+              isDirty = true;
+            }
+          }
+        }
+      });
+
+      editorRadius.addEventListener('change', () => {
+        if (selectedType === 'node' && selectedId) {
+          const node = nodes.find(n => n.id === selectedId);
+          if (node) {
+            const clamped = clampRadius(editorRadius.value);
+            editorRadius.value = clamped;
+            node.validation_radius_m = clamped;
+            mapModal.updateNodeRadius(selectedId, clamped);
+            isDirty = true;
           }
         }
       });
@@ -765,6 +793,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         currentStatus = effectiveStatus;
         isDirty = false;
 
+        if (window.api && typeof window.api.clearGameCache === 'function') {
+          window.api.clearGameCache(currentArgId).catch(() => {});
+        }
+
         // Update nodes with their DB IDs
         if (data.idMap || data.minigameMap || data.wpObjMap) {
           nodes.forEach(n => {
@@ -802,10 +834,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (btnGlobalSave) {
       btnGlobalSave.addEventListener('click', async () => {
         const origText = btnGlobalSave.textContent;
+        const wasCreate = isCreateMode && !currentArgId;
         setLoadingState(btnGlobalSave, true, origText);
         try {
           await saveArg();
-          const msg = isCreateMode && !currentArgId
+          const msg = wasCreate
             ? 'Your new WARG has been saved as a draft.'
             : 'All changes have been successfully saved to the server.';
           openAlertModal(msg);
@@ -900,6 +933,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           edges = edges.filter(e => e.from !== selectedId && e.to !== selectedId);
           mapModal.updateEditorEdges(edges, nodes);
           clearSelection();
+          isDirty = true;
         });
       });
     }
@@ -910,6 +944,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           edges = edges.filter(e => e.id !== selectedId);
           mapModal.updateEditorEdges(edges, nodes);
           clearSelection();
+          isDirty = true;
         });
       });
     }
@@ -976,39 +1011,65 @@ document.addEventListener('DOMContentLoaded', async () => {
     const btnCloseGeofenceModal = document.getElementById('btn-close-geofence-modal');
     const btnCancelGeofence = document.getElementById('btn-cancel-geofence');
     const btnSaveGeofence = document.getElementById('btn-save-geofence');
+    const geofenceRadiusInput = document.getElementById('geofence-radius');
 
     let geofenceEditIndex = null;
 
     // eslint-disable-next-line no-unused-vars
     function openGeofenceModal(existingConfig = null, editIndex = null) {
       geofenceEditIndex = editIndex;
+      const node = nodes.find(n => n.id === selectedId);
+      if (geofenceRadiusInput) {
+        geofenceRadiusInput.value = (node && node.validation_radius_m) || 30;
+      }
       if (geofenceModalOverlay) geofenceModalOverlay.setAttribute('aria-hidden', 'false');
     }
 
     function closeGeofenceModal() {
       if (geofenceModalOverlay) geofenceModalOverlay.setAttribute('aria-hidden', 'true');
+      geofenceEditIndex = null;
     }
 
     if (btnCloseGeofenceModal) btnCloseGeofenceModal.addEventListener('click', closeGeofenceModal);
     if (btnCancelGeofence) btnCancelGeofence.addEventListener('click', closeGeofenceModal);
+    if (geofenceModalOverlay) {
+      geofenceModalOverlay.addEventListener('click', (e) => {
+        if (e.target === geofenceModalOverlay) closeGeofenceModal();
+      });
+    }
     if (btnSaveGeofence) {
       btnSaveGeofence.addEventListener('click', () => {
         const node = nodes.find(n => n.id === selectedId);
         if (!node) return;
         if (!node.games) node.games = [];
-        
-        const newGame = {
-          gamemode: 'Geofence Check',
-          type: 'gps_proximity',
-          minigame_config: { subtype: 'geofence' }
-        };
 
-        if (geofenceEditIndex !== null) {
+        if (geofenceRadiusInput) {
+          let r = parseInt(geofenceRadiusInput.value, 10);
+          if (isNaN(r)) r = node.validation_radius_m || 30;
+          r = Math.max(5, Math.min(1000, r));
+          node.validation_radius_m = r;
+          if (editorRadius) editorRadius.value = r;
+          if (mapModal) mapModal.updateNodeRadius(node.id, r);
+        }
+
+        const existingGame = geofenceEditIndex !== null && geofenceEditIndex !== undefined ? node.games[geofenceEditIndex] : null;
+        const isLegacyGps = existingGame && existingGame.type === 'gps';
+        const newGame = {
+          gamemode: isLegacyGps ? 'GPS Location' : 'Geofence Check',
+          type: isLegacyGps ? 'gps' : 'gps_proximity',
+          minigame_config: isLegacyGps ? { ...(existingGame.minigame_config || {}) } : { ...(existingGame?.minigame_config || {}), subtype: 'geofence' }
+        };
+        if (existingGame && existingGame.minigame_id) {
+          newGame.minigame_id = existingGame.minigame_id;
+        }
+
+        if (geofenceEditIndex !== null && geofenceEditIndex !== undefined) {
           node.games[geofenceEditIndex] = newGame;
         } else {
           node.games.push(newGame);
         }
-        
+
+        isDirty = true;
         closeGeofenceModal();
         updatePanel();
       });
@@ -1221,6 +1282,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           node.games.push(newGame);
         }
 
+        isDirty = true;
         updatePanel();
         closeQnaModal();
       });
@@ -1301,6 +1363,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           node.games.push(newGame);
         }
 
+        isDirty = true;
         updatePanel(); 
         closeBarcodeModal();
       });
@@ -1337,9 +1400,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     const btnCancelPd = document.getElementById('btn-cancel-pd');
     const btnSavePd = document.getElementById('btn-save-pd');
     const pdResetInterval = document.getElementById('pd-reset-interval');
+    const pdRadiusInput = document.getElementById('pd-radius');
 
     function openPdModal(existingConfig = null, editIndex = null) {
       currentEditGameIndex = editIndex;
+      const node = nodes.find(n => n.id === selectedId);
+      if (pdRadiusInput) {
+        pdRadiusInput.value = (node && node.validation_radius_m) || 30;
+      }
       if (existingConfig && existingConfig.reset_interval_hours) {
         pdResetInterval.value = existingConfig.reset_interval_hours;
       } else {
@@ -1363,6 +1431,15 @@ document.addEventListener('DOMContentLoaded', async () => {
       btnSavePd.addEventListener('click', () => {
         const node = nodes.find(n => n.id === selectedId);
         if (!node) return;
+
+        if (pdRadiusInput) {
+          let r = parseInt(pdRadiusInput.value, 10);
+          if (isNaN(r)) r = node.validation_radius_m || 30;
+          r = Math.max(5, Math.min(1000, r));
+          node.validation_radius_m = r;
+          if (editorRadius) editorRadius.value = r;
+          if (mapModal) mapModal.updateNodeRadius(node.id, r);
+        }
 
         let interval = parseFloat(pdResetInterval.value);
         if (isNaN(interval) || interval < 0) {
@@ -1395,7 +1472,8 @@ document.addEventListener('DOMContentLoaded', async () => {
           node.games.push(newGame);
         }
 
-        updatePanel(); 
+        isDirty = true;
+        updatePanel();
         closePdModal();
       });
     }

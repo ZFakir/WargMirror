@@ -54,11 +54,11 @@
   right: 14px;
   z-index: 500;
   /* above map HUD */
-  background: rgba(18, 16, 14, 0.82);
+  background: rgba(18, 16, 14, 0.85);
   border: 1px solid var(--color-border);
   color: var(--color-text-primary);
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
@@ -200,6 +200,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
+  min-height: 44px;
   padding: 10px 10px;
   border-radius: var(--radius-sm);
   cursor: pointer;
@@ -611,10 +612,10 @@
 
 .map-modal .mock-waypoint__handle {
   position: absolute;
-  top: -8px;
-  right: -8px;
-  width: 20px;
-  height: 20px;
+  top: -10px;
+  right: -10px;
+  width: 24px;
+  height: 24px;
   background: var(--color-bg-card);
   border: 1px solid var(--color-text-muted);
   border-radius: 50%;
@@ -661,7 +662,7 @@
 
 .map-modal .leaflet-popup-content {
   margin: 0;
-  width: 250px !important;
+  width: min(260px, 78vw) !important;
 }
 
 .map-modal .leaflet-popup-close-button {
@@ -843,7 +844,121 @@
 
   /* Fix Leaflet popup being too tall on mobile */
   .map-modal .leaflet-popup-content {
-    max-height: 35vh;
+    max-height: 42vh;
     overflow-y: auto;
   }
+
+  .map-modal .hud {
+    right: 60px;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .map-modal .hud__title {
+    padding: 6px 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .map-modal .hud__title span {
+    display: none;
+  }
+}
+
+/* ============ GEOFENCE BOUNCE TOOLTIP & POINT DOMINATION HUD ============ */
+.geofence-bounce-tooltip.leaflet-tooltip {
+  background: rgba(18, 16, 14, 0.94);
+  color: #ffd166;
+  border: 1px solid #ff6b6b;
+  border-radius: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 5px 10px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.55);
+}
+
+.geofence-bounce-tooltip.leaflet-tooltip-top::before {
+  border-top-color: #ff6b6b;
+}
+
+.pd-hud-pill {
+  position: absolute;
+  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  left: 14px;
+  right: 14px;
+  max-width: 380px;
+  z-index: 480;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(18, 16, 14, 0.92);
+  border: 1px solid rgba(51, 255, 51, 0.45);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(8px);
+  color: #f1ede3;
+}
+
+.pd-hud-pill[data-state="outside"],
+.pd-hud-pill[data-state="warn"] {
+  border-color: rgba(255, 107, 107, 0.75);
+}
+
+.pd-hud-pill__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: #33ff33;
+  box-shadow: 0 0 10px rgba(51, 255, 51, 0.6);
+  animation: pulse-dot 1.4s ease-in-out infinite;
+}
+
+.pd-hud-pill[data-state="outside"] .pd-hud-pill__dot,
+.pd-hud-pill[data-state="warn"] .pd-hud-pill__dot {
+  background: #ff6b6b;
+  box-shadow: 0 0 10px rgba(255, 107, 107, 0.7);
+}
+
+.pd-hud-pill__info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pd-hud-pill__info strong {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.pd-hud-pill__info span {
+  font-size: 11px;
+  color: #c0b89b;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pd-hud-pill__stop {
+  flex-shrink: 0;
+  min-height: 36px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: rgba(255, 107, 107, 0.18);
+  border: 1px solid rgba(255, 107, 107, 0.5);
+  color: #ff6b6b;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.pd-hud-pill__stop:hover {
+  background: rgba(255, 107, 107, 0.32);
 }

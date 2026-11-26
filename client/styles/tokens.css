@@ -27,10 +27,55 @@
     --color-secondary:        #33FF33;   /* P1 Phosphor — Secondary Accent    */
     --color-secondary-muted:  rgba(51, 255, 51, 0.10);
 
-    --color-text-primary:     rgba(192, 184, 155, 0.95);
-    --color-text-secondary:   rgba(192, 184, 155, 0.60);
-    --color-text-muted:       rgba(192, 184, 155, 0.35);
+    --color-text-primary:     rgba(192, 184, 155, 0.96);
+    --color-text-secondary:   rgba(192, 184, 155, 0.78);
+    --color-text-muted:       rgba(192, 184, 155, 0.58);
     --color-text-on-accent:   #12100E;
+
+    /* ── Compatibility Token Aliases (shared across components & pages) ── */
+    --color-text:             var(--color-text-primary);
+    --color-text-base:        var(--color-text-primary);
+    --color-bg-elevated:      var(--color-bg-card);
+    --color-bg-panel:         var(--color-bg-surface);
+    --color-bg-card-hover:    rgba(192, 184, 155, 0.08);
+    --color-bg-alt:           var(--color-bg-surface);
+    --color-green:            var(--color-success);
+    --color-red:              var(--color-danger);
+    --color-primary:          var(--color-accent);
+    --color-primary-hover:    #7a8bcc;
+    --color-error:            var(--color-danger);
+    --color-brand-primary:    var(--color-brand);
+    --text-1:                 var(--color-text-primary);
+    --text-2:                 var(--color-text-secondary);
+    --text-muted:             var(--color-text-muted);
+    --surface:                var(--color-bg-surface);
+    --border:                 var(--color-border);
+    --border-color:           var(--color-border);
+    --bg-card:                var(--color-bg-card);
+    --bg-surface:             var(--color-bg-surface);
+
+    --spacing-xs:             0.25rem;
+    --spacing-sm:             0.5rem;
+    --spacing-md:             1rem;
+    --spacing-lg:             1.5rem;
+    --spacing-xl:             2rem;
+    --spacing-2xl:            2.5rem;
+    --spacing-3xl:            3rem;
+    --space-8:                4rem;
+
+    --radius-md:              0.75rem;
+    --radius-lg:              1rem;
+    --radius-xl:              1.25rem;
+
+    --font-size-hero:         clamp(1.75rem, 4vw, 2.25rem);
+    --font-size-h4:           1.125rem;
+    --font-size-sm:           0.875rem;
+    --font-size-xs:           0.75rem;
+    --font-weight-black:      800;
+    --text-lg:                1.125rem;
+    --text-base:              1rem;
+    --text-sm:                0.875rem;
+    --text-xs:                0.75rem;
 
     --color-border:           rgba(192, 184, 155, 0.10);
     --color-border-hover:     rgba(192, 184, 155, 0.22);
@@ -132,7 +177,7 @@
 
     --color-text-primary:     #12100E;
     --color-text-secondary:   #495057;
-    --color-text-muted:       #868E96;
+    --color-text-muted:       #5C646D;
     --color-text-on-accent:   #FFFFFF;
 
     --color-border:           rgba(18, 16, 14, 0.12);

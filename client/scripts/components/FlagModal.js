@@ -13,14 +13,19 @@ export class FlagModal {
 
   open(argId, title = 'Report / Flag') {
     this.argId = argId;
-    this.overlay.querySelector('#flag-modal-title').innerHTML = `
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/>
-        <line x1="4" y1="22" x2="4" y2="15"/>
-      </svg>
-      ${title}
-    `;
+    const titleEl = this.overlay.querySelector('#flag-modal-title');
+    if (titleEl) {
+      titleEl.innerHTML = `
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/>
+          <line x1="4" y1="22" x2="4" y2="15"/>
+        </svg>
+        <span class="flag-modal__title-text"></span>
+      `;
+      titleEl.querySelector('.flag-modal__title-text').textContent = title;
+    }
     this.overlay.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
     this.reasonInput.value = 'inappropriate_content';
     this.descriptionInput.value = '';
     this.reasonInput.focus();

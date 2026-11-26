@@ -106,3 +106,13 @@
 }
 
 /* Reusing .flags-card from analytics.css for the recent flags */
+
+@media (max-width: 640px) {
+  .admin-search-input-wrapper {
+    flex-direction: column;
+  }
+  .admin-search-input-wrapper button {
+    width: 100%;
+    min-height: var(--touch-target);
+  }
+}

@@ -4,7 +4,7 @@ importScripts('scripts/db.js');
 // Bump this version whenever cached assets change. Browsers only detect a
 // service-worker update when sw.js itself differs, and activate() deletes
 // older caches — without a bump, returning users keep stale JS/CSS forever.
-const CACHE_NAME = 'warg-cache-v13';
+const CACHE_NAME = 'warg-cache-v14';
 const MEDIA_CACHE_NAME = 'warg-media-v1';
 const MAX_MEDIA_CACHE_ENTRIES = 200;
 
