@@ -151,6 +151,30 @@
         <!-- Populated by admin.js -->
       </div>
 
+      <!-- Demo Game Configuration -->
+      <section class="admin-demo-card" aria-labelledby="admin-demo-title">
+        <div class="admin-demo-card__header">
+          <div>
+            <h3 id="admin-demo-title">
+              <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18" aria-hidden="true">
+                <polygon points="6 4 20 12 6 20 6 4"/>
+              </svg>
+              Demo Game (Guest Access)
+            </h3>
+            <p class="admin-demo-card__desc">Choose which WARG visitors can play directly from the Login and Home screens without creating an account.</p>
+          </div>
+          <div class="admin-demo-status" id="demo-current-status">Loading current demo setting...</div>
+        </div>
+        <div class="admin-demo-controls">
+          <select id="select-demo-game" class="admin-demo-select" aria-label="Select demo game">
+            <option value="">-- Loading games... --</option>
+          </select>
+          <button class="btn btn--primary" id="btn-save-demo-game" type="button">Set Demo Game</button>
+          <button class="btn btn--outline" id="btn-clear-demo-game" type="button">Clear Demo</button>
+          <a class="btn btn--outline" id="link-preview-demo" href="#" hidden>Preview Demo</a>
+        </div>
+      </section>
+
       <!-- Admin Controls -->
       <div class="admin-controls">
         

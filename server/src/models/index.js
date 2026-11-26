@@ -20,6 +20,7 @@ const UserBadge = require('./UserBadge');
 const Flag = require('./Flag');
 const Comment = require('./Comment');
 const UserFeedback = require('./UserFeedback');
+const PlatformSetting = require('./PlatformSetting');
 
 // Define Associations
 
@@ -130,5 +131,6 @@ module.exports = {
   UserBadge,
   Flag,
   Comment,
-  UserFeedback
+  UserFeedback,
+  PlatformSetting
 };

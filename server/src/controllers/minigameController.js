@@ -3,6 +3,7 @@ const fs = require('fs');
 const { Minigame, Waypoint, Arg, MinigameAttempt, WaypointProgress, WaypointEdge, GameSession } = require('../models');
 const { evaluateConditions } = require('./gameController');
 const badgeService = require('../services/badgeService');
+const demoService = require('../services/demoService');
 const {
   referenceImageCache,
   invalidateReferenceImage,
@@ -203,16 +204,87 @@ exports.submitAttempt = async (req, res) => {
     const data = await response.json();
 
     // Process progression
-    const user_id = req.user.user_id;
     const waypoint_id = minigame.waypoint_id;
     const arg_id = minigame.Waypoint ? minigame.Waypoint.arg_id : null;
 
-    const transaction = await Minigame.sequelize.transaction();
     let unlockedNodes = [];
     let session_completed = false;
     let can_retry = false;
     const outcome = data.passed ? 'pass' : 'fail';
     const finalStatus = outcome === 'pass' ? 'completed' : 'failed';
+
+    if (req.isDemoGuest) {
+      const config = minigame.config_json || {};
+      can_retry = Boolean(outcome === 'fail' && config.allow_multiple_attempts);
+
+      const demoData = arg_id ? demoService.getDemoSession(req, arg_id) : null;
+      if (demoData) {
+        const nowIso = new Date().toISOString();
+        if (!demoData.attempts) demoData.attempts = {};
+        demoData.attempts[String(gameId)] = {
+          user_id: null,
+          game_id: gameId,
+          outcome,
+          submission_json: `AI Score: ${data.confidence_score}`,
+          score: data.passed ? 1.0 : 0.0,
+          attempted_at: nowIso
+        };
+
+        if (waypoint_id) {
+          const existingWp = demoData.progress[String(waypoint_id)] || {};
+          demoData.progress[String(waypoint_id)] = {
+            waypoint_id,
+            status: finalStatus,
+            unlocked_at: existingWp.unlocked_at || nowIso,
+            completed_at: nowIso
+          };
+
+          const edges = await WaypointEdge.findAll({ where: { from_waypoint_id: waypoint_id } });
+          for (const edge of edges) {
+            if (demoService.evaluateDemoConditions(demoData, edge.conditions_json)) {
+              const existingSucc = demoData.progress[String(edge.to_waypoint_id)] || {};
+              demoData.progress[String(edge.to_waypoint_id)] = {
+                waypoint_id: edge.to_waypoint_id,
+                status: 'unlocked',
+                unlocked_at: nowIso,
+                completed_at: existingSucc.completed_at || null
+              };
+              unlockedNodes.push(edge.to_waypoint_id);
+            }
+          }
+        }
+
+        if (arg_id && Waypoint && typeof Waypoint.findAll === 'function') {
+          const argWaypoints = await Waypoint.findAll({ where: { arg_id }, attributes: ['waypoint_id'] });
+          const argWpIds = argWaypoints.map(w => w.waypoint_id);
+          const sessionProgress = argWpIds.map(id => demoData.progress[String(id)]).filter(Boolean);
+          const hasUnlocked = sessionProgress.some(p => p.status === 'unlocked');
+
+          if (!hasUnlocked && sessionProgress.length > 0 && sessionProgress.length === argWpIds.length && sessionProgress.every(p => p.status === 'completed' || p.status === 'failed')) {
+            if (!(outcome === 'fail' && can_retry && unlockedNodes.length === 0)) {
+              session_completed = true;
+              demoData.session.status = 'completed';
+              demoData.session.completed_at = nowIso;
+            }
+          }
+        }
+
+        demoData.session.last_active_at = nowIso;
+        await demoService.saveReqSession(req);
+      }
+
+      return res.json({
+        ...data,
+        outcome,
+        can_retry,
+        unlockedNodes,
+        session_completed,
+        nodeStatus: finalStatus
+      });
+    }
+
+    const user_id = req.user.user_id;
+    const transaction = await Minigame.sequelize.transaction();
 
     try {
       const progressionOps = [

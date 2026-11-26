@@ -60,7 +60,7 @@ window.showToast = function(message) {
   }, 4000);
 };
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   setupConnectionBanner();
   const API_BASE = window.API_BASE_URL || 'https://wargmirror.onrender.com';
 
@@ -127,17 +127,25 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Get the ARG ID from the URL parameters
+  // Get the ARG ID from the URL parameters (or resolve active demo game when ?demo=1)
   const urlParams = new URLSearchParams(window.location.search);
-  const argId = urlParams.get('id');
+  let argId = urlParams.get('id');
+
+  if (!argId && urlParams.get('demo') === '1' && typeof api !== 'undefined' && typeof api.getDemoGame === 'function') {
+    const demo = await api.getDemoGame();
+    if (demo && demo.id) {
+      argId = demo.id;
+    }
+  }
 
   if (!argId) {
-    alert('No WARG ID provided. Redirecting to catalogue.');
-    window.location.href = 'catalogue.html';
+    alert(urlParams.get('demo') === '1' ? 'No demo game is currently configured.' : 'No WARG ID provided. Redirecting to catalogue.');
+    window.location.href = urlParams.get('demo') === '1' ? 'home.html' : 'catalogue.html';
     return;
   }
 
   let gameState = null;
+  let demoResetBound = false;
 
   async function loadGameStateAndInitMap() {
     try {
@@ -164,6 +172,30 @@ document.addEventListener('DOMContentLoaded', () => {
       startSensors();
 
       gameState = await stateRes.json();
+
+      const demoBanner = document.getElementById('demo-mode-banner');
+      if (demoBanner && gameState && gameState.is_demo) {
+        demoBanner.hidden = false;
+        if (!demoResetBound) {
+          demoResetBound = true;
+          const btnResetDemo = document.getElementById('btn-reset-demo');
+          if (btnResetDemo) {
+            btnResetDemo.addEventListener('click', async () => {
+              btnResetDemo.disabled = true;
+              try {
+                await api.resetGameSession(argId);
+                window.location.reload();
+              } catch (resetErr) {
+                console.error('Failed to reset demo session:', resetErr);
+                btnResetDemo.disabled = false;
+                if (typeof window.showToast === 'function') {
+                  window.showToast('Failed to reset demo session.');
+                }
+              }
+            });
+          }
+        }
+      }
 
       const nodes = [];
       if (gameState.waypoints) {

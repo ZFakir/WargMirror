@@ -201,6 +201,17 @@
     <main class="main-content" id="main-content" aria-label="Active Game">
       <div class="game-container">
 
+        <div class="demo-mode-banner" id="demo-mode-banner" hidden role="status">
+          <div class="demo-mode-banner__info">
+            <span class="demo-mode-banner__badge">DEMO MODE</span>
+            <span class="demo-mode-banner__text">Playing as a guest — progress is temporary for this session.</span>
+          </div>
+          <div class="demo-mode-banner__actions">
+            <button type="button" class="btn btn--outline btn--sm" id="btn-reset-demo">Reset Demo</button>
+            <a href="login.html" class="btn btn--primary btn--sm">Sign In / Sign Up</a>
+          </div>
+        </div>
+
         <!-- Map Area -->
         <div class="game-map-wrapper">
           <div id="game-map" class="game-map" aria-label="Interactive game map" role="application">

@@ -1,5 +1,29 @@
 document.addEventListener('DOMContentLoaded', () => {
   const form = document.querySelector('.login-form');
+  const apiBase = window.API_BASE_URL || 'https://wargmirror.onrender.com';
+
+  // Non-blocking lookup for an admin-configured Innovation Day demo game
+  (async function loadDemoOption() {
+    const section = document.getElementById('demo-game-section');
+    const demoBtn = document.getElementById('btn-play-demo');
+    const demoSub = document.getElementById('demo-game-subtitle');
+    if (!section || !demoBtn) return;
+
+    try {
+      const res = await fetch(`${apiBase}/api/demo`, { credentials: 'include', cache: 'no-store' });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data && data.demo && data.demo.arg_id) {
+        demoBtn.href = `game.html?id=${encodeURIComponent(data.demo.arg_id)}&demo=1`;
+        if (demoSub) {
+          demoSub.textContent = `Try "${data.demo.title}" — no account needed`;
+        }
+        section.hidden = false;
+      }
+    } catch {
+      // Ignore demo fetch failures so login form remains unaffected
+    }
+  })();
 
   // Inline error message (replaces the old alert() popups)
   let errorEl = null;

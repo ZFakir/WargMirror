@@ -348,11 +348,37 @@ async function initHomeData() {
   });
 
   const userPromise = api.getCurrentUser();
-  const [argsResult, userResult] = await Promise.allSettled([argsPromise, userPromise]);
+  const demoPromise = typeof api.getDemoGame === 'function' ? api.getDemoGame() : Promise.resolve(null);
+  const [argsResult, userResult, demoResult] = await Promise.allSettled([argsPromise, userPromise, demoPromise]);
 
   var args = argsResult.status === 'fulfilled' ? argsResult.value : [];
   var currentUser = userResult.status === 'fulfilled' ? userResult.value : null;
+  var demoArg = demoResult.status === 'fulfilled' ? demoResult.value : null;
   cachedCurrentUser = currentUser;
+
+  var demoBanner = document.getElementById('demo-banner');
+  if (demoBanner) {
+    if (demoArg && demoArg.id) {
+      var demoTitleEl = document.getElementById('demo-banner-title');
+      var demoCaptionEl = document.getElementById('demo-banner-caption');
+      var demoNoteEl = document.getElementById('demo-banner-note');
+      var demoPlayBtn = document.getElementById('btn-home-play-demo');
+
+      if (demoTitleEl) demoTitleEl.textContent = demoArg.title;
+      if (demoCaptionEl) demoCaptionEl.textContent = demoArg.caption || 'Jump straight into the campus adventure.';
+      if (demoNoteEl) {
+        demoNoteEl.textContent = currentUser
+          ? 'Featured campus demo'
+          : 'No account required — play instantly without logging in.';
+      }
+      if (demoPlayBtn) {
+        demoPlayBtn.href = 'game.html?id=' + encodeURIComponent(demoArg.id) + '&demo=1';
+      }
+      demoBanner.hidden = false;
+    } else {
+      demoBanner.hidden = true;
+    }
+  }
 
   // If getArgs() failed, render empty states for public rows
   if (argsResult.status === 'rejected') {

@@ -8,6 +8,7 @@ jest.mock('../../src/models', () => {
     MinigameAttempt: { upsert: jest.fn() },
     WaypointProgress: { upsert: jest.fn() },
     WaypointEdge: { findAll: jest.fn().mockResolvedValue([]) },
+    Waypoint: { findAll: jest.fn().mockResolvedValue([{ waypoint_id: 1 }]) },
     evaluateConditions: jest.fn().mockResolvedValue(true)
   };
 });
@@ -83,6 +84,41 @@ describe('minigameController', () => {
 
       expect(fetch).toHaveBeenCalled();
       expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ passed: true }));
+    });
+
+    it('updates demo guest session state without DB writes when req.isDemoGuest is true', async () => {
+      req.isDemoGuest = true;
+      req.user = null;
+      req.session = {
+        demoSessions: {
+          '10': {
+            session: { arg_id: 10, status: 'active' },
+            progress: { '1': { waypoint_id: 1, status: 'unlocked' } },
+            attempts: {}
+          }
+        }
+      };
+      Minigame.findByPk.mockResolvedValue({
+        game_id: 1,
+        waypoint_id: 1,
+        game_type: 'shape_match',
+        config_json: { reference_image_base64: 'dGVzdA==' },
+        Waypoint: { arg_id: 10 }
+      });
+
+      fetch.mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue({ passed: true, confidence_score: 0.95 })
+      });
+
+      await submitAttempt(req, res);
+
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+        passed: true,
+        outcome: 'pass',
+        session_completed: true,
+        nodeStatus: 'completed'
+      }));
     });
   });
 });

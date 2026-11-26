@@ -3,6 +3,76 @@
  * Styling for the active game view: map placeholder and progress timeline.
  */
 
+.demo-mode-banner[hidden] {
+  display: none;
+}
+
+.demo-mode-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-secondary);
+  border-radius: var(--radius-lg);
+}
+
+.demo-mode-banner__info {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.demo-mode-banner__badge {
+  padding: 2px 10px;
+  border-radius: var(--radius-full);
+  background: var(--color-secondary-muted);
+  border: 1px solid var(--color-secondary);
+  color: var(--color-secondary);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.06em;
+}
+
+.demo-mode-banner__text {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-body-sm);
+}
+
+.demo-mode-banner__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.demo-mode-banner__actions .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 14px;
+  border-radius: var(--radius-btn);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.demo-mode-banner__actions .btn--outline {
+  background: transparent;
+  border: 1px solid var(--color-border-hover);
+  color: var(--color-text-primary);
+}
+
+.demo-mode-banner__actions .btn--primary {
+  background: var(--color-accent);
+  border: 1px solid var(--color-accent);
+  color: var(--color-text-on-accent);
+}
+
 .game-container {
   display: flex;
   flex-direction: column;

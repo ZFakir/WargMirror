@@ -684,6 +684,20 @@ CREATE TABLE IF NOT EXISTS user_feedback (
 
 
 -- ============================================================
+-- §17b PLATFORM SETTINGS (admin-configured demo game, etc.)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS platform_settings (
+    setting_key   VARCHAR(64) NOT NULL,
+    setting_value TEXT            NULL DEFAULT NULL,
+    updated_at    DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP
+                                  ON UPDATE CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (setting_key)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- ============================================================
 -- §18  VIEWS
 -- ============================================================
 

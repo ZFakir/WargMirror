@@ -4,7 +4,7 @@ importScripts('scripts/db.js');
 // Bump this version whenever cached assets change. Browsers only detect a
 // service-worker update when sw.js itself differs, and activate() deletes
 // older caches — without a bump, returning users keep stale JS/CSS forever.
-const CACHE_NAME = 'warg-cache-v14';
+const CACHE_NAME = 'warg-cache-v15';
 const MEDIA_CACHE_NAME = 'warg-media-v1';
 const MAX_MEDIA_CACHE_ENTRIES = 200;
 
@@ -152,8 +152,8 @@ self.addEventListener('fetch', event => {
 
   const url = new URL(event.request.url);
 
-  // Bypass SW for all authentication and session endpoints — never cache or intercept auth state
-  if (url.pathname.startsWith('/auth/')) return;
+  // Bypass SW for authentication, session, demo config, and admin endpoints
+  if (url.pathname.startsWith('/auth/') || url.pathname.startsWith('/api/demo') || url.pathname.startsWith('/api/admin')) return;
 
   // 1. CACHE-FIRST (Media Bucket): ARG cover images, minigame reference images, map tiles, avatars
   if (

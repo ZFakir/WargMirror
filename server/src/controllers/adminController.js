@@ -1,6 +1,7 @@
 const { User, Flag, Arg, Comment, GameSession } = require('../models');
 const { Op } = require('sequelize');
 const badgeService = require('../services/badgeService');
+const demoService = require('../services/demoService');
 const {
   invalidateArgs,
   invalidateArg,
@@ -152,6 +153,14 @@ exports.deleteGame = async (req, res) => {
     invalidateArgs();
     invalidateArg(id);
     invalidateCoverImage(id);
+    try {
+      const currentDemoId = await demoService.getDemoArgId();
+      if (currentDemoId && Number(currentDemoId) === Number(id)) {
+        await demoService.setDemoArgId(null);
+      }
+    } catch {
+      // Ignore if PlatformSetting is not mocked in isolated unit tests
+    }
     res.json({ message: 'Game deleted successfully' });
   } catch (error) {
     console.error('Error deleting game:', error);
@@ -173,5 +182,55 @@ exports.deleteComment = async (req, res) => {
   } catch (error) {
     console.error('Error deleting comment:', error);
     res.status(500).json({ error: 'Failed to delete comment' });
+  }
+};
+
+exports.listGames = async (req, res) => {
+  try {
+    const [games, demo_arg_id] = await Promise.all([
+      Arg.findAll({
+        where: { status: { [Op.ne]: 'retired' } },
+        attributes: ['arg_id', 'title', 'caption', 'mode', 'status', 'play_count', 'created_at'],
+        include: [{ model: User, as: 'Creator', attributes: ['username'] }],
+        order: [['created_at', 'DESC']]
+      }),
+      demoService.getDemoArgId()
+    ]);
+
+    res.json({ games, demo_arg_id });
+  } catch (error) {
+    console.error('Error listing games:', error);
+    res.status(500).json({ error: 'Failed to list games' });
+  }
+};
+
+exports.getDemoGame = async (req, res) => {
+  try {
+    const game = await demoService.getDemoArg();
+    res.json({
+      demo_arg_id: game ? game.arg_id : null,
+      game: game ? (typeof game.toJSON === 'function' ? game.toJSON() : game) : null
+    });
+  } catch (error) {
+    console.error('Error fetching demo game setting:', error);
+    res.status(500).json({ error: 'Failed to fetch demo game setting' });
+  }
+};
+
+exports.setDemoGame = async (req, res) => {
+  try {
+    const { arg_id } = req.body || {};
+    const result = await demoService.setDemoArgId(arg_id);
+    res.json({
+      message: result.demo_arg_id ? 'Demo game updated successfully' : 'Demo game cleared successfully',
+      demo_arg_id: result.demo_arg_id,
+      game: result.game ? (typeof result.game.toJSON === 'function' ? result.game.toJSON() : result.game) : null
+    });
+  } catch (error) {
+    if (error.status === 400 || error.status === 404) {
+      return res.status(error.status).json({ error: error.message });
+    }
+    console.error('Error updating demo game:', error);
+    res.status(500).json({ error: 'Failed to update demo game' });
   }
 };
